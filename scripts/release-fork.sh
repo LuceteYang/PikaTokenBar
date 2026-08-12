@@ -78,6 +78,32 @@ if [[ "${1:-}" == "--check-only" ]]; then
     bad "codesigning identity '$SIGN_IDENTITY' 가 keychain 에 $MATCH_COUNT 개 있습니다(정확히 1개여야 함)"
   fi
 
+  # 5/7 의 아티팩트 게이트(서명 Authority·버전·universal) — 두 번이나 검증 없이 실려나간 바로 그
+  # 부류(C-2). 여기서 새로 빌드하면 /Applications 를 덮어쓰고 실행 중인 앱을 죽이므로(build-app.sh
+  # 가 codesign 직후 곧바로 설치한다) --check-only 는 상태를 안 바꾼다는 원칙에 어긋난다 — 대신
+  # build/ 에 이미 있는 산출물을 대상으로 같은 검사를 돌리고, 없으면 그 사실만 알린다.
+  if [[ -d "build/$APP_NAME.app" ]]; then
+    AUTH=$(codesign -dvv "build/$APP_NAME.app" 2>&1 || true)
+    [[ "$AUTH" == *"Authority=$SIGN_IDENTITY"* ]] \
+      && ok "build/$APP_NAME.app 서명 Authority = $SIGN_IDENTITY" \
+      || bad "build/$APP_NAME.app 서명 Authority 가 '$SIGN_IDENTITY' 가 아닙니다"
+
+    BUILT_VER=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "build/$APP_NAME.app/Contents/Info.plist" 2>/dev/null)
+    if [[ "$BUILT_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+      ok "build/$APP_NAME.app 버전 읽힘: $BUILT_VER (release-fork.sh <version> 실행 시 그 값과 비교됨)"
+    else
+      bad "build/$APP_NAME.app 의 CFBundleShortVersionString 을 못 읽었습니다"
+    fi
+
+    LIPO_INFO=$(lipo -info "build/$APP_NAME.app/Contents/MacOS/$APP_NAME" 2>&1 || true)
+    [[ "$LIPO_INFO" == *"x86_64"* ]] \
+      && ok "build/$APP_NAME.app universal(x86_64 포함)" \
+      || bad "build/$APP_NAME.app 이 universal 이 아닙니다(현재 build/ 는 참고용 — 실제 릴리스는 PTB_UNIVERSAL=1 로 새로 빌드함)"
+  else
+    echo "  ℹ build/$APP_NAME.app 없음 — 아티팩트 게이트(서명 Authority·버전·universal)는 지금 확인할 산출물이 없습니다."
+    echo "    release-fork.sh <version> 을 실제로 실행하면 5/7 에서 새로 빌드해 이 게이트들을 통과시켜야 합니다."
+  fi
+
   echo "---"
   if [[ "$FAIL" -eq 0 ]]; then
     echo "✓ 모든 게이트 통과 — release-fork.sh <version> 실행 가능"
@@ -169,8 +195,8 @@ PTB_UNIVERSAL=1 ./scripts/build-app.sh >/dev/null
 # `cmd | grep -q` 로 쓰지 않는다: grep -q 는 매치를 찾는 순간 읽기를 멈추고 종료하는데, 그 시점에
 # 원본 명령이 아직 나머지 줄을 쓰는 중이면 SIGPIPE(exit 141)를 받는다 — pipefail 하에선 grep 이
 # 성공(0)해도 파이프 전체가 실패로 보인다. 명령 출력을 변수로 먼저 받아 문자열로 비교한다.
-SIG_INFO=$(codesign -dvv "build/$APP_NAME.app" 2>&1 || true)
-[[ "$SIG_INFO" == *"Authority=$SIGN_IDENTITY"* ]] \
+AUTH=$(codesign -dvv "build/$APP_NAME.app" 2>&1 || true)
+[[ "$AUTH" == *"Authority=$SIGN_IDENTITY"* ]] \
   || { echo "✗ 빌드된 앱의 서명 Authority 가 '$SIGN_IDENTITY' 가 아닙니다 ($RECOVER)"; exit 1; }
 BUILT=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "build/$APP_NAME.app/Contents/Info.plist")
 [[ "$BUILT" == "$VERSION" ]] || { echo "✗ 빌드 버전 불일치: $BUILT ($RECOVER)"; exit 1; }
