@@ -815,7 +815,12 @@ final class UsageStore {
         guard !notifAuthRequested else { return }
         guard AppEnv.isBundledApp else { return }
         notifAuthRequested = true
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        // 완료 핸들러 클로저를 쓰지 않는 이유: 이 메서드가 @MainActor 라 클로저 리터럴이 메인액터
+        // 격리를 물려받는데(UN 의 완료 핸들러는 SDK 에서 Sendable 로 감사돼 있지 않다), UN 은 그
+        // 클로저를 자기 XPC 큐에서 호출한다 → Swift 6 런타임의 실행자 검사에 걸려 트랩한다(실측 크래시:
+        // queue = com.apple.usernotifications.UNUserNotificationServiceConnection.call-out).
+        // async 형태는 await 재개가 메인액터로 돌아오므로 큐를 넘나드는 클로저 자체가 생기지 않는다.
+        Task { _ = try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) }
     }
 
     /// 한도 알림 1건의 발화 지시(순수 판정 결과). 부수효과와 분리해 테스트 가능하게.
