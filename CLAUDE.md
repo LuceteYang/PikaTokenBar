@@ -11,6 +11,7 @@
 | `docs/reference/release-workflow.md` | 버전을 배포할 때, `release.sh` 게이트에 막혔을 때, UI 변경으로 스크린샷·랜딩을 갱신할 때 |
 | `docs/reference/provider-extension.md` | 새 사용량 소스·버전매니저·로그 루트를 추가할 때, 프로바이더 분기를 리뷰할 때 |
 | `docs/reference/defect-log.md` | 결함·회귀를 고치는 중(부류 스윕 근거), 동시성·캐시·외부 로그 포맷·상시 애니메이션·세이브 이전을 건드릴 때 |
+| `docs/reference/fork-maintenance.md` | **이 저장소는 포크다** — 배포할 때(반드시 `release-fork.sh`), upstream 변경을 반영할 때, 머지 충돌에서 어느 쪽을 지킬지 판단할 때 |
 
 각 문서의 frontmatter(`summary`/`read_when`)가 그 문서의 적용 범위를 다시 명시한다.
 
@@ -26,6 +27,9 @@
 - 범위 밖(추후): 코드 주석·이 `CLAUDE.md` 본문의 영어 전환. README/랜딩은 이미 en/ko/ja 다국어 유지.
 
 ## 릴리스 (자연어 트리거)
+
+**이 저장소는 `chattymin/PokeTokenBar` 의 포크(PikaTokenBar)다. 배포는 `./scripts/release-fork.sh`
+를 쓴다 — 원본 `release.sh` 는 가드로 막혀 있다.** 절차는 `docs/reference/fork-maintenance.md`.
 
 사용자가 **버전 배포를 자연어로 요청**하면 — 예: "배포해줘", "릴리스 올려줘", "패치 배포",
 "2.1.1 배포", "release", "다음 버전 내줘" — 한 줄 명령을 시키지 말고 직접 수행한다.
