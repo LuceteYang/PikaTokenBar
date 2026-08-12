@@ -140,7 +140,12 @@ actor PokeAPIClient: PokeProviding {
     }
 
     private func fetchBaseIndex() async throws -> [BaseSpecies] {
-        // 공식 GraphQL — evolves_from IS NULL(=base) + id ≤ 649(Gen-V 애니메이션 스프라이트 상한)
+        // 공식 GraphQL — base 후보 + id ≤ maxID(사용 범위 상한).
+        // "base" 는 evolves_from IS NULL 만으로는 부족하다. 피카츄(#25)의 진화 전은 피츄(#172)라
+        // 범위를 1세대로 좁히면 피카츄·삐삐·푸린·시라소몬·홍수몬·럭키·마임맨·루주라·에레브·마그마·
+        // 잠만보 11종 라인이 통째로 부화 풀에서 사라진다(모두 진화 전이 2~4세대 베이비).
+        // **진화 전이 범위 밖이면 그 종이 곧 이 범위의 시작점**이므로
+        // `_gt: maxID` 를 base 조건에 함께 넣는다.
         guard let url = URL(string: "https://graphql.pokeapi.co/v1beta2") else { throw URLError(.badURL) }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -148,7 +153,7 @@ actor PokeAPIClient: PokeProviding {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // 메타몽(#132)은 위장 리빌 전용 → 일반 부화 풀에서 제외(_neq).
         let maxID = PokemonAssets.animatedSpeciesIDs.upperBound
-        let query = "{ pokemonspecies(where: {evolves_from_species_id: {_is_null: true}, id: {_lte: \(maxID), _neq: \(PokemonOdds.dittoSpeciesID)}}, order_by: {id: asc}) { id capture_rate } }"
+        let query = "{ pokemonspecies(where: {_and: [{id: {_lte: \(maxID), _neq: \(PokemonOdds.dittoSpeciesID)}}, {_or: [{evolves_from_species_id: {_is_null: true}}, {evolves_from_species_id: {_gt: \(maxID)}}]}]}, order_by: {id: asc}) { id capture_rate } }"
         req.httpBody = try JSONSerialization.data(withJSONObject: ["query": query])
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
@@ -170,7 +175,14 @@ actor PokeAPIClient: PokeProviding {
     func baseSpecies(id: Int) async throws -> BaseSpecies? {
         guard id != PokemonOdds.dittoSpeciesID else { return nil }   // 메타몽은 위장 리빌 전용 — 일반 부화 제외
         let dto = try await species(id)
-        guard dto.evolves_from_species == nil else { return nil }   // 진화 중간체는 부화 후보 아님
+        // GraphQL 인덱스와 **같은 base 규칙**을 써야 한다 — 진화 전이 없거나(원래 시작점),
+        // 진화 전이 사용 범위 밖이면(피카츄←피츄) 이 종이 이 범위의 시작점이다.
+        if let preEvo = dto.evolves_from_species {
+            let preEvoID = Self.id(from: preEvo.url ?? "")
+            // id 파싱 실패(0)는 "범위 밖"으로 떨어져 base 로 인정되는데, 그러면 진화 중간체가
+            // 부화할 수 있다. 파싱 실패는 판정 불가로 보고 보수적으로 제외한다.
+            guard preEvoID > 0, !PokemonAssets.hasAnimatedSprite(speciesID: preEvoID) else { return nil }
+        }
         return BaseSpecies(id: id, captureRate: dto.capture_rate)
     }
 

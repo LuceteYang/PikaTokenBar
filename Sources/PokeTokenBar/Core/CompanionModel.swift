@@ -233,9 +233,12 @@ struct CandyGrant: Equatable, Sendable {
 }
 
 /// 현재 서비스가 제공하는 움직이는 포켓몬 스프라이트 범위.
-/// PokéAPI 의 Gen-V animated 에셋은 전국도감 #1...649까지만 존재한다.
+/// PokéAPI 의 Gen-V animated 에셋은 전국도감 #1...649까지 존재하지만,
+/// 이 포크는 1세대(관동 #1...151)만 사용한다.
+/// 이 범위는 4곳에 동시에 작용한다: 부화 후보 인덱스(GraphQL `_lte`),
+/// REST 폴백 난수 범위, 스프라이트 로딩, 진화 트리 가지치기(`keepingAnimatedSprites`).
 enum PokemonAssets {
-    static let animatedSpeciesIDs = 1...649
+    static let animatedSpeciesIDs = 1...151
 
     static func hasAnimatedSprite(speciesID: Int) -> Bool {
         animatedSpeciesIDs.contains(speciesID)
@@ -298,7 +301,11 @@ struct EvoLine: Sendable {
 
     init(baseID: Int, tree: EvoNode, rarity: Rarity, names: [Int: [String: String]]) {
         self.baseID = baseID
-        self.tree = tree.keepingAnimatedSprites() ?? EvoNode(speciesID: baseID, children: [])
+        // PokéAPI 는 체인 **전체 루트**를 준다. 범위 밖 베이비(피츄 #172 등)가 루트인 라인은
+        // 루트부터 가지치기하면 통째로 nil 이 되어 진화가 사라진다(피카츄→라이츄 소멸).
+        // baseID 서브트리로 re-root 한 뒤 가지치기한다. baseID == 루트인 일반 라인은 동작 불변.
+        let rooted = tree.node(withID: baseID) ?? tree
+        self.tree = rooted.keepingAnimatedSprites() ?? EvoNode(speciesID: baseID, children: [])
         self.rarity = rarity
         self.names = names
     }
