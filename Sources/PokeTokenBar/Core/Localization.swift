@@ -269,7 +269,7 @@ struct L {
         ---
         앱 버전: v\(version)
         macOS: \(os)
-        로그 파일(첨부 권장): ~/Library/Logs/PokeTokenBar.log
+        로그 파일(첨부 권장): ~/Library/Logs/\(AppIdentity.logFileName)
         """,
         """
         What happened:
@@ -279,7 +279,7 @@ struct L {
         ---
         App version: v\(version)
         macOS: \(os)
-        Log file (please attach): ~/Library/Logs/PokeTokenBar.log
+        Log file (please attach): ~/Library/Logs/\(AppIdentity.logFileName)
         """,
         """
         問題の内容:
@@ -289,7 +289,7 @@ struct L {
         ---
         アプリのバージョン: v\(version)
         macOS: \(os)
-        ログファイル（添付推奨）: ~/Library/Logs/PokeTokenBar.log
+        ログファイル（添付推奨）: ~/Library/Logs/\(AppIdentity.logFileName)
         """)
     }
 

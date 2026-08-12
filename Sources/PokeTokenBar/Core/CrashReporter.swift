@@ -15,14 +15,17 @@ import Foundation
 ///    2MB 회전(rename)이 pre-open fd 를 무효화해 크래시 라인이 엉뚱한 파일로 새던 문제 회피.
 /// 3) **NSException 핸들러** — 잡히지 않은 Obj-C 예외 기록.
 ///
-/// crash.log 의 기록은 **다음 실행 때 메인 로그로 합쳐 비운다**(사용자는 PokeTokenBar.log 한 곳만 봐도 됨).
+/// crash.log 의 기록은 **다음 실행 때 메인 로그로 합쳐 비운다**(사용자는 <AppIdentity.logFileName> 한 곳만 봐도 됨).
 enum CrashReporter {
     private static let logsDir: URL =
         FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Logs")
-    private static var markerURL: URL { logsDir.appendingPathComponent("PokeTokenBar.running") }
+    // marker/crash 파일명도 AppIdentity 에서 파생 — ~/Library/Logs 는 앱 전용 폴더가 아니라 원본과
+    // 공유되는 디렉토리이므로, 리터럴 실행파일명을 고정해 두면 원본과 같은 파일을 놓고 running
+    // 마커를 지우거나 crash.log 를 서로 비우는 충돌이 난다.
+    private static var markerURL: URL { logsDir.appendingPathComponent("\(AppIdentity.executableName).running") }
     /// 크래시-시점 기록 전용(회전 안 함). 시그널/예외 핸들러가 async-signal-safe 하게 append.
-    private static var crashLogURL: URL { logsDir.appendingPathComponent("PokeTokenBar.crash.log") }
+    private static var crashLogURL: URL { logsDir.appendingPathComponent("\(AppIdentity.executableName).crash.log") }
     /// 위 crash.log 로 미리 연 fd(설치 시 1회 open). 회전 대상이 아니라 세션 내내 유효.
     nonisolated(unsafe) fileprivate static var logFD: Int32 = -1
 
@@ -36,7 +39,7 @@ enum CrashReporter {
         // 1) 직전 세션 비정상 종료 감지 — 마커가 남아 있으면 정상 종료되지 않은 것.
         if FileManager.default.fileExists(atPath: markerURL.path) {
             AppLog.write("⚠️ 직전 세션이 정상 종료되지 않았습니다(크래시·OOM·강제종료 추정). "
-                + "원인 스택은 ~/Library/Logs/DiagnosticReports/PokeTokenBar-*.ips 참조.")
+                + "원인 스택은 ~/Library/Logs/DiagnosticReports/\(AppIdentity.executableName)-*.ips 참조.")
         }
         try? Data().write(to: markerURL, options: .atomic)   // 이번 세션 running 마커
         AppLog.write("launch: PokeTokenBar \(version) 시작")

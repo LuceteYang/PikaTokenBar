@@ -12,7 +12,7 @@ final class UpdateChecker {
     private(set) var isUpdating = false
 
     let currentVersion: String
-    private let repo = "chattymin/PokeTokenBar"
+    private let repo = AppIdentity.releasesRepo
     private let clock: () -> Date
     private var lastChecked: Date?
 
@@ -120,14 +120,14 @@ final class UpdateChecker {
     private static func launchDetachedUpgrade(brew: String) {
         let bundlePath = Bundle.main.bundlePath
         let script = """
-        for i in $(seq 1 40); do pgrep -x PokeTokenBar >/dev/null 2>&1 || break; sleep 0.5; done
+        for i in $(seq 1 40); do pgrep -x \(AppIdentity.executableName) >/dev/null 2>&1 || break; sleep 0.5; done
         export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
         ( "$1" update; "$1" upgrade --cask poke-token-bar ) &
         brew_pid=$!
         for i in $(seq 1 300); do kill -0 "$brew_pid" 2>/dev/null || break; sleep 1; done
         kill "$brew_pid" 2>/dev/null
         for i in $(seq 1 15); do
-          launchctl kickstart -k "gui/$(id -u)/io.github.chattymin.poketokenbar.login" 2>/dev/null && break
+          launchctl kickstart -k "gui/$(id -u)/\(AppIdentity.loginAgentLabel)" 2>/dev/null && break
           open "$2" 2>/dev/null && break
           sleep 1
         done
