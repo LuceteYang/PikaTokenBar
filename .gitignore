@@ -27,7 +27,10 @@ docs/*
 !docs/reference/
 
 # Agent worktrees / local state
-.claude/
+# (Must ignore .claude/* rather than .claude/ — git cannot re-include inside an excluded directory.)
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 .worktrees/
 
 # Local-only review-gate opt-out (not published)
