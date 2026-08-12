@@ -5,6 +5,7 @@ read_when:
   - 동시성/await·옵셔널 판정·캐시 무효화·외부 로그 포맷을 건드릴 때
   - 메뉴바·플로팅 펫 등 상시 표시 애니메이션의 성능을 손볼 때
   - 세이브 이전/병합·외부 파일 입력 경로를 만들 때
+  - `scripts/` 의 셸 스크립트에서 파이프(`|`)로 외부 명령 출력을 검사하는 게이트를 만들거나 리뷰할 때
 ---
 
 # 결함 대응 축적 규칙
@@ -183,6 +184,24 @@ read_when:
   (출발할 때 봐야 할 시계를 도착해서 보는 격). 가드를 넣을 땐 그 함수 위의 await 까지 거슬러 확인하고,
   회귀 테스트도 **그 await 를 실제로 지나는 진입점**으로 써라 — `hatch(baseID:)` 경로 테스트는
   `chooseBase()` 를 안 지나 통과하면서 아무것도 지키지 않았다(`testImportDuringSpeciesRollDiscardsTheHatch`).
+
+## 셸 스크립트
+
+- **`set -o pipefail` 파이프에서, 뒤에서 일찍 끊는 리더(`grep -q`·`head`·`grep -m1`)는 리더 자신이 매치에
+  성공(exit 0)해도 앞 명령을 SIGPIPE 로 죽이고, pipefail 은 그 SIGPIPE 를 파이프 전체의 실패로 보고한다.**
+  `PIPESTATUS` 로 보면 writer=141(SIGPIPE)/reader=0 — reader 가 0 이라도 rightmost *non-zero* 상태가
+  pipefail 의 결과가 된다. 실측(`release-fork.sh`): `codesign -dvv "$APP" 2>&1 | grep -q "Authority=…"` 가
+  올바르게 서명된 앱에서도 30/30 실패해, 5/7 게이트에서 "서명 Authority 가 틀렸다"는 **오진**과 함께
+  릴리스가 중단됐다 — 이미 `/Applications` 는 새 빌드로 교체된 뒤였다(빈 실패보다 오진이 더 나쁘다: 원인이
+  아닌 곳을 고치게 만든다). **"출력이 파이프 버퍼보다 작으니 안전하다"는 틀린 진단이다** — 버퍼 점유는
+  *블로킹* 만 좌우하고, SIGPIPE 는 오직 리더가 닫혔는지에만 좌우된다(리더가 매치 직후 일찍 닫으면, writer 가
+  아직 못 쓴 나머지 줄이 버퍼에 여유가 있어도 다음 write() 에서 죽는다). **두 리뷰 라운드를 살아남은 이유:
+  게이트를 인터랙티브 셸에서만 검증했다** — 그 셸엔 `grep` 이 입력을 다 드레인하는 `ugrep` 으로 셰도우돼
+  있어 SIGPIPE 가 안 남는데, 셰도우는 non-export 함수라 **스크립트로 실행하면** `/usr/bin/grep` 이 걸려
+  다르게 동작한다 — `type -a grep` 으로 지금 무엇을 측정하는지 먼저 확인하라. 고치는 형태: 출력을 변수로
+  받아 문자열 비교(`VAR=$(cmd 2>&1 || true); [[ "$VAR" == *needle* ]]`) 또는 `grep -c`. 재발 방지 메커니즘:
+  `release-fork.sh --check-only` 를 **스크립트로** 돌려 이 게이트를 실제 아티팩트로 실행한다 — 인터랙티브
+  확인은 검증이 아니다.
 
 ## 표시·UI
 

@@ -238,8 +238,22 @@ NOTES=$(mktemp)
   echo "upstream 베이스: \`$(git rev-parse --short "$(git merge-base HEAD upstream/main 2>/dev/null || echo HEAD)")\`"
 } > "$NOTES"
 
-gh release create "v$VERSION" "build/$APP_NAME.zip" "scripts/install.sh" \
-  --repo "$REPO" --title "$APP_NAME v$VERSION" --target main --notes-file "$NOTES"
+# gh release create 는 idempotent 하지 않다 — 업로드가 중간에 끊기거나(네트워크·API 일시 오류) 하면
+# 태그·릴리스 객체는 이미 만들어진 채로 실패하는데, 이 시점에는 버전 범프가 이미 커밋·push 돼 있다(6/7).
+# 같은 버전으로 재실행하면 "release already exists" 로 죽어 사람이 붙잡힌다 — 먼저 존재를 확인해서 있으면
+# 노트 갱신 + 에셋 재업로드(clobber)로 이어가고, 없으면 평소처럼 새로 만든다. 이 단계 자체가 실패해도
+# 정확히 뭘 하면 되는지 메시지에 남긴다(I-7).
+if gh release view "v$VERSION" --repo "$REPO" >/dev/null 2>&1; then
+  echo "  ⚠ v$VERSION 릴리스가 이미 존재합니다 — 이전 실행이 중간에 끊겼을 가능성. 노트 갱신 + 에셋 재업로드로 이어갑니다."
+  gh release edit "v$VERSION" --repo "$REPO" --title "$APP_NAME v$VERSION" --notes-file "$NOTES" \
+    || { echo "✗ 릴리스 노트 갱신 실패 → 확인: gh release view v$VERSION --repo $REPO"; exit 1; }
+  gh release upload "v$VERSION" "build/$APP_NAME.zip" "scripts/install.sh" --repo "$REPO" --clobber \
+    || { echo "✗ 에셋 재업로드 실패 → 직접 재시도: gh release upload v$VERSION build/$APP_NAME.zip scripts/install.sh --repo $REPO --clobber"; exit 1; }
+else
+  gh release create "v$VERSION" "build/$APP_NAME.zip" "scripts/install.sh" \
+    --repo "$REPO" --title "$APP_NAME v$VERSION" --target main --notes-file "$NOTES" \
+    || { echo "✗ GitHub Release 생성 실패 → 태그/릴리스가 부분적으로 만들어졌을 수 있습니다. 그대로 ./scripts/release-fork.sh $VERSION 를 재실행하면 위 분기(에셋 재업로드)로 자동 전환됩니다. 깨끗이 지우고 다시 하려면: gh release delete v$VERSION --repo $REPO --yes && git push origin :refs/tags/v$VERSION"; exit 1; }
+fi
 rm -f "$NOTES"
 
 echo "✓ v$VERSION 배포 완료."
