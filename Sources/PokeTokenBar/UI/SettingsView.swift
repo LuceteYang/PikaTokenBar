@@ -78,8 +78,12 @@ struct SettingsView: View {
         HStack(spacing: 5) {
             Text("v\(Self.appVersion)")
             Text("·")
-            footerLink("GitHub", "https://github.com/chattymin/PokeTokenBar")
+            // 이 포크의 저장소. 원본으로 보내면 안 된다 — 팀원이 여기서 받으면 1세대 패치가 없는
+            // 빌드로 갈아타게 된다(`UpdateChecker.repo` 와 같은 이유).
+            footerLink("GitHub", "https://github.com/\(AppIdentity.releasesRepo)")
             Text("·")
+            // Web·Sponsor 는 원본 그대로 둔다 — 이 포크엔 랜딩 페이지가 없어 바꾸면 404 가 되고,
+            // 후원은 이 앱을 만든 원작자에게 가는 것이 맞다.
             footerLink("Web", "https://chattymin.github.io/PokeTokenBar/")
             Text("·")
             // 개발자 후원 — 기능 잠금·너지 없는 푸터 링크
