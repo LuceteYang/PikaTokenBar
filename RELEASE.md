@@ -1,5 +1,9 @@
 # 릴리스 프로세스
 
+> ⚠️ **이 파일은 upstream(원본 `chattymin/PokeTokenBar`) 문서다.** 여기 적힌 `scripts/release.sh`,
+> Homebrew cask, 랜딩·다국어 README 파이프라인은 이 포크(PikaTokenBar)엔 없다. 이 포크를 배포할
+> 때는 `docs/reference/fork-maintenance.md` 와 `scripts/release-fork.sh` 를 보라.
+
 버전 배포 시 **코드뿐 아니라 문서(README·웹페이지·cask)까지 일관되게** 갱신하기 위한 런북.
 기계적 단계는 `scripts/release.sh` 가 자동화하고, 내용 판단이 필요한 부분은 아래 체크리스트로 검토한다.
 

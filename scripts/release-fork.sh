@@ -56,13 +56,39 @@ if [[ "${1:-}" == "--check-only" ]]; then
     bad "test-gate 실패"
   fi
 
-  LEAK=$(grep -rn 'chattymin\|"PokeTokenBar"\|PokeTokenBar\.log' Sources/ 2>/dev/null \
+  LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log' Sources/ 2>/dev/null \
     | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin')
   if [[ -z "$LEAK" ]]; then
     ok "정체성 누수 없음"
   else
     bad "원본 정체성 문자열이 소스에 남아 있습니다:"
     echo "$LEAK" | sed 's/^/      /'
+  fi
+
+  # install.sh 는 curl | bash 로 단독 배포되는 파일이라 AppIdentity.swift 를 참조할 수 없고
+  # 값을 직접 restate 한다 — build-app.sh 의 read_identity() 와 똑같이 sed 로 AppIdentity.swift
+  # 를 읽어, install.sh 에 박힌 리터럴이 아직 일치하는지 기계적으로 확인한다. 사람 기억에만
+  # 맡기면 AppIdentity 값이 바뀌어도 install.sh 는 조용히 낡은 채로 남는다(I-3).
+  IDENTITY_SRC="Sources/PokeTokenBar/Core/AppIdentity.swift"
+  read_identity() { sed -n "s/.*static let $1 = \"\([^\"]*\)\".*/\1/p" "$IDENTITY_SRC" | head -1; }
+  EXPECTED_APP_NAME=$(read_identity executableName)
+  EXPECTED_AGENT_LABEL=$(read_identity loginAgentLabel)
+  EXPECTED_REPO=$(read_identity releasesRepo)
+  INSTALL_APP_NAME=$(sed -n 's/^APP_NAME="\(.*\)"$/\1/p' scripts/install.sh | head -1)
+  INSTALL_AGENT_LABEL=$(sed -n 's/^AGENT_LABEL="\(.*\)"$/\1/p' scripts/install.sh | head -1)
+  INSTALL_REPO=$(sed -n 's/^REPO="\(.*\)"$/\1/p' scripts/install.sh | head -1)
+  DRIFT=""
+  [[ -n "$EXPECTED_APP_NAME" && "$INSTALL_APP_NAME" == "$EXPECTED_APP_NAME" ]] \
+    || DRIFT+="    APP_NAME: install.sh=$INSTALL_APP_NAME ≠ AppIdentity.executableName=$EXPECTED_APP_NAME\n"
+  [[ -n "$EXPECTED_AGENT_LABEL" && "$INSTALL_AGENT_LABEL" == "$EXPECTED_AGENT_LABEL" ]] \
+    || DRIFT+="    AGENT_LABEL: install.sh=$INSTALL_AGENT_LABEL ≠ AppIdentity.loginAgentLabel=$EXPECTED_AGENT_LABEL\n"
+  [[ -n "$EXPECTED_REPO" && "$INSTALL_REPO" == "$EXPECTED_REPO" ]] \
+    || DRIFT+="    REPO: install.sh=$INSTALL_REPO ≠ AppIdentity.releasesRepo=$EXPECTED_REPO\n"
+  if [[ -z "$DRIFT" ]]; then
+    ok "install.sh 의 restate 된 정체성 상수가 AppIdentity.swift 와 일치"
+  else
+    bad "install.sh 의 정체성 상수가 AppIdentity.swift 와 어긋납니다:"
+    echo -e "$DRIFT"
   fi
 
   SIGN_IDENTITY="${CODESIGN_IDENTITY:-PokeTokenBar Local}"
@@ -151,7 +177,7 @@ echo "▶ 2/7 정체성 누수 검사"
 # 404 가 되고, 후원은 원작자에게 가는 게 맞다(SettingsView.swift 주석 참조). 그 정확한 두 URL만
 # 걸러낸다 — 호스트 단위(chattymin.github.io/*, sponsors/chattymin 하위 전체)로 거르면 나중에
 # 같은 호스트에 새로 추가되는 upstream 참조까지 조용히 새나간다(I-6).
-LEAK=$(grep -rn 'chattymin\|"PokeTokenBar"\|PokeTokenBar\.log' Sources/ 2>/dev/null \
+LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log' Sources/ 2>/dev/null \
   | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin' || true)
 if [[ -n "$LEAK" ]]; then
   echo "$LEAK"

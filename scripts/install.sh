@@ -33,8 +33,19 @@ fi
 
 echo "==> $DEST 설치"
 rm -rf "$DEST"
-unzip -oq "$TMP/app.zip" -d /Applications || { echo "✗ 압축 해제 실패" >&2; exit 1; }
+# release-fork.sh 는 `ditto -c -k --keepParent` 로 압축한다 — 파일별 xattr 을 AppleDouble
+# 멤버(._*)로 저장하는 방식인데, Info-ZIP unzip 은 이를 이해하지 못하고 서명된 번들 *안에*
+# 실제 파일로 풀어놓는다. 그러면 codesign 이 "file added" 로 seal 불일치를 보고하고, launchd 가
+# 번들 서명을 검증하는 LaunchAgent(로그인 시 실행·크래시 워치독)까지 조용히 죽는다 — 반드시
+# ditto 로 풀어야 한다(같은 도구로 싸고 풀어야 AppleDouble 을 xattr 로 되돌린다).
+ditto -x -k "$TMP/app.zip" /Applications || { echo "✗ 압축 해제 실패" >&2; exit 1; }
 [ -d "$DEST" ] || { echo "✗ $DEST 가 만들어지지 않았습니다" >&2; exit 1; }
+
+# 압축 해제 방식이 서명을 깨는 건 조용히 일어난다(앱은 실행은 된다) — 여기서 즉시 검증해
+# 이 부류의 결함이 다시 소리 없이 나가지 못하게 한다.
+echo "==> 서명 확인"
+codesign --verify --deep --strict "$DEST" 2>/dev/null \
+  || { echo "✗ 설치된 앱의 서명이 유효하지 않습니다 — 다운로드가 손상됐거나 압축 해제가 잘못됐습니다." >&2; exit 1; }
 
 # 공증(notarization)을 하지 않는 자체서명 앱이라 quarantine 이 붙어 있으면 Gatekeeper 가 막는다.
 # macOS 15(Sequoia)부터는 Control-클릭 → 열기 우회가 제거돼 이 해제가 사실상 유일한 경로다.

@@ -8,6 +8,10 @@ read_when:
 
 # 릴리스 실행 절차
 
+> ⚠️ **이 파일은 upstream(원본 `chattymin/PokeTokenBar`) 문서다.** 여기 적힌 `release.sh`,
+> Homebrew cask, 랜딩·다국어 README 파이프라인은 이 포크(PikaTokenBar)엔 없다. 이 포크를 배포할
+> 때는 `docs/reference/fork-maintenance.md` 와 `scripts/release-fork.sh` 를 보라.
+
 버전 결정 규칙과 트리거는 `CLAUDE.md` §릴리스에 있다. 이 문서는 그 다음의 *실행 세부*를 담는다.
 체크리스트 원본은 `RELEASE.md`.
 

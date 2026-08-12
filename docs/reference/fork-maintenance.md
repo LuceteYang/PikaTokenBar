@@ -55,10 +55,11 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
 |---|---|
 | `Sources/PokeTokenBar/Core/AppIdentity.swift` | 전체 (포크 전용 파일 — 정체성 단일 진실원) |
 | `Core/LoginItem.swift` | `plistName`·`label` 이 `AppIdentity` 참조 |
-| `Core/UpdateChecker.swift` | `repo`·`pgrep`·`launchctl` 라벨이 `AppIdentity` 참조. **Homebrew cask 분기는
+| `Core/UpdateChecker.swift` | `repo` 가 `AppIdentity.releasesRepo` 참조. **Homebrew cask 분기는
   통째로 삭제돼 있다** — 이 포크는 GitHub Release + `install.sh` 로만 배포하고 cask 를 절대 안 내므로,
   `brew list --cask` 로 원본 cask 를 오탐해 원본 앱 번들을 덮어쓰는 경로 자체가 없다. 머지가 그 분기를
-  되살리면 되돌린다. |
+  되살리면 되돌린다. (`pgrep`/`launchctl` 로 실행 중인 인스턴스를 내리는 로직은 이 파일이 아니라
+  `scripts/install.sh` 쪽에 있다.) |
 | `Core/AppLog.swift`, `CrashReporter.swift`, `Localization.swift` | 로그 파일명 |
 | `Core/CompanionStore.swift`, `PokeAPIClient.swift`, `LocalUsageCache.swift`, `UsageStore.swift`, `UI/SpriteLoader.swift` | 저장 경로가 `AppIdentity.supportDirectory` |
 | `Core/CompanionModel.swift` | `animatedSpeciesIDs = 1...151`, `EvoLine.init` 의 re-root |

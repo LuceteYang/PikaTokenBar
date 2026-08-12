@@ -126,9 +126,12 @@ final class RESTIndexCompletenessTests: XCTestCase {
     }
 
     func testBaseQueryFollowsTheConfiguredRange() {
-        let q = PokeAPIClient.baseIndexQuery(maxID: PokemonAssets.animatedSpeciesIDs.upperBound,
-                                             dittoID: PokemonOdds.dittoSpeciesID)
-        XCTAssertTrue(q.contains("_lte: 151"), "질의가 실제 범위 상한을 따르지 않는다")
+        // 151 을 그대로 단언하면 함수가 인자를 무시하고 151 을 하드코딩해도 통과한다 — 실제
+        // 설정 범위(animatedSpeciesIDs.upperBound)와는 다른 maxID 를 넣어, 그 값이 질의에
+        // 반영되는지(= 인자를 정직하게 따르는지)를 검증한다.
+        let otherMaxID = PokemonAssets.animatedSpeciesIDs.upperBound + 37
+        let q = PokeAPIClient.baseIndexQuery(maxID: otherMaxID, dittoID: PokemonOdds.dittoSpeciesID)
+        XCTAssertTrue(q.contains("_lte: \(otherMaxID)"), "질의가 실제로 전달된 maxID 를 따르지 않는다")
     }
 
     // MARK: 요청은 다 성공했는데 base 를 하나도 못 찾은 경우
