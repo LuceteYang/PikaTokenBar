@@ -121,12 +121,12 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertFalse(FreshEgg.shopTiers.contains(.legendary), "전설 전용 알은 팔지 않는다")
     }
 
-    // MARK: 가격 — 졸업 총량 배율(새 상수 금지)
+    // MARK: 가격 — 등급별 고정표(희귀만 1세대 풀에 맞춰 재조정, 아래 근거는 CompanionModel.swift 참조)
 
-    func testPricesFollowGraduationTotalRatio() {
+    func testPricesMatchTierTable() {
         XCTAssertEqual(FreshEgg.price(guaranteeing: nil), 1_000_000_000)
         XCTAssertEqual(FreshEgg.price(guaranteeing: .uncommon), 2_500_000_000)
-        XCTAssertEqual(FreshEgg.price(guaranteeing: .rare), 4_000_000_000)
+        XCTAssertEqual(FreshEgg.price(guaranteeing: .rare), 2_750_000_000)
         XCTAssertEqual(FreshEgg.shopTiers, [nil, .uncommon, .rare])
     }
 
@@ -143,10 +143,14 @@ final class PremiumEggTests: XCTestCase {
     /// 그 너머(고급 밴드 거의 수집 + 희귀 밴드 거의 미수집)는 뒤집히지만 재가격하지 않는다 — 1인 로컬·
     /// 금전가치 없음이라 후반 코너에서 상위 알이 약간 손해인 것은 수용 범위다.
     ///
-    /// 출처: PokéAPI GraphQL v1beta2, `evolves_from_species_id IS NULL` · id ≤ 649 · 메타몽 제외,
-    /// 2026-08-04 측정(base 328종). 풀이 크게 바뀌면 이 값을 다시 재고 결론을 재확인해야 한다.
+    /// 출처: 실행 중인 앱이 받아온 base 인덱스(`~/Library/Application Support/…/base-index.json`),
+    /// 1세대(id ≤ 151) · 메타몽 제외, 2026-08-12 측정(base 78종). 풀이 크게 바뀌면 다시 재라.
+    ///
+    /// 1세대 풀은 **양극단**이다 — common 밴드 45종 / rare 밴드 31종인데 uncommon 밴드는 2종뿐이다.
+    /// 그래서 "고급 이상" 보증이 사실상 "희귀 이상"이 되고(희귀+ 비중 0.8502), 희귀 알이 고급 알
+    /// 반복보다 비싸면 곧바로 열등재가 된다. 가격이 이 비중에 묶여 있다는 뜻이라 상한이 좁다.
     func testRareEggIsNotDominatedAtMeasuredPoolComposition() {
-        let weight: [Rarity: Double] = [.common: 37_240, .uncommon: 3_135, .rare: 3_053, .legendary: 339]
+        let weight: [Rarity: Double] = [.common: 9_695, .uncommon: 210, .rare: 1_135, .legendary: 57]
         // 고급 알 = 고급 이상 풀(전설 포함). 그 안에서 희귀 이상이 나올 확률.
         let uncommonEggPool = weight[.uncommon]! + weight[.rare]! + weight[.legendary]!
         let rarePlusShare = (weight[.rare]! + weight[.legendary]!) / uncommonEggPool
@@ -198,7 +202,7 @@ final class PremiumEggTests: XCTestCase {
 
     /// 잔액이 그 **티어의** 가격에 미달이면 불가 — 기본 알은 살 수 있어도 희귀 알은 못 산다.
     func testFundsAreCheckedAgainstTierPrice() {
-        let s = activeStore(used: 3_000_000_000)   // 1B·2.5B 는 되고 4B 는 안 되는 잔액
+        let s = activeStore(used: 2_600_000_000)   // 1B·2.5B 는 되고 2.75B 는 안 되는 잔액
         XCTAssertTrue(s.canBuyEgg(nil))
         XCTAssertTrue(s.canBuyEgg(.uncommon))
         XCTAssertFalse(s.canBuyEgg(.rare))
