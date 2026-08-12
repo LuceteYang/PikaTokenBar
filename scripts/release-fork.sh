@@ -7,6 +7,7 @@
 #
 # 사용:
 #   PTB_NOTES_FILE=/tmp/notes.md ./scripts/release-fork.sh 1.0.0
+#   ./scripts/release-fork.sh --check-only        # 상태를 바꾸지 않는 게이트만 점검
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,6 +16,76 @@ REPO="LuceteYang/PokeTokenBar"
 APP_NAME="PikaTokenBar"
 # 내 self-signed 인증서의 leaf SHA-1. 인증서를 재생성하면 이 값을 갱신해야 한다.
 EXPECTED_LEAF="AD9CB282F034186623289577B6E95B3F4030827E"
+
+# --check-only: 버전 범프·빌드·커밋·push·릴리스 없이, 상태를 바꾸지 않는 게이트만 돌려서
+# "지금 release-fork.sh <version> 을 실행하면 몇 번째 게이트에서 멈출지"를 미리 보여준다.
+# release.sh 의 --check-only 관례를 따라 버전 인자보다 먼저 파싱한다.
+# 게이트 하나가 실패해도 나머지를 계속 점검하도록 여기서만 set -e 를 끈다(요약을 보려면 전부
+# 돌려봐야 한다) — 항상 exit 0 로 끝난다(release.sh --check-only 와 동일한 관례: 진짜 배포가
+# 아니라 점검 리포트이므로, 실패 여부는 아래 요약 줄로 사람이 읽고 판단한다).
+if [[ "${1:-}" == "--check-only" ]]; then
+  set +e
+  echo "=== release-fork.sh --check-only (배포 없음 — 게이트만 점검) ==="
+  FAIL=0
+  ok()  { echo "  ✓ $1"; }
+  bad() { echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
+
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  [[ "$BRANCH" == "main" ]] && ok "브랜치 = main" || bad "main 브랜치가 아닙니다 (현재: $BRANCH)"
+
+  [[ -z "$(git status --porcelain)" ]] && ok "작업 트리 깨끗함" || bad "작업 트리가 깨끗하지 않습니다"
+
+  ORIGIN_URL=$(git remote get-url origin 2>/dev/null)
+  [[ "$ORIGIN_URL" == *"$REPO"* ]] && ok "origin = $REPO" || bad "origin 이 $REPO 가 아닙니다 (현재: $ORIGIN_URL)"
+
+  if git fetch origin >/dev/null 2>&1; then
+    if git merge-base --is-ancestor origin/main HEAD 2>/dev/null; then
+      ok "origin/main 대비 최신 (뒤처지지 않음)"
+    else
+      bad "origin/main 이 로컬 HEAD 보다 앞서 있습니다 — pull/rebase 필요"
+    fi
+  else
+    bad "origin fetch 실패 — 네트워크/인증 확인"
+  fi
+
+  gh auth status >/dev/null 2>&1 && ok "gh 인증됨" || bad "gh 인증 안 됨 — gh auth login 필요"
+
+  if ./scripts/test-gate.sh >/dev/null 2>&1; then
+    ok "test-gate 통과"
+  else
+    bad "test-gate 실패"
+  fi
+
+  LEAK=$(grep -rn 'chattymin\|"PokeTokenBar"\|PokeTokenBar\.log' Sources/ 2>/dev/null \
+    | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin')
+  if [[ -z "$LEAK" ]]; then
+    ok "정체성 누수 없음"
+  else
+    bad "원본 정체성 문자열이 소스에 남아 있습니다:"
+    echo "$LEAK" | sed 's/^/      /'
+  fi
+
+  SIGN_IDENTITY="${CODESIGN_IDENTITY:-PokeTokenBar Local}"
+  MATCH_COUNT=$(security find-identity -v -p codesigning | grep -Fc "\"$SIGN_IDENTITY\"")
+  if [[ "$MATCH_COUNT" == "1" ]]; then
+    LEAF=$(security find-identity -v -p codesigning | awk -v id="\"$SIGN_IDENTITY\"" '$0 ~ id {print $2; exit}')
+    if [[ "$LEAF" == "$EXPECTED_LEAF" ]]; then
+      ok "서명 identity 단일·leaf 일치 (leaf=$LEAF)"
+    else
+      bad "서명 identity leaf 불일치: 현재 $LEAF ≠ 고정 $EXPECTED_LEAF"
+    fi
+  else
+    bad "codesigning identity '$SIGN_IDENTITY' 가 keychain 에 $MATCH_COUNT 개 있습니다(정확히 1개여야 함)"
+  fi
+
+  echo "---"
+  if [[ "$FAIL" -eq 0 ]]; then
+    echo "✓ 모든 게이트 통과 — release-fork.sh <version> 실행 가능"
+  else
+    echo "✗ $FAIL 개 게이트 실패 — 위 항목을 해결한 뒤 다시 확인하세요"
+  fi
+  exit 0
+fi
 
 VERSION="${1:?사용: release-fork.sh <version>  (예: 1.0.0)}"
 [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
@@ -51,10 +122,11 @@ echo "▶ 2/7 정체성 누수 검사"
 # 원본 정체성이 소스에 남아 있으면 두 앱이 같은 파일을 쓴다. 릴리스로 새 나가면 팀원 Mac 에서
 # 원본의 데이터를 덮어쓰므로 여기서 하드 게이트로 막는다.
 # 예외(의도된 유지): SettingsView 의 Web·Sponsor 링크 — 이 포크엔 랜딩 페이지가 없어 바꾸면
-# 404 가 되고, 후원은 원작자에게 가는 게 맞다(SettingsView.swift 주석 참조). 그 두 URL만 걸러내고
-# bare "chattymin" 은 그대로 둔다 — 새로운 upstream 참조가 섞여 들어오면 여전히 걸린다.
+# 404 가 되고, 후원은 원작자에게 가는 게 맞다(SettingsView.swift 주석 참조). 그 정확한 두 URL만
+# 걸러낸다 — 호스트 단위(chattymin.github.io/*, sponsors/chattymin 하위 전체)로 거르면 나중에
+# 같은 호스트에 새로 추가되는 upstream 참조까지 조용히 새나간다(I-6).
 LEAK=$(grep -rn 'chattymin\|"PokeTokenBar"\|PokeTokenBar\.log' Sources/ 2>/dev/null \
-  | grep -v 'chattymin\.github\.io\|sponsors/chattymin' || true)
+  | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin' || true)
 if [[ -n "$LEAK" ]]; then
   echo "$LEAK"
   echo "  ✗ 원본 정체성 문자열이 소스에 남아 있습니다 → AppIdentity 로 치환하세요."; exit 1
@@ -93,11 +165,17 @@ RECOVER="복구: git checkout scripts/build-app.sh — 그리고 /Applications �
 PTB_UNIVERSAL=1 ./scripts/build-app.sh >/dev/null
 # leaf 는 keychain 신원을 확인했을 뿐 실제로 이 아티팩트에 서명됐는지는 보증하지 않는다 —
 # codesign -s 는 이름으로 고르므로(3/7), 빌드물 자체의 Authority 를 다시 확인한다.
-codesign -dvv "build/$APP_NAME.app" 2>&1 | grep -q "Authority=$SIGN_IDENTITY" \
+#
+# `cmd | grep -q` 로 쓰지 않는다: grep -q 는 매치를 찾는 순간 읽기를 멈추고 종료하는데, 그 시점에
+# 원본 명령이 아직 나머지 줄을 쓰는 중이면 SIGPIPE(exit 141)를 받는다 — pipefail 하에선 grep 이
+# 성공(0)해도 파이프 전체가 실패로 보인다. 명령 출력을 변수로 먼저 받아 문자열로 비교한다.
+SIG_INFO=$(codesign -dvv "build/$APP_NAME.app" 2>&1 || true)
+[[ "$SIG_INFO" == *"Authority=$SIGN_IDENTITY"* ]] \
   || { echo "✗ 빌드된 앱의 서명 Authority 가 '$SIGN_IDENTITY' 가 아닙니다 ($RECOVER)"; exit 1; }
 BUILT=$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "build/$APP_NAME.app/Contents/Info.plist")
 [[ "$BUILT" == "$VERSION" ]] || { echo "✗ 빌드 버전 불일치: $BUILT ($RECOVER)"; exit 1; }
-lipo -info "build/$APP_NAME.app/Contents/MacOS/$APP_NAME" | grep -q "x86_64" \
+LIPO_INFO=$(lipo -info "build/$APP_NAME.app/Contents/MacOS/$APP_NAME" 2>&1 || true)
+[[ "$LIPO_INFO" == *"x86_64"* ]] \
   || { echo "✗ universal 아님 — Intel Mac 팀원이 실행할 수 없습니다 ($RECOVER)"; exit 1; }
 rm -f "build/$APP_NAME.zip"
 ditto -c -k --keepParent "build/$APP_NAME.app" "build/$APP_NAME.zip"
