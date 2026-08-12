@@ -596,6 +596,8 @@ code {
   font-weight: 700;
 }
 .copy:hover { border-color: var(--link); }
+.install-lead { margin: .9rem 0 .45rem; font-size: .85rem; color: var(--muted); }
+.install-lead code { font-size: .8rem; }
 .install-note { margin: .7rem 0 0; font-size: .85rem; color: var(--muted); }
 
 /* =========================================================================
@@ -893,11 +895,17 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       </span>
     </div>
     <div class="item-body">
+      <p class="install-lead" data-i18n-html="install.brewLead">Homebrew 를 쓰신다면 이쪽이 편합니다 — <code>brew upgrade</code> 에 함께 묻어갑니다.</p>
+      <div class="code-row">
+        <pre id="install-cmd-brew">brew install --cask LuceteYang/tap/pika-token-bar</pre>
+        <button class="copy" type="button" data-copy="install-cmd-brew" data-i18n="install.copy">복사</button>
+      </div>
+      <p class="install-lead" data-i18n-html="install.curlLead">Homebrew 가 없다면 설치 스크립트를 쓰세요. 같은 명령이 업데이트도 겸합니다.</p>
       <div class="code-row">
         <pre id="install-cmd">curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash</pre>
-        <button class="copy" id="copy-btn" type="button" data-i18n="install.copy">복사</button>
+        <button class="copy" type="button" data-copy="install-cmd" data-i18n="install.copy">복사</button>
       </div>
-      <p class="install-note" data-i18n="install.note">같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.</p>
+      <p class="install-note" data-i18n="install.note">어느 쪽이든 Gatekeeper 격리 속성까지 해제됩니다. 새 버전이 나오면 앱이 알려줍니다.</p>
     </div>
   </div>
 </section>
@@ -1048,7 +1056,9 @@ var I18N = {
     "install.copyDone": "복사됨",
     "install.copyFail": "실패",
     "install.copyToast": "Gotcha! 설치 명령을 복사했습니다!",
-    "install.note": "같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.",
+    "install.brewLead": "Homebrew 를 쓰신다면 이쪽이 편합니다 — <code>brew upgrade</code> 에 함께 묻어갑니다.",
+    "install.curlLead": "Homebrew 가 없다면 설치 스크립트를 쓰세요. 같은 명령이 업데이트도 겸합니다.",
+    "install.note": "어느 쪽이든 Gatekeeper 격리 속성까지 해제됩니다. 새 버전이 나오면 앱이 알려줍니다.",
     "info.reqH3": "요구사항",
     "info.reqLi1": "macOS 14 이상",
     "info.reqLi2": "Apple Silicon, Intel 모두 지원",
@@ -1104,7 +1114,9 @@ var I18N = {
     "install.copyDone": "Copied",
     "install.copyFail": "Failed",
     "install.copyToast": "Gotcha! Install command copied!",
-    "install.note": "The same command updates it too — install and update are the same command.",
+    "install.brewLead": "If you use Homebrew, prefer this — it rides along with <code>brew upgrade</code>.",
+    "install.curlLead": "Without Homebrew, use the install script. The same command also updates.",
+    "install.note": "Either way the Gatekeeper quarantine is cleared for you. The app tells you when a new version lands.",
     "info.reqH3": "Requirements",
     "info.reqLi1": "macOS 14 or later",
     "info.reqLi2": "Supports both Apple Silicon and Intel",
@@ -1160,7 +1172,9 @@ var I18N = {
     "install.copyDone": "コピー済み",
     "install.copyFail": "失敗",
     "install.copyToast": "Gotcha！ インストールコマンドをコピーしました！",
-    "install.note": "同じコマンドで更新もできます — インストールと更新は同じコマンドです。",
+    "install.brewLead": "Homebrew をお使いなら、こちらが便利です — <code>brew upgrade</code> にまとめて乗ります。",
+    "install.curlLead": "Homebrew がなければインストールスクリプトを使ってください。同じコマンドがアップデートも兼ねます。",
+    "install.note": "どちらでも Gatekeeper の隔離属性まで解除されます。新しいバージョンが出るとアプリが知らせます。",
     "info.reqH3": "必要環境",
     "info.reqLi1": "macOS 14以降",
     "info.reqLi2": "Apple SiliconとIntelの両方に対応",
@@ -1605,8 +1619,13 @@ function legacyCopy(text) {
   } catch (e) { return false; }
 }
 
-document.getElementById("copy-btn").addEventListener("click", function () {
-  var text = document.getElementById("install-cmd").textContent;
+/* 명령이 둘(brew·curl)이라 버튼도 둘 — 대상은 data-copy 로 지정한다. */
+Array.prototype.forEach.call(document.querySelectorAll(".copy"), function (b) {
+  b.addEventListener("click", onCopyClick);
+});
+function onCopyClick() {
+  var target = document.getElementById(this.getAttribute("data-copy"));
+  var text = target ? target.textContent : "";
   var btn = this;
   function done(ok) {
     btn.textContent = ok ? T("install.copyDone") : T("install.copyFail");
@@ -1623,7 +1642,7 @@ document.getElementById("copy-btn").addEventListener("click", function () {
   } else {
     done(legacyCopy(text));
   }
-});
+}
 
 /* =========================================================================
    이스터에그 2 — 코나미 커맨드로 이로치 모드
