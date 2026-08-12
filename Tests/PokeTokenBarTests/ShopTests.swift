@@ -147,9 +147,8 @@ final class ShopTests: XCTestCase {
 
     /// 활성 포켓몬이 있으면 알 3종이 각자의 가격 위치에 끼워져 전체가 가격 오름차순.
     /// (회귀: 알이 ForEach 밖에서 무조건 맨 아래로 append 돼 3B 부적보다 아래에 놓이던 표시.)
-    /// 등급 알을 인접 그룹으로 묶지 **않는** 것이 의도다 — 그러면 등급 알끼리 뭉쳐 다른 아이템의
-    /// 가격 위치를 무시하게 된다. 티어 관계는 카드의 등급 배지로 읽힌다.
-    /// (희귀 알은 2.75B — 1세대 풀 재가격으로 3B 부적보다 낮아져 순서가 바뀌었다.)
+    /// 등급 알을 인접 그룹으로 묶지 **않는** 것이 의도다 — 그러면 4B 희귀 알이 3B 부적 위로 올라가
+    /// 위 회귀를 부분적으로 되살린다. 티어 관계는 카드의 등급 배지로 읽힌다.
     func testShopEntriesInterleavesFreshEggByPrice() {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("shop-entries-\(UUID().uuidString).json")
         let mon = "{\"baseID\":10,\"pathIDs\":[10],\"stageIndex\":0,\"usedAtStage\":200000000,"
@@ -164,8 +163,8 @@ final class ShopTests: XCTestCase {
                         .item(.rareCandy),   // 500M
                         .egg(nil),           // 1B
                         .egg(.uncommon),     // 2.5B
-                        .egg(.rare),         // 2.75B
-                        .item(.shinyCharm)]) // 3B
+                        .item(.shinyCharm),  // 3B
+                        .egg(.rare)])        // 4B
         let prices = s.shopEntries.map(\.price)
         XCTAssertEqual(prices, prices.sorted(), "가격 상수가 바뀌어도 오름차순 불변식 유지")
     }

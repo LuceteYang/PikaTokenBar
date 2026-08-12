@@ -185,22 +185,17 @@ enum FreshEgg {
     /// 상품으로 만들지 않는다). 전설은 고급/희귀 알에서 자연 가중대로 섞여 나온다 — 희귀 알 기준 약 10%.
     static let shopTiers: [Rarity?] = [nil, .uncommon, .rare]
 
-    /// 등급 보증 알의 가격.
+    /// 등급 보증 알의 가격 — 배율은 새 상수를 짓지 않고 **기존 졸업 총량 표**를 그대로 쓴다
+    /// (common 750M : uncommon 1.875B : rare 3B = 1 : 2.5 : 4 → 1B / 2.5B / 4B).
     ///
-    /// 원래는 졸업 총량표 비율(common 750M : uncommon 1.875B : rare 3B = 1 : 2.5 : 4)에서 파생했다.
-    /// 1세대 풀에서는 그 파생이 성립하지 않는다 — uncommon 밴드가 2종뿐이라 고급 알의 85%가 희귀+를
-    /// 내놓고, 희귀 알 4B 는 고급 알 반복(2.94B)보다 비싼 **열등재**가 된다.
-    /// 상한은 `uncommonPrice / boostedShare = 2.5B / 0.8902 = 2.808B` 이고, 여기에 원본과 같은
-    /// 수준의 여유(0.019)를 남겨 2.75B 로 둔다. 불변식은
-    /// `PremiumEggTests.testRareEggIsNotDominatedAtMeasuredPoolComposition` 이 지킨다.
+    /// 확률 배율(고급 7.16% : 희귀 6.98% ≈ 1 : 2.03)로 매기면 안 된다 — 그러면 같은 값으로 고급 알
+    /// 2개를 사는 쪽이 희귀+ 기대 1.039마리·전설 0.104마리로 희귀 알 1개(1.000·0.100)를 모든 축에서
+    /// 앞질러 상위 티어가 완전 열등재가 된다. 졸업량 배율이라야 상위 티어가 희귀+ 1마리당 4.00B 로
+    /// 하위 반복 구매(4.81B)보다 싸다.
     static func price(guaranteeing tier: Rarity?) -> Int {
-        switch tier {
-        case nil:          return price                // 보증 없음 — 1.0B
-        case .uncommon?:   return 2_500_000_000
-        case .rare?:       return 2_750_000_000
-        // 전설 알은 팔지 않는다(shopTiers). common 보증도 무의미 — 둘 다 기본가로 떨어뜨린다.
-        case .common?, .legendary?: return price
-        }
+        guard let tier else { return price }
+        let multiplier = Double(PokemonBalance.graduationTotal(tier)) / Double(PokemonBalance.graduationTotal(.common))
+        return Int((Double(price) * multiplier).rounded())
     }
 }
 
