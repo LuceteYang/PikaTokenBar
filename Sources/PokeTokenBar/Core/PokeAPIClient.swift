@@ -115,20 +115,35 @@ actor PokeAPIClient: PokeProviding {
         let batchSize = 6
         var start = 1
         let maxID = PokemonAssets.animatedSpeciesIDs.upperBound
+        var attempted = 0
+        var failed = 0
         while start <= maxID {
             let end = min(start + batchSize - 1, maxID)
-            let found = await withTaskGroup(of: BaseSpecies?.self) { group -> [BaseSpecies] in
-                for id in start...end { group.addTask { try? await self.baseSpecies(id: id) } }
-                var acc: [BaseSpecies] = []
-                for await r in group { if let r { acc.append(r) } }
+            // `try?` 로 뭉개면 "base 아님(nil)"과 "요청 실패"가 구분되지 않는다 — 완성도 판정이
+            // 그 차이에 걸려 있으므로 Result 로 받아 실패만 따로 센다.
+            let results = await withTaskGroup(of: Result<BaseSpecies?, Error>.self) { group -> [Result<BaseSpecies?, Error>] in
+                for id in start...end {
+                    group.addTask {
+                        do { return .success(try await self.baseSpecies(id: id)) }
+                        catch { return .failure(error) }
+                    }
+                }
+                var acc: [Result<BaseSpecies?, Error>] = []
+                for await r in group { acc.append(r) }
                 return acc
             }
-            bases.append(contentsOf: found)
+            for r in results {
+                attempted += 1
+                switch r {
+                case .success(let bs): if let bs { bases.append(bs) }
+                case .failure:         failed += 1
+                }
+            }
             start += batchSize
         }
-        // 대부분 실패(네트워크 불안정)면 빈약한 인덱스를 영속하지 않고 다음 세션 재시도.
-        guard bases.count >= 150 else {
-            AppLog.write("base index: REST build incomplete (\(bases.count)) — not cached, will retry next session")
+        // 네트워크가 많이 깨졌으면 빈약한 인덱스를 영속하지 않고 다음 세션 재시도.
+        guard Self.isRESTIndexUsable(attempted: attempted, failed: failed) else {
+            AppLog.write("base index: REST build incomplete (\(failed)/\(attempted) failed) — not cached, will retry next session")
             return
         }
         bases.sort { $0.id < $1.id }
@@ -137,6 +152,28 @@ actor PokeAPIClient: PokeProviding {
             try? data.write(to: Self.baseIndexFile, options: .atomic)
         }
         AppLog.write("base index: REST build done — \(bases.count) bases persisted (offline-capable now)")
+    }
+
+    /// REST 전수 훑기 결과를 영속해도 되는가.
+    ///
+    /// 판정 신호는 **실패한 요청 비율**이다. "찾은 base 개수"로 판정하면 안 된다 — 그 값은 범위와
+    /// 진화 구조에 따라 변해서(649 에선 약 250종, 1세대에선 약 78종) 범위를 좁히는 순간 임계값이
+    /// 조용히 항상-실패로 뒤집힌다. 알고 싶은 건 "네트워크가 불안정했나"뿐이다.
+    nonisolated static func isRESTIndexUsable(attempted: Int, failed: Int) -> Bool {
+        guard attempted > 0 else { return false }
+        return failed * 10 <= attempted   // 실패율 10% 이하만 영속
+    }
+
+    /// base 후보 질의. "base" 는 `evolves_from IS NULL` 만으로 부족하다 — 피카츄(#25)의 진화 전은
+    /// 피츄(#172)라, 범위를 1세대로 좁히면 피카츄·삐삐·푸린·시라소몬·홍수몬·럭키·마임맨·루주라·
+    /// 에레브·마그마·잠만보 11종 라인이 통째로 부화 풀에서 사라진다.
+    /// **진화 전이 범위 밖이면 그 종이 곧 이 범위의 시작점**이므로 `_gt: maxID` 가지를 함께 둔다.
+    /// 메타몽은 위장 리빌 전용이라 일반 부화 풀에서 제외(`_neq`).
+    nonisolated static func baseIndexQuery(maxID: Int, dittoID: Int) -> String {
+        "{ pokemonspecies(where: {_and: [{id: {_lte: \(maxID), _neq: \(dittoID)}}, "
+            + "{_or: [{evolves_from_species_id: {_is_null: true}}, "
+            + "{evolves_from_species_id: {_gt: \(maxID)}}]}]}, order_by: {id: asc}) "
+            + "{ id capture_rate } }"
     }
 
     private func fetchBaseIndex() async throws -> [BaseSpecies] {
@@ -151,9 +188,8 @@ actor PokeAPIClient: PokeProviding {
         req.httpMethod = "POST"
         req.timeoutInterval = 15
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        // 메타몽(#132)은 위장 리빌 전용 → 일반 부화 풀에서 제외(_neq).
-        let maxID = PokemonAssets.animatedSpeciesIDs.upperBound
-        let query = "{ pokemonspecies(where: {_and: [{id: {_lte: \(maxID), _neq: \(PokemonOdds.dittoSpeciesID)}}, {_or: [{evolves_from_species_id: {_is_null: true}}, {evolves_from_species_id: {_gt: \(maxID)}}]}]}, order_by: {id: asc}) { id capture_rate } }"
+        let query = Self.baseIndexQuery(maxID: PokemonAssets.animatedSpeciesIDs.upperBound,
+                                        dittoID: PokemonOdds.dittoSpeciesID)
         req.httpBody = try JSONSerialization.data(withJSONObject: ["query": query])
         let (data, resp) = try await URLSession.shared.data(for: req)
         guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }

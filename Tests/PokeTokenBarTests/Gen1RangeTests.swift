@@ -78,3 +78,72 @@ final class Gen1RangeTests: XCTestCase {
         XCTAssertEqual(l.tree.children.map(\.speciesID), [134])
     }
 }
+
+// MARK: REST 폴백 인덱스 완성도 판정
+//
+// 원래 판정은 `bases.count >= 150` 이었다. 150 은 649 범위에서 나온 숫자라 1세대(base 약 78종)에선
+// 절대 통과하지 못한다 — 인덱스가 영영 캐시되지 않고 매 세션 REST 를 재구축한다. 판정 신호를
+// "찾은 base 개수"(범위·진화 구조에 따라 변함)에서 "실패한 요청 비율"(범위 무관)로 바꾼 것을 고정한다.
+
+final class RESTIndexCompletenessTests: XCTestCase {
+
+    func testCleanSweepIsUsable() {
+        XCTAssertTrue(PokeAPIClient.isRESTIndexUsable(attempted: 151, failed: 0))
+    }
+
+    /// 1세대 전수 훑기에서 base 는 약 78종뿐 — 옛 `count >= 150` 판정이 죽던 바로 그 지점.
+    func testFewBasesButNoFailuresIsUsable() {
+        XCTAssertTrue(PokeAPIClient.isRESTIndexUsable(attempted: 151, failed: 0),
+                      "base 개수가 적다는 이유로 인덱스를 버리면 안 된다")
+    }
+
+    func testToleratesSmallFailureRate() {
+        XCTAssertTrue(PokeAPIClient.isRESTIndexUsable(attempted: 151, failed: 15))   // 약 10%
+    }
+
+    func testRejectsHighFailureRate() {
+        XCTAssertFalse(PokeAPIClient.isRESTIndexUsable(attempted: 151, failed: 16))  // 10% 초과
+        XCTAssertFalse(PokeAPIClient.isRESTIndexUsable(attempted: 151, failed: 151))
+    }
+
+    func testRejectsEmptySweep() {
+        XCTAssertFalse(PokeAPIClient.isRESTIndexUsable(attempted: 0, failed: 0))
+    }
+
+    // MARK: GraphQL base 질의
+    //
+    // base 조건은 `evolves_from IS NULL` 만으로 부족하다 — 진화 전이 범위 밖이면(피카츄←피츄 #172)
+    // 그 종이 곧 이 범위의 시작점이다. 이 `_or` 가지가 빠지면 1세대 11개 라인이 부화 풀에서 사라진다.
+
+    func testBaseQueryAcceptsOutOfRangePreEvolution() {
+        let q = PokeAPIClient.baseIndexQuery(maxID: 151, dittoID: 132)
+        XCTAssertTrue(q.contains("evolves_from_species_id: {_is_null: true}"))
+        XCTAssertTrue(q.contains("evolves_from_species_id: {_gt: 151}"),
+                      "진화 전이 범위 밖인 종을 base 로 받는 가지가 없다")
+        XCTAssertTrue(q.contains("_or"))
+        XCTAssertTrue(q.contains("_lte: 151"))
+        XCTAssertTrue(q.contains("_neq: 132"))
+    }
+
+    func testBaseQueryFollowsTheConfiguredRange() {
+        let q = PokeAPIClient.baseIndexQuery(maxID: PokemonAssets.animatedSpeciesIDs.upperBound,
+                                             dittoID: PokemonOdds.dittoSpeciesID)
+        XCTAssertTrue(q.contains("_lte: 151"), "질의가 실제 범위 상한을 따르지 않는다")
+    }
+
+    // MARK: base 판정의 파싱 실패 가드
+    //
+    // `baseSpecies(id:)` 는 진화 전 URL 을 `id(from:)` 로 파싱해 그 id 가 범위 밖이면 base 로 인정한다.
+    // `id(from:)` 파싱에 실패하면 0 을 반환하는데, `guard preEvoID > 0` 가 없으면 0 이 "범위 밖"으로
+    // 오인되어 진화 중간체가 base(=부화 가능)로 잘못 승격된다. 이 가드가 그 오인을 막는 절반이다.
+
+    func testIDFromParsesWellFormedSpeciesURL() {
+        XCTAssertEqual(PokeAPIClient.id(from: "https://pokeapi.co/api/v2/pokemon-species/25/"), 25)
+    }
+
+    func testIDFromReturnsZeroOnMalformedURL() {
+        XCTAssertEqual(PokeAPIClient.id(from: "not-a-url"), 0)
+        // 결론: 0 은 "이 종의 id" 가 아니라 "파싱 불가"를 뜻하므로, base 판정에서 0 을 "범위 밖"으로
+        // 오인해선 안 된다 — `guard preEvoID > 0` 이 그 오인을 막는다(baseSpecies(id:) 참고).
+    }
+}
