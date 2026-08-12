@@ -46,29 +46,43 @@
     margin: 0 auto;
   }
   header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.25rem;
+    text-align: center;
+    margin-bottom: 0.6rem;
   }
   header img {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
-    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    border-radius: 20px;
+    display: block;
+    margin: 0 auto 1rem;
   }
   h1 {
-    font-size: 1.6rem;
+    font-size: 1.9rem;
     margin: 0;
     letter-spacing: -0.01em;
   }
   .tagline {
+    text-align: center;
     color: var(--muted);
-    margin: 0.9rem 0 2.2rem;
-    font-size: 1.02rem;
+    margin: 0.7rem 0 2.6rem;
+    font-size: 1.05rem;
   }
   .tagline strong {
     color: var(--fg);
+  }
+  .lede {
+    color: var(--fg);
+    font-size: 0.98rem;
+  }
+  .lede + .lede {
+    margin-top: 0.8rem;
+  }
+  .tools {
+    color: var(--fg);
+    font-size: 0.95rem;
+  }
+  .tools .label {
+    color: var(--muted);
   }
   section {
     margin-bottom: 2rem;
@@ -172,6 +186,17 @@
     <h1>PikaTokenBar</h1>
   </header>
   <p class="tagline"><strong>PokeTokenBar</strong>의 포크로, <strong>1세대(#1–151)</strong> 포켓몬만 등장합니다.</p>
+
+  <section>
+    <h2>어떻게 작동하나요</h2>
+    <p class="lede">Claude Code·Codex·Gemini CLI 등에서 쓴 AI 코딩 토큰이 메뉴바 속 포켓몬 알을 부화시킵니다. 알이 부화하면 실제 진화 라인을 따라 진화하고, 최종 진화 후 도감에 졸업하며 새 알이 시작됩니다 — 원본과 같은 루프이지만, 부화 후보가 <strong>1세대 78종의 진화 계보 시작점</strong>으로 좁혀져 있어 전설은 부화 195번에 1번꼴로 나옵니다.</p>
+    <p class="lede">토큰 사용량 트래커로서도 그대로 동작합니다 — 오늘의 토큰·비용, 공식 5시간/주간 한도를 로컬 로그에서 직접 읽습니다.</p>
+  </section>
+
+  <section>
+    <h2>지원 도구</h2>
+    <p class="tools"><span class="label">토큰 사용량 소스:</span> Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI — 전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.</p>
+  </section>
 
   <section>
     <h2>설치</h2>
