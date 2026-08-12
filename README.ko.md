@@ -126,11 +126,19 @@ macOS 14+ (Apple Silicon 또는 Intel). 끝입니다 — 토큰 사용량은 로
 
 ### 설치 / 업데이트
 
+Homebrew를 쓰신다면 이쪽이 편합니다 — `brew upgrade`에 함께 묻어가고, 지울 때도 `brew uninstall --cask pika-token-bar` 한 줄입니다.
+
+```bash
+brew install --cask LuceteYang/tap/pika-token-bar
+```
+
+Homebrew가 없다면 설치 스크립트를 쓰세요. 같은 명령이 업데이트도 겸합니다.
+
 ```bash
 curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```
 
-최신 릴리스를 내려받아 `PikaTokenBar.app`을 `/Applications`에 설치하고 Gatekeeper 격리 속성을 제거합니다. 같은 명령을 다시 실행하면 최신 버전으로 업데이트됩니다 — 설치와 업데이트가 같은 명령입니다.
+어느 쪽이든 `PikaTokenBar.app`이 `/Applications`에 설치되고 Gatekeeper 격리 속성이 제거됩니다. 새 버전이 나오면 앱이 알려주며, 설정의 업데이트 버튼은 brew로 설치한 경우 `brew upgrade`까지 대신 해줍니다.
 
 ### 직접 설치 (스크립트 없이)
 

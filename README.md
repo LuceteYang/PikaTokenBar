@@ -126,6 +126,14 @@ macOS 14+ (Apple Silicon or Intel). That's it — token usage is read directly f
 
 ### Install / update
 
+If you use Homebrew, prefer this — it rides along with `brew upgrade`, and removal is one line (`brew uninstall --cask pika-token-bar`).
+
+```bash
+brew install --cask LuceteYang/tap/pika-token-bar
+```
+
+Without Homebrew, use the install script. The same command also updates.
+
 ```bash
 curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```

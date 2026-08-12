@@ -126,6 +126,14 @@ macOS 14+（Apple Silicon または Intel）。それだけ — トークン使�
 
 ### インストール／更新
 
+Homebrew をお使いなら、こちらが便利です — `brew upgrade` にまとめて乗り、削除も `brew uninstall --cask pika-token-bar` の一行で済みます。
+
+```bash
+brew install --cask LuceteYang/tap/pika-token-bar
+```
+
+Homebrew がなければインストールスクリプトを使ってください。同じコマンドがアップデートも兼ねます。
+
 ```bash
 curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```
