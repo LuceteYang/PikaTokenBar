@@ -1,5 +1,14 @@
 import AppKit
 
+/// `SpriteStore`(actor, 쓰기)와 `SpriteLoader`(@MainActor, 읽기)가 같은 캐시 폴더를 봐야 한다.
+/// 서로 다른 격리 도메인이라 한쪽 상수를 그대로 참조할 수 없어(액터 경계) 이 나열되지 않은
+/// (nonisolated) 함수 하나로 경로를 고정한다 — 둘 중 하나만 고치는 실수를 구조적으로 막는다.
+/// 어긋나면 쓰기는 원본 폴더로, 읽기는 포크 폴더로 갈라져도 컴파일·테스트가 안 잡고 "오프라인마다
+/// 계속 재다운로드"로만 보이는 조용한 결함이 된다.
+private func spriteCacheDirectory() -> URL {
+    AppIdentity.supportDirectory.appendingPathComponent("sprites")
+}
+
 /// 포켓몬 스프라이트를 런타임에 받아 로컬(Application Support)에 캐시. 레포/번들에 미포함.
 actor SpriteStore {
     static let shared = SpriteStore()
@@ -8,8 +17,9 @@ actor SpriteStore {
     private var mem: [String: Data] = [:]
     private var memOrder: [String] = []   // LRU 순서(최근 접근이 뒤). 상한 초과 시 앞(오래된 것)부터 evict
     private let memLimit = 24              // in-memory 스프라이트 캐시 상한 — 세션 중 종 변경 누적 무한증가 방지(#H1)
-    private let dir: URL = {
-        let d = AppIdentity.supportDirectory.appendingPathComponent("sprites")
+    /// private 아님(테스트가 `SpriteLoader.cacheDir` 와 같은 폴더인지 검증) — 그 외엔 외부에서 안 씀.
+    let dir: URL = {
+        let d = spriteCacheDirectory()
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         return d
     }()
@@ -88,9 +98,7 @@ actor SpriteStore {
 
 @MainActor
 enum SpriteLoader {
-    static let cacheDir: URL = {
-        AppIdentity.supportDirectory.appendingPathComponent("sprites")
-    }()
+    static let cacheDir: URL = spriteCacheDirectory()
 
     /// 디스크 캐시에 이미 있으면 동기 반환(네트워크 없음). 없으면 nil.
     /// shiny 캐시 미스는 일반 캐시로 폴백 — 오프라인에서 live mon 이 알 글리프로 보이는 것 방지.

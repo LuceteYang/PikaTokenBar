@@ -34,7 +34,14 @@ final class AppIdentityTests: XCTestCase {
     }
 
     /// 상태 파일이 실제로 포크 폴더 아래에 떨어지는지 — 상수만 맞고 사용처가 안 바뀐 경우를 잡는다.
+    /// `PTB_STATE_DIR` 이 설정된 셸에서 돌면 `defaultURL()` 이 그 오버라이드를 타 실패/무의미 통과할
+    /// 수 있으므로, 테스트 동안만 비워 실제 환경과 무관하게 만든다.
     func testCompanionStatePathLivesUnderForkDirectory() {
+        let key = "PTB_STATE_DIR"
+        let saved = ProcessInfo.processInfo.environment[key]
+        defer { if let saved { setenv(key, saved, 1) } else { unsetenv(key) } }
+        unsetenv(key)
+
         let url = CompanionStore.defaultURL()
         XCTAssertTrue(url.path.contains("/PikaTokenBar/"), "companion 상태가 원본 폴더에 저장된다: \(url.path)")
         XCTAssertEqual(url.lastPathComponent, "companion-state.json")
@@ -47,5 +54,14 @@ final class AppIdentityTests: XCTestCase {
     func testSpriteCacheLivesUnderForkDirectory() {
         XCTAssertTrue(SpriteLoader.cacheDir.path.contains("/PikaTokenBar/"),
                       "스프라이트 캐시가 원본 폴더를 가리킨다: \(SpriteLoader.cacheDir.path)")
+    }
+
+    /// `SpriteStore`(actor, 쓰기)와 `SpriteLoader`(@MainActor, 읽기)는 서로 다른 격리 도메인이라
+    /// 경로 상수를 그대로 공유할 수 없다 — 리뷰에서 지적된 대로, 둘 중 한쪽만 고치거나 되돌리면
+    /// 쓰기는 원본 폴더로 읽기는 포크 폴더로 갈라져도 컴파일도 다른 테스트도 안 잡고 "스프라이트가
+    /// 오프라인마다 계속 재다운로드된다"는 증상으로만 드러난다. 이 테스트가 그 갈림을 직접 잡는다.
+    func testSpriteStoreWritesToSameDirectorySpriteLoaderReads() async {
+        let writeDir = await SpriteStore.shared.dir
+        XCTAssertEqual(writeDir, SpriteLoader.cacheDir)
     }
 }
