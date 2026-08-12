@@ -545,7 +545,7 @@ h1 {
   box-shadow: var(--shadow);
   overflow: hidden;
 }
-.item-card > summary {
+.item-card > .item-head {
   list-style: none;
   cursor: pointer;
   padding: 1rem 1.2rem;
@@ -555,7 +555,7 @@ h1 {
   font-weight: 700;
   background: var(--card-alt);
 }
-.item-card > summary::-webkit-details-marker { display: none; }
+
 .item-card .icon { font-size: 1.5rem; }
 .item-card .who { display: block; font-size: .7rem; letter-spacing: .16em; color: var(--muted);
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
@@ -723,7 +723,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
   .evo-gate { padding-bottom: .4rem; flex-basis: 100%; }
   .evo-stage { flex-basis: 40%; }
   .block { padding: 2rem 0; }
-  .item-card > summary { flex-wrap: wrap; }
+  .item-card > .item-head { flex-wrap: wrap; }
   /* 스트립이 줄바꿈되면 구분선이 앞줄에 걸린 막대처럼 보인다 → 좁은 화면에선 뗀다 */
   .strip .en { border-left: 0; padding-left: 0; margin-left: 0; }
   .lang-btn { padding: .3rem .5rem; font-size: .68rem; }
@@ -881,18 +881,17 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
   <p class="eyebrow">04 · Item</p>
   <h2 data-i18n="install.h2">설치</h2>
 
-  <!-- open 기본값 — 설치 명령은 이 페이지에서 가장 중요한 한 줄이라 클릭 없이도
-       보여야 한다. ITEM 카드 틀과 접었다 펴는 기능은 그대로 두되, "펴져 있어야
-       보인다"는 상태로는 두지 않는다. -->
-  <details class="item-card" id="item-card" style="margin-top:1.1rem" open>
-    <summary>
+  <!-- 설치 명령은 접지 않는다. 랜딩에서 가장 중요한 정보인데 클릭해야 나오면
+       못 찾고 이탈한다. ITEM 카드 외형만 남기고 details/summary 는 걷어냈다 —
+       누를 수 없는 것이 눌릴 것처럼 보이면 그게 더 나쁘다. -->
+  <div class="item-card" id="item-card" style="margin-top:1.1rem">
+    <div class="item-head">
       <span class="icon" aria-hidden="true">📜</span>
       <span>
         <span data-i18n="install.itemSummary">설치 스크립트</span>
         <span class="who" data-i18n="install.itemWho">ITEM · 1개 보유</span>
       </span>
-      <span class="go" data-i18n="install.itemGo">사용하기</span>
-    </summary>
+    </div>
     <div class="item-body">
       <div class="code-row">
         <pre id="install-cmd">curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash</pre>
@@ -900,7 +899,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       </div>
       <p class="install-note" data-i18n="install.note">같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.</p>
     </div>
-  </details>
+  </div>
 </section>
 
 <!-- ======================================================================
@@ -1045,7 +1044,6 @@ var I18N = {
     "install.h2": "설치",
     "install.itemSummary": "설치 스크립트",
     "install.itemWho": "ITEM · 1개 보유",
-    "install.itemGo": "사용하기",
     "install.copy": "복사",
     "install.copyDone": "복사됨",
     "install.copyFail": "실패",
@@ -1102,7 +1100,6 @@ var I18N = {
     "install.h2": "Install",
     "install.itemSummary": "Install script",
     "install.itemWho": "ITEM · Have 1",
-    "install.itemGo": "Use",
     "install.copy": "Copy",
     "install.copyDone": "Copied",
     "install.copyFail": "Failed",
@@ -1159,7 +1156,6 @@ var I18N = {
     "install.h2": "インストール",
     "install.itemSummary": "インストールスクリプト",
     "install.itemWho": "ITEM · 所持数1",
-    "install.itemGo": "使う",
     "install.copy": "コピー",
     "install.copyDone": "コピー済み",
     "install.copyFail": "失敗",
