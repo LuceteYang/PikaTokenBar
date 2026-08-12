@@ -152,10 +152,6 @@ final class RESTIndexCompletenessTests: XCTestCase {
     }
 
     // MARK: base 판정의 파싱 실패 가드
-    //
-    // `baseSpecies(id:)` 는 진화 전 URL 을 `id(from:)` 로 파싱해 그 id 가 범위 밖이면 base 로 인정한다.
-    // `id(from:)` 파싱에 실패하면 0 을 반환하는데, `guard preEvoID > 0` 가 없으면 0 이 "범위 밖"으로
-    // 오인되어 진화 중간체가 base(=부화 가능)로 잘못 승격된다. 이 가드가 그 오인을 막는 절반이다.
 
     func testIDFromParsesWellFormedSpeciesURL() {
         XCTAssertEqual(PokeAPIClient.id(from: "https://pokeapi.co/api/v2/pokemon-species/25/"), 25)
@@ -165,12 +161,30 @@ final class RESTIndexCompletenessTests: XCTestCase {
         XCTAssertEqual(PokeAPIClient.id(from: "not-a-url"), 0)
     }
 
-    /// 0 은 "이 종의 id" 가 아니라 "파싱 불가"를 뜻한다. 그런데 0 은 애니메이션 스프라이트 범위
-    /// (1...151) 밖이라 `!hasAnimatedSprite(0)` 는 true — `guard preEvoID > 0` 이 없으면 파싱 실패가
-    /// "진화 전이 범위 밖"으로 오인되어 진화 중간체가 base(=부화 가능)로 잘못 승격된다.
-    /// `preEvoID > 0` 가드가 그 오인을 막는 절반이다(baseSpecies(id:) 참고).
-    func testZeroLooksOutOfRangeWithoutTheParseGuard() {
-        XCTAssertFalse(PokemonAssets.hasAnimatedSprite(speciesID: 0),
-                        "0 은 범위 밖으로 보이므로 guard 없이는 base 로 승격된다")
+    // MARK: base 후보 판정 (isBaseCandidate) — 실제 판정 지점으로 직접 검증
+    //
+    // `baseSpecies(id:)` 는 네트워크(REST)를 타므로 그 경로 자체는 테스트할 mock 인프라가 없다.
+    // 대신 판정만 순수 함수로 뽑아 그 함수를 직접 부른다 — 세 경우를 각각 다른 테스트가 고정한다.
+
+    /// 진화 전이 없으면 원래 시작점 → base.
+    func testIsBaseCandidateWithNoPreEvolution() {
+        XCTAssertTrue(PokeAPIClient.isBaseCandidate(preEvolutionID: nil))
+    }
+
+    /// 진화 전(피츄 #172)이 범위 밖이면 피카츄(#25)가 이 범위의 시작점 → base.
+    func testIsBaseCandidateWithOutOfRangePreEvolution() {
+        XCTAssertTrue(PokeAPIClient.isBaseCandidate(preEvolutionID: 172))
+    }
+
+    /// 진화 전(니드리노 #24)이 범위 안이면 이 종은 진화 중간체 → base 아님.
+    func testIsBaseCandidateWithInRangePreEvolution() {
+        XCTAssertFalse(PokeAPIClient.isBaseCandidate(preEvolutionID: 24))
+    }
+
+    /// `id(from:)` 파싱 실패는 0 을 반환한다. 이 절을 지우면 `hasAnimatedSprite(0)` 이 false(=범위
+    /// 밖)로 읽혀 true 가 되고 진화 중간체가 base 로 잘못 승격된다 — 이 절 하나가 그 오인을 막는다.
+    func testIsBaseCandidateRejectsParseFailure() {
+        XCTAssertFalse(PokeAPIClient.isBaseCandidate(preEvolutionID: 0),
+                        "파싱 실패(0)를 범위 밖으로 오인해 base 로 승격하면 안 된다")
     }
 }

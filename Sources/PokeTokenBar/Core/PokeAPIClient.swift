@@ -225,15 +225,23 @@ actor PokeAPIClient: PokeProviding {
     func baseSpecies(id: Int) async throws -> BaseSpecies? {
         guard id != PokemonOdds.dittoSpeciesID else { return nil }   // 메타몽은 위장 리빌 전용 — 일반 부화 제외
         let dto = try await species(id)
-        // GraphQL 인덱스와 **같은 base 규칙**을 써야 한다 — 진화 전이 없거나(원래 시작점),
-        // 진화 전이 사용 범위 밖이면(피카츄←피츄) 이 종이 이 범위의 시작점이다.
-        if let preEvo = dto.evolves_from_species {
-            let preEvoID = Self.id(from: preEvo.url ?? "")
-            // id 파싱 실패(0)는 "범위 밖"으로 떨어져 base 로 인정되는데, 그러면 진화 중간체가
-            // 부화할 수 있다. 파싱 실패는 판정 불가로 보고 보수적으로 제외한다.
-            guard preEvoID > 0, !PokemonAssets.hasAnimatedSprite(speciesID: preEvoID) else { return nil }
-        }
+        // GraphQL 인덱스와 **같은 base 규칙**을 써야 한다 — 판정 자체는 순수 함수로 분리(테스트용).
+        let preEvolutionID = dto.evolves_from_species.map { Self.id(from: $0.url ?? "") }
+        guard Self.isBaseCandidate(preEvolutionID: preEvolutionID) else { return nil }
         return BaseSpecies(id: id, captureRate: dto.capture_rate)
+    }
+
+    /// 이 종이 **이 범위의 base** 인가. 세 경우로 갈린다:
+    ///  - 진화 전이 없다 → 원래 시작점이므로 base.
+    ///  - 진화 전이 범위 밖이다(피카츄 #25 ← 피츄 #172) → 이 종이 이 범위의 시작점이므로 base.
+    ///  - 진화 전이 범위 안이다 → 진화 중간체이므로 base 아님.
+    ///
+    /// `preEvolutionID == 0` 은 URL 파싱 실패다. 이걸 그냥 두면 `hasAnimatedSprite(0)` 이 false(=범위 밖)로
+    /// 읽혀 **진화 중간체가 base 로 승격되고 부화 후보가 된다**. 판정 불가는 보수적으로 base 아님으로 본다.
+    nonisolated static func isBaseCandidate(preEvolutionID: Int?) -> Bool {
+        guard let preEvolutionID else { return true }
+        guard preEvolutionID > 0 else { return false }
+        return !PokemonAssets.hasAnimatedSprite(speciesID: preEvolutionID)
     }
 
     private func get<T: Decodable>(_ url: URL) async throws -> T {
