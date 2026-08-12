@@ -6,16 +6,17 @@
 
 **당신의 AI 코딩 토큰을 포켓몬으로 — 메뉴바에서.**
 
-[![Release](https://img.shields.io/github/v/release/chattymin/PokeTokenBar?color=444d56&label=release)](https://github.com/chattymin/PokeTokenBar/releases)
+[![Release](https://img.shields.io/github/v/release/LuceteYang/PikaTokenBar?color=444d56&label=release)](https://github.com/LuceteYang/PikaTokenBar/releases)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-0969da)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6-f05138)](https://swift.org)
-[![Homebrew](https://img.shields.io/badge/Homebrew-cask-8957e5)](#homebrew)
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
 [English](README.md) · **한국어** · [日本語](README.ja.md)
 
 </div>
+
+> **PikaTokenBar**는 [chattymin](https://github.com/chattymin)의 [PokeTokenBar](https://github.com/chattymin/PokeTokenBar)를 포크해 **1세대(#1–151)만** 보여주는 버전입니다. 원본과 별도의 앱(`PikaTokenBar.app`)으로 설치되어 공존하며 — 지울 것도 없습니다 — 원본과 독립적으로 관리됩니다.
 
 PokeTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code · Codex · Gemini CLI · Antigravity · OpenCode · Hermes Agent · Cursor · Grok CLI)을 macOS 메뉴바 속 자라나는 **포켓몬 companion**으로 바꿔줍니다. 토큰을 쓰면 알이 부화하고, 실제 진화 라인을 따라 진화하며, 최종 진화 후 도감에 졸업하고, 다시 새 알이 시작됩니다. companion 아래에는 정확한 사용량 트래커가 있습니다 — 오늘의 사용량·비용, 공식 5시간/주간 한도를 로컬 로그에서 직접 읽습니다.
 
@@ -34,7 +35,7 @@ PokeTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 ## 어떻게 자라나요
 
 1. 🥚 **평소처럼 코딩하세요.** Claude Code·Codex·Gemini CLI·Antigravity·OpenCode·Hermes Agent·Cursor·Grok CLI에서 태우는 토큰이 알을 품습니다 — 따로 돌릴 건 없어요.
-2. 🐣 **부화.** [PokéAPI](https://pokeapi.co/)의 **1~5세대 모든 진화 계보(시작점 329종)**에서 공식 capture rate 가중으로 태어납니다 — 흔한 포켓몬은 자주, 전설은 부화 129번에 1번. 부화한 포켓몬은 키우는 동안에도 **도감**에 바로 나타납니다. 부화마다 25종 성격 중 하나가 정해지고 — **아주 특별한 우연으론 ✨ 이로치가 태어납니다**.
+2. 🐣 **부화.** [PokéAPI](https://pokeapi.co/)의 **1세대 모든 진화 계보(시작점 78종)**에서 공식 capture rate 가중으로 태어납니다 — 흔한 포켓몬은 자주, 전설은 부화 195번에 1번. 부화한 포켓몬은 키우는 동안에도 **도감**에 바로 나타납니다. 부화마다 25종 성격 중 하나가 정해지고 — **아주 특별한 우연으론 ✨ 이로치가 태어납니다**.
 3. ⚡ **진화.** 계속 코딩하면 실제 진화 트리(1/2/3단, 분기)를 따라 자라고, 단계마다 작은 연출이 반겨줍니다.
 4. 🎓 **졸업 & 수집.** 최종 진화 + 임계 도달 시 **도감**에 영구 보존됩니다 — 희귀할수록 오래 걸리고(헤비 유저 기준 common ≈3일 → legendary ≈24일) — 새 알이 도착합니다.
 5. 🍬 **한도 채우고 사탕 받기.** 5시간 또는 주간 사용량 한도를 다 채우면 **이상한 사탕**을 받아요 — 새 **가방** 탭에서 써서 현재 포켓몬을 키우세요.
@@ -123,31 +124,31 @@ PokeTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 
 macOS 14+ (Apple Silicon 또는 Intel). 끝입니다 — 토큰 사용량은 로컬 Claude Code·Codex·Gemini CLI·Antigravity·OpenCode·Hermes Agent·Cursor·Grok CLI 데이터에서 직접 읽으며 외부 사용량 CLI가 필요 없습니다.
 
-### Homebrew
+### 설치 / 업데이트
 
 ```bash
-brew install --cask chattymin/tap/poke-token-bar
+curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```
 
-ad-hoc/자체 서명 앱이라 Cask 설치 시 격리 속성을 자동 제거합니다.
+최신 릴리스를 내려받아 `PikaTokenBar.app`을 `/Applications`에 설치하고 Gatekeeper 격리 속성을 제거합니다. 같은 명령을 다시 실행하면 최신 버전으로 업데이트됩니다 — 설치와 업데이트가 같은 명령입니다.
 
-### 직접 설치 (Homebrew 없이)
+### 직접 설치 (스크립트 없이)
 
-Homebrew를 쓰지 않는다면 [최신 릴리스](https://github.com/chattymin/PokeTokenBar/releases/latest)에서 `PokeTokenBar.zip`을 내려받아 압축을 풀고 `PokeTokenBar.app`을 `/Applications`로 드래그합니다.
+스크립트 실행이 꺼려진다면 [최신 릴리스](https://github.com/LuceteYang/PikaTokenBar/releases/latest)에서 `PikaTokenBar.zip`을 내려받아 압축을 풀고 `PikaTokenBar.app`을 `/Applications`로 드래그합니다.
 
 이 앱은 ad-hoc/자체 서명(Apple 개발자 계정 공증 없음)이라 첫 실행 시 Gatekeeper가 "확인되지 않은 개발자" 경고를 띄웁니다. 아래 둘 중 하나로 한 번만 해제하면 됩니다.
 
-- **Finder:** `PokeTokenBar.app`을 우클릭(또는 Control+클릭) → **열기** → 대화상자에서 **열기**를 다시 클릭.
-- **터미널:** `xattr -dr com.apple.quarantine /Applications/PokeTokenBar.app`
+- **Finder:** `PikaTokenBar.app`을 우클릭(또는 Control+클릭) → **열기** → 대화상자에서 **열기**를 다시 클릭.
+- **터미널:** `xattr -dr com.apple.quarantine /Applications/PikaTokenBar.app`
 
-(Homebrew Cask는 격리 속성을 자동 제거하므로 이 과정이 필요 없습니다.)
+(위 설치 스크립트는 격리 속성을 자동 제거하므로 이 과정이 필요 없습니다.)
 
 ### 소스 빌드
 
 ```bash
 swift build                  # 디버그
 swift test                   # 단위 테스트
-./scripts/build-app.sh       # release → PokeTokenBar.app → /Applications
+./scripts/build-app.sh       # release → PikaTokenBar.app → /Applications
 ```
 
 ## 데이터 소스

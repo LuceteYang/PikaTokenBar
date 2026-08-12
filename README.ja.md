@@ -6,16 +6,17 @@
 
 **あなたのAIコーディングトークンを、ポケモンに — メニューバーで。**
 
-[![Release](https://img.shields.io/github/v/release/chattymin/PokeTokenBar?color=444d56&label=release)](https://github.com/chattymin/PokeTokenBar/releases)
+[![Release](https://img.shields.io/github/v/release/LuceteYang/PikaTokenBar?color=444d56&label=release)](https://github.com/LuceteYang/PikaTokenBar/releases)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-0969da)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6-f05138)](https://swift.org)
-[![Homebrew](https://img.shields.io/badge/Homebrew-cask-8957e5)](#homebrew)
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
 [English](README.md) · [한국어](README.ko.md) · **日本語**
 
 </div>
+
+> **PikaTokenBar** は [chattymin](https://github.com/chattymin) の [PokeTokenBar](https://github.com/chattymin/PokeTokenBar) をフォークし、**第1世代のみ**（#1–151）を表示するバージョンです。オリジナルとは別のアプリ（`PikaTokenBar.app`）としてインストールされ共存します — アンインストールするものはありません — オリジナルとは独立してメンテナンスされています。
 
 PokeTokenBar は、あなたがすでに使っている AI コーディングトークン（Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI）を、macOS メニューバーの中で育っていく **ポケモンのパートナー** に変えます。トークンを使うとタマゴが孵化し、実際の進化ラインに沿って進化し、最終進化後に図鑑へ卒業して、また新しいタマゴが始まります。パートナーの下には正確な使用量トラッカーがあります — 今日の使用量・コスト、公式の5時間／週間上限をローカルログから直接読み取ります。
 
@@ -34,7 +35,7 @@ PokeTokenBar は、あなたがすでに使っている AI コーディングト
 ## しくみ
 
 1. 🥚 **いつも通りコーディング。** Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI で使うトークンがタマゴを温めます — 追加の操作は不要です。
-2. 🐣 **孵化。** [PokéAPI](https://pokeapi.co/) の**第1〜5世代すべての進化系統（起点329種）**から、公式の捕獲率で重み付けされて生まれます — よくいるポケモンは頻繁に、伝説は129回に1回。孵化したポケモンは育成中もすぐに **図鑑** に表示されます。孵化ごとに25種類のせいかくがひとつ決まり — **ごくまれな偶然で ✨ 色違いが生まれます**。
+2. 🐣 **孵化。** [PokéAPI](https://pokeapi.co/) の**第1世代すべての進化系統（起点78種）**から、公式の捕獲率で重み付けされて生まれます — よくいるポケモンは頻繁に、伝説は195回に1回。孵化したポケモンは育成中もすぐに **図鑑** に表示されます。孵化ごとに25種類のせいかくがひとつ決まり — **ごくまれな偶然で ✨ 色違いが生まれます**。
 3. ⚡ **進化。** コーディングを続けると実際の進化ツリー（1/2/3段階、分岐）に沿って育ち、各段階で小さな演出が流れます。
 4. 🎓 **卒業 & 収集。** 最終進化 + 閾値で **図鑑** に永久保存されます — レアなほど時間がかかり（ヘビーユーザーで common ≈3日 → legendary ≈24日）— 新しいタマゴが届きます。
 5. 🍬 **上限を使い切ってごほうび。** 5時間または週間の使用量上限を使い切ると **ふしぎなアメ** がもらえます — 新しい **バッグ** タブから使って、いまのポケモンを育てましょう。
@@ -123,31 +124,31 @@ PokeTokenBar は、あなたがすでに使っている AI コーディングト
 
 macOS 14+（Apple Silicon または Intel）。それだけ — トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI データから直接読み取り、外部の使用量 CLI は不要です。
 
-### Homebrew
+### インストール／更新
 
 ```bash
-brew install --cask chattymin/tap/poke-token-bar
+curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```
 
-ad-hoc／自己署名アプリのため、Cask インストール時に隔離属性を自動で除去します。
+最新リリースをダウンロードして `PikaTokenBar.app` を `/Applications` にインストールし、Gatekeeper の隔離属性を解除します。同じコマンドを再実行すると最新版に更新されます — インストールと更新は同じコマンドです。
 
-### 手動インストール（Homebrew なし）
+### 手動インストール（スクリプトなし）
 
-Homebrew を使わない場合は、[最新リリース](https://github.com/chattymin/PokeTokenBar/releases/latest) から `PokeTokenBar.zip` をダウンロードして展開し、`PokeTokenBar.app` を `/Applications` にドラッグします。
+スクリプトの実行を避けたい場合は、[最新リリース](https://github.com/LuceteYang/PikaTokenBar/releases/latest) から `PikaTokenBar.zip` をダウンロードして展開し、`PikaTokenBar.app` を `/Applications` にドラッグします。
 
 このアプリは ad-hoc／自己署名（Apple Developer アカウントでの公証なし）のため、初回起動時に Gatekeeper が「開発元が未確認」の警告を表示します。次のいずれかで一度だけ解除してください。
 
-- **Finder:** `PokeTokenBar.app` を右クリック（または Control+クリック）→ **開く** → ダイアログで再度 **開く**。
-- **ターミナル:** `xattr -dr com.apple.quarantine /Applications/PokeTokenBar.app`
+- **Finder:** `PikaTokenBar.app` を右クリック（または Control+クリック）→ **開く** → ダイアログで再度 **開く**。
+- **ターミナル:** `xattr -dr com.apple.quarantine /Applications/PikaTokenBar.app`
 
-（Homebrew Cask は隔離属性を自動で除去するため、この手順は不要です。）
+（上記のインストールスクリプトは隔離属性を自動で除去するため、この手順は不要です。）
 
 ### ソースからビルド
 
 ```bash
 swift build                  # デバッグ
 swift test                   # ユニットテスト
-./scripts/build-app.sh       # release → PokeTokenBar.app → /Applications
+./scripts/build-app.sh       # release → PikaTokenBar.app → /Applications
 ```
 
 ## データソース

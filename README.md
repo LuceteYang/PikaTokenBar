@@ -6,16 +6,17 @@
 
 **Your AI coding tokens, hatched into Pokémon — right in your menu bar.**
 
-[![Release](https://img.shields.io/github/v/release/chattymin/PokeTokenBar?color=444d56&label=release)](https://github.com/chattymin/PokeTokenBar/releases)
+[![Release](https://img.shields.io/github/v/release/LuceteYang/PikaTokenBar?color=444d56&label=release)](https://github.com/LuceteYang/PikaTokenBar/releases)
 [![macOS](https://img.shields.io/badge/macOS-14%2B-0969da)](https://www.apple.com/macos/)
 [![Swift](https://img.shields.io/badge/Swift-6-f05138)](https://swift.org)
-[![Homebrew](https://img.shields.io/badge/Homebrew-cask-8957e5)](#homebrew)
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
 **English** · [한국어](README.ko.md) · [日本語](README.ja.md)
 
 </div>
+
+> **PikaTokenBar** is a fork of [PokeTokenBar](https://github.com/chattymin/PokeTokenBar) by [chattymin](https://github.com/chattymin) that shows **Generation 1 only** (#1–151). It installs as a separate app (`PikaTokenBar.app`) that coexists with the original — nothing to uninstall — and is maintained independently of upstream.
 
 PokeTokenBar turns the AI coding tokens you're already burning — Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor & Grok CLI — into a growing **Pokémon companion** in your macOS menu bar. Spend tokens, hatch an egg, evolve it through its real evolution line, graduate it into your Pokédex, and start again. Underneath the companion it's a precise usage tracker — today's spend, cost, and official 5-hour / weekly limits, read straight from your local logs.
 
@@ -34,7 +35,7 @@ PokeTokenBar turns the AI coding tokens you're already burning — Claude Code, 
 ## How it works
 
 1. 🥚 **Code as usual.** The tokens you burn in Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, or Grok CLI incubate an egg — nothing extra to run.
-2. 🐣 **Hatch.** Eggs hatch into Pokémon with real evolution lines from [PokéAPI](https://pokeapi.co/) — any Gen 1–5 line (329 possible starts), weighted by the official capture rate: commons hatch often, a legendary is a 1-in-129 event. It appears in your **Pokédex** immediately while you raise it. Every hatch rolls one of 25 natures — and once in a rare while, the egg hatches **✨ Shiny**.
+2. 🐣 **Hatch.** Eggs hatch into Pokémon with real evolution lines from [PokéAPI](https://pokeapi.co/) — any Gen 1 line (78 possible starts), weighted by the official capture rate: commons hatch often, a legendary is a 1-in-195 event. It appears in your **Pokédex** immediately while you raise it. Every hatch rolls one of 25 natures — and once in a rare while, the egg hatches **✨ Shiny**.
 3. ⚡ **Evolve.** Keep coding and it grows through its actual evolution tree (1/2/3 stages, branching), with a little flash celebration at each step.
 4. 🎓 **Graduate & collect.** Final form + threshold permanently archives it in your **Pokédex** — rarer takes longer (≈3 days common → ≈24 days legendary at heavy use) — and a fresh egg arrives.
 5. 🍬 **Max out, get a candy.** Fill a 5-hour or weekly usage limit and you earn **Rare Candy** — spend it from the **Bag** to grow your current Pokémon.
@@ -123,31 +124,31 @@ All read locally — no external usage CLI required. Adding a tool is one provid
 
 macOS 14+ (Apple Silicon or Intel). That's it — token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, and Grok CLI data, with no external usage CLI required.
 
-### Homebrew
+### Install / update
 
 ```bash
-brew install --cask chattymin/tap/poke-token-bar
+curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 ```
 
-ad-hoc/self-signed; the cask strips the quarantine attribute on install.
+Downloads the latest release, installs `PikaTokenBar.app` to `/Applications`, and clears the Gatekeeper quarantine attribute. Running the same command again updates to the latest release — install and update are the same command.
 
-### Manual install (without Homebrew)
+### Manual install (without the script)
 
-Prefer not to use Homebrew? Download `PokeTokenBar.zip` from the [latest release](https://github.com/chattymin/PokeTokenBar/releases/latest), unzip it, and drag `PokeTokenBar.app` into `/Applications`.
+Prefer not to run a script? Download `PikaTokenBar.zip` from the [latest release](https://github.com/LuceteYang/PikaTokenBar/releases/latest), unzip it, and drag `PikaTokenBar.app` into `/Applications`.
 
 Because the app is ad-hoc/self-signed (not notarized under an Apple Developer account), Gatekeeper shows an "unidentified developer" warning on first launch. Clear it once, either way:
 
-- **Finder:** right-click (or Control-click) `PokeTokenBar.app` → **Open** → **Open** again in the dialog.
-- **Terminal:** `xattr -dr com.apple.quarantine /Applications/PokeTokenBar.app`
+- **Finder:** right-click (or Control-click) `PikaTokenBar.app` → **Open** → **Open** again in the dialog.
+- **Terminal:** `xattr -dr com.apple.quarantine /Applications/PikaTokenBar.app`
 
-(The Homebrew cask strips quarantine for you, so it needs no extra step.)
+(The install script above clears quarantine for you, so it needs no extra step.)
 
 ### Build from source
 
 ```bash
 swift build                  # debug
 swift test                   # unit tests
-./scripts/build-app.sh       # release → PokeTokenBar.app → /Applications
+./scripts/build-app.sh       # release → PikaTokenBar.app → /Applications
 ```
 
 ## Data sources
