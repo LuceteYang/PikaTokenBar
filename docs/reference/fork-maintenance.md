@@ -71,8 +71,14 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
   비면 즉시 `exit 1` 로 죽으므로 실패는 시끄럽게 난다(의도된 설계). |
 | `scripts/release.sh` | 맨 위 중단 가드 |
 | `scripts/e2e.sh`, `parity-check.sh` | 번들·로그·스냅샷 경로 |
+| `UI/SettingsView.swift` | 푸터 Web·Sponsor 링크는 **의도적으로 upstream 그대로 둔다** — 이 포크엔
+  랜딩 페이지가 없어 바꾸면 404 가 되고, 후원은 이 앱을 만든 원작자에게 가는 게 맞다. 반대로
+  **"문제점 알리기"는 upstream 이 아니라 이 포크로 되돌린다** — `ProblemReport.newIssueURL` 이
+  `AppIdentity.releasesRepo` 이슈 화면을 연다. 팀원이 겪은 1세대 전용 버그가 그가 본 적 없는
+  빌드에 대해 원작자에게 가면 안 되기 때문이다. 이 비대칭(Web·Sponsor 는 upstream / 문제 리포트는
+  포크)은 실수가 아니라 오너의 결정이다. |
 
-`release-fork.sh` 2단계가 `Sources/` 에서 원본 정체성 문자열(`chattymin`·`"PokeTokenBar"`·
+`release-fork.sh` 2단계가 `Sources/` 에서 원본 정체성 문자열(`chattymin`·`"PokeTokenBar[/"]`·
 `PokeTokenBar.log`)을 grep 해 하드 게이트로 막는다 — 머지에서 되돌아온 리터럴은 배포 전에 걸린다.
 
 ## 범위를 바꿀 때 (1세대 → 다른 범위)

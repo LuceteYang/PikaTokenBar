@@ -368,39 +368,47 @@ final class LimitsBackoffTests: XCTestCase {
     }
 }
 
-final class SupportMailTests: XCTestCase {
-    func testMailtoURLEncodesSubjectAndBody() throws {
-        let url = try XCTUnwrap(SupportMail.mailtoURL(
-            subject: "[PokeTokenBar] 문제 리포트 (v2.3.3)",
-            body: "문제 내용:\n(설명)\n---\n앱 버전: v2.3.3"))
+final class ProblemReportTests: XCTestCase {
+    func testNewIssueURLPointsAtThisForkAndEncodesTitleAndBody() throws {
+        let url = ProblemReport.newIssueURL(
+            title: "[PikaTokenBar] 문제 리포트 (v2.3.3)",
+            body: "문제 내용:\n(설명)\n---\n앱 버전: v2.3.3")
         let s = url.absoluteString
-        XCTAssertTrue(s.hasPrefix("mailto:parkdongmin123@gmail.com?"), s)
-        XCTAssertTrue(s.contains("subject="))
+        // upstream 이 아니라 이 포크 저장소로 가야 한다 — 팀원이 겪은 1세대 전용 버그가
+        // 원작자에게 가면 안 된다.
+        XCTAssertTrue(s.hasPrefix("https://github.com/\(AppIdentity.releasesRepo)/issues/new?"), s)
+        XCTAssertTrue(s.contains("title="))
         XCTAssertTrue(s.contains("body="))
         // 개행·한글·대괄호가 raw 로 남지 않아야 함 (percent-encode)
         XCTAssertFalse(s.contains("\n"))
         XCTAssertFalse(s.contains("문제"))
         XCTAssertFalse(s.contains("["))
-        // 디코딩 왕복 — 메일 클라이언트가 받을 실제 값 검증
+        // 디코딩 왕복 — GitHub 이슈 폼이 받을 실제 값 검증
         let comps = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
         XCTAssertEqual(comps.queryItems?.first(where: { $0.name == "body" })?.value,
                        "문제 내용:\n(설명)\n---\n앱 버전: v2.3.3")
     }
 
-    func testMailtoEncodesPlusSign() throws {
-        let url = try XCTUnwrap(SupportMail.mailtoURL(subject: "C++ crash", body: "path a+b\n2+2"))
+    func testNewIssueURLEncodesPlusSign() throws {
+        let url = ProblemReport.newIssueURL(title: "C++ crash", body: "path a+b\n2+2")
         let s = url.absoluteString
-        XCTAssertFalse(s.contains("+"), "query 의 '+' 는 %2B 로 인코딩돼야 함(메일 클라이언트 공백 오독 방지): \(s)")
+        XCTAssertFalse(s.contains("+"), "query 의 '+' 는 %2B 로 인코딩돼야 함(GitHub 폼의 공백 오독 방지): \(s)")
         let comps = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false))
-        XCTAssertEqual(comps.queryItems?.first { $0.name == "subject" }?.value, "C++ crash")
+        XCTAssertEqual(comps.queryItems?.first { $0.name == "title" }?.value, "C++ crash")
         XCTAssertEqual(comps.queryItems?.first { $0.name == "body" }?.value, "path a+b\n2+2")
     }
 
-    func testMailBodyContainsDiagnostics() {
-        let body = L(.ko).reportMailBody(version: "2.3.3", os: "Version 14.5 (Build 23F79)")
+    func testIssueBodyContainsDiagnostics() {
+        let body = L(.ko).reportIssueBody(version: "2.3.3", os: "Version 14.5 (Build 23F79)")
         XCTAssertTrue(body.contains("v2.3.3"))
         XCTAssertTrue(body.contains("Version 14.5"))
         XCTAssertTrue(body.contains(AppIdentity.logFileName))
+    }
+
+    func testIssueTitleIdentifiesThisForkNotUpstream() {
+        let title = L(.ko).reportIssueTitle("2.3.3")
+        XCTAssertTrue(title.contains(AppIdentity.executableName))
+        XCTAssertFalse(title.contains("PokeTokenBar"), "이슈 제목이 원본 앱 이름으로 남으면 안 된다: \(title)")
     }
 }
 

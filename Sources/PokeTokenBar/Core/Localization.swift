@@ -242,25 +242,27 @@ struct L {
           "現在の状態をバックアップできなかったため読み込みを中止しました — 進行はそのままです。ディスクの空き容量を確認してください。")
     }
 
-    // MARK: 문제점 알리기 (설정 → 메일 리포트)
+    // MARK: 문제점 알리기 (설정 → 이 포크의 GitHub 이슈)
     var reportProblem: String { t("문제점 알리기", "Report a problem", "問題を報告") }
     var showLogFile: String { t("로그 파일 보기", "Show log file", "ログファイルを表示") }
     var reportAttachHint: String {
-        t("메일에 로그 파일을 첨부해 주시면 원인 파악에 큰 도움이 돼요.",
-          "Attaching the log file to the email helps a lot with diagnosis.",
-          "メールにログファイルを添付していただくと原因の特定に役立ちます。")
+        t("이슈에 로그 파일을 첨부해 주시면 원인 파악에 큰 도움이 돼요.",
+          "Attaching the log file to the issue helps a lot with diagnosis.",
+          "イシューにログファイルを添付していただくと原因の特定に役立ちます。")
     }
-    func reportMailFallback(_ address: String) -> String {
-        t("메일 앱을 열 수 없어요. \(address) 로 직접 보내주세요.",
-          "Couldn't open a mail app. Please email \(address) directly.",
-          "メールアプリを開けません。\(address) 宛に直接お送りください。")
+    /// 브라우저를 못 열었을 때(드물게 발생) 수동으로 찾아갈 URL 안내 — GitHub 이슈 화면이라
+    /// 계정/메일 주소 대신 이 포크의 저장소 링크를 보여준다.
+    func reportIssueFallback(_ urlString: String) -> String {
+        t("브라우저를 열 수 없어요. \(urlString) 로 직접 접속해 주세요.",
+          "Couldn't open a browser. Please visit \(urlString) directly.",
+          "ブラウザを開けません。\(urlString) に直接アクセスしてください。")
     }
-    func reportMailSubject(_ version: String) -> String {
-        t("[PokeTokenBar] 문제 리포트 (v\(version))",
-          "[PokeTokenBar] Problem report (v\(version))",
-          "[PokeTokenBar] 問題レポート (v\(version))")
+    func reportIssueTitle(_ version: String) -> String {
+        t("[\(AppIdentity.executableName)] 문제 리포트 (v\(version))",
+          "[\(AppIdentity.executableName)] Problem report (v\(version))",
+          "[\(AppIdentity.executableName)] 問題レポート (v\(version))")
     }
-    func reportMailBody(version: String, os: String) -> String {
+    func reportIssueBody(version: String, os: String) -> String {
         t("""
         문제 내용:
         (겪으신 문제를 적어주세요 — 언제, 어떤 화면에서, 어떻게 되었는지)

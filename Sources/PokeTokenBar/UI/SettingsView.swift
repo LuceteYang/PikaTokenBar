@@ -440,16 +440,18 @@ struct SettingsView: View {
 
     // MARK: 동작
 
-    /// 문제점 알리기 — 진단 정보(버전·macOS)가 채워진 리포트 메일을 기본 메일 앱으로 연다.
-    /// 메일 앱이 없거나 열기에 실패하면 수신 주소를 안내(복사 가능)한다.
+    /// 문제점 알리기 — 진단 정보(버전·macOS·로그 경로)가 채워진 이 포크의 GitHub "새 이슈" 화면을
+    /// 브라우저로 연다. 원본은 원작자에게 메일을 보냈지만, 그러면 팀원이 겪은 1세대 전용 버그를
+    /// 그가 본 적 없는 빌드에 대해 원작자가 받게 된다 — 이 포크는 자기 저장소 이슈로 받는다.
+    /// 브라우저 열기에 실패하면(드묾) 직접 찾아갈 URL 을 안내한다.
     private func reportProblem() {
-        let subject = l.reportMailSubject(Self.appVersion)
-        let body = l.reportMailBody(
+        let title = l.reportIssueTitle(Self.appVersion)
+        let body = l.reportIssueBody(
             version: Self.appVersion,
             os: ProcessInfo.processInfo.operatingSystemVersionString)
-        guard let url = SupportMail.mailtoURL(subject: subject, body: body),
-              NSWorkspace.shared.open(url) else {
-            reportError = l.reportMailFallback(SupportMail.address)
+        let url = ProblemReport.newIssueURL(title: title, body: body)
+        guard NSWorkspace.shared.open(url) else {
+            reportError = l.reportIssueFallback("https://github.com/\(AppIdentity.releasesRepo)/issues/new")
             return
         }
         reportError = nil
