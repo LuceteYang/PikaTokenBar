@@ -127,6 +127,11 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertEqual(FreshEgg.price(guaranteeing: nil), 1_000_000_000)
         XCTAssertEqual(FreshEgg.price(guaranteeing: .uncommon), 2_500_000_000)
         XCTAssertEqual(FreshEgg.price(guaranteeing: .rare), 2_750_000_000)
+        // 팔지 않는 티어(전설)·의미 없는 보증(기본)은 방어적으로 기본가로 떨어진다 — 8B 로 남아 있던
+        // 이전 파생식의 흔적을 없앤다. shopTiers 에 없어 canBuyEgg 가 막긴 하지만, 방어선이 하나뿐인
+        // 상수라 여기서도 값을 고정해 둔다.
+        XCTAssertEqual(FreshEgg.price(guaranteeing: .legendary), FreshEgg.price)
+        XCTAssertEqual(FreshEgg.price(guaranteeing: .common), FreshEgg.price)
         XCTAssertEqual(FreshEgg.shopTiers, [nil, .uncommon, .rare])
     }
 
@@ -138,10 +143,13 @@ final class PremiumEggTests: XCTestCase {
     ///
     /// 미수집 부스트(`chooseBase` 가 이미 수집한 base 의 가중을 절반으로)는 정가 계산에서 뺐다. 그 방향은
     /// 중립이 아니라 **불리**하다 — 고급 밴드가 먼저 포화되면 그쪽 가중만 깎여 희귀+ 비중이 올라간다:
-    /// 고급 ×0.75 → 0.5906, ×0.70 → 0.6072, ×0.5 → 0.6839. 뒤집히는 지점은 **×0.6492**이고 그보다
-    /// 낮아지면 손익분기 0.625를 넘는다. 도감을 많이 채운 후반일수록 마진이 준다는 뜻이다.
-    /// 그 너머(고급 밴드 거의 수집 + 희귀 밴드 거의 미수집)는 뒤집히지만 재가격하지 않는다 — 1인 로컬·
-    /// 금전가치 없음이라 후반 코너에서 상위 알이 약간 손해인 것은 수용 범위다.
+    /// 고급 ×0.75 → 0.8833, ×0.70 → 0.8902, ×0.5 → 0.9190. 뒤집히는 지점은 **×0.5676**이고 그보다
+    /// 낮아지면 손익분기 0.9091을 넘는다. 도감을 많이 채운 후반일수록 마진이 준다는 뜻이다.
+    /// 그 너머(고급 밴드 거의 수집 + 희귀 밴드 거의 미수집, 즉 `chooseBase` 의 실제 완전수집 부스트 ×0.5)는
+    /// **1세대 풀에서도 뒤집힌다**(0.9190 > 0.9091) — 재가격 전(649 스케일)과 같은 결론이지만 여유는 줄었다:
+    /// flip 까지 거리가 0.6492−0.5=0.149 에서 0.5676−0.5=0.068 로 거의 절반이 됐다. 재가격하지 않는 이유는
+    /// 그대로다 — 1인 로컬·금전가치 없음이라 후반 코너에서 상위 알이 약간 손해인 것은 수용 범위다. 다만
+    /// 그 코너가 이제 훨씬 가깝다는 뜻이라, 풀이 다시 커지면(예: 세대 확장) 이 여유부터 재확인해야 한다.
     ///
     /// 출처: 실행 중인 앱이 받아온 base 인덱스(`~/Library/Application Support/…/base-index.json`),
     /// 1세대(id ≤ 151) · 메타몽 제외, 2026-08-12 측정(base 78종). 풀이 크게 바뀌면 다시 재라.
@@ -150,6 +158,10 @@ final class PremiumEggTests: XCTestCase {
     /// 그래서 "고급 이상" 보증이 사실상 "희귀 이상"이 되고(희귀+ 비중 0.8502), 희귀 알이 고급 알
     /// 반복보다 비싸면 곧바로 열등재가 된다. 가격이 이 비중에 묶여 있다는 뜻이라 상한이 좁다.
     func testRareEggIsNotDominatedAtMeasuredPoolComposition() {
+        // 풀 범위가 바뀌면(예: 세대 확장) 아래 가중치 표는 그 순간 무효다 — 649→151 로 좁혔을 때 이
+        // 테이블을 안 갱신해 통과하면서 아무것도 안 지키던 바로 그 결함을 반복하지 않기 위한 핀.
+        XCTAssertEqual(PokemonAssets.animatedSpeciesIDs, 1...151,
+                       "풀 범위가 바뀌면 아래 가중치 표는 무효다 — 다시 재고 가격을 재확인하라")
         let weight: [Rarity: Double] = [.common: 9_695, .uncommon: 210, .rare: 1_135, .legendary: 57]
         // 고급 알 = 고급 이상 풀(전설 포함). 그 안에서 희귀 이상이 나올 확률.
         let uncommonEggPool = weight[.uncommon]! + weight[.rare]! + weight[.legendary]!
@@ -165,9 +177,11 @@ final class PremiumEggTests: XCTestCase {
                           "실측 희귀+ 비중 \(rarePlusShare) 가 손익분기 \(uncommonPrice / rarePrice) 를 넘었다 — 가격 재조정 필요")
 
         // 후반 코너의 안전 경계 — 고급 밴드만 미수집 부스트로 30% 깎여도 아직 지배당하지 않는다.
-        // 계수는 flip 지점(×0.6492)이 아니라 **그보다 위**로 잡는다: 정확히 flip 에 걸면 여유가 0.0003 이라
-        // 풀을 다시 잴 때 고급 가중이 0.13%(≈4)만 움직여도 설계와 무관하게 실패한다(오탐). ×0.70 은 여유
-        // 0.018 이라 재측정을 견디면서도 "부스트가 마진을 깎는다"는 성질은 그대로 잡는다.
+        // 계수는 flip 지점(×0.5676)이 아니라 **그보다 위**로 잡는다 — 정확히 flip 에 걸면 여유가 정의상
+        // 0이라 재측정 한 번에 뒤집힐 수 있다. ×0.70 은 여유 0.0189 이고, 이 여유를 다 쓰려면 uncommon
+        // 가중 합(U=210)이 18.9%(≈40) 움직여야 한다 — 그런데 그 밴드는 **단 2종뿐**이라 종 1개가 밴드에
+        // 들거나 빠지는 것만으로 U 가 평균 50% 움직인다. 한 종의 재분류가 이 여유를 두 배 넘게 넘는다는
+        // 뜻이라, 다종 분산이던 649 시절보다 재측정 노출이 훨씬 크다.
         let boostedUncommon = weight[.uncommon]! * 0.70
         let boostedShare = (weight[.rare]! + weight[.legendary]!)
             / (boostedUncommon + weight[.rare]! + weight[.legendary]!)
@@ -418,8 +432,8 @@ final class PremiumEggTests: XCTestCase {
         XCTAssertNotNil(s.state.active, "알이 정상적으로 부화해야 한다(벽돌 상태 아님)")
     }
 
-    /// 판매 목록에 없는 티어는 살 수 없다 — 가격만 계산되면(전설 8B) 호출부 하나가 실수했을 때 토큰이
-    /// 통째로 사라지고 그 알은 영영 안 깨진다.
+    /// 판매 목록에 없는 티어는 살 수 없다 — 가격이 계산되면(전설은 기본가 1B로 떨어짐) 호출부 하나가
+    /// 실수했을 때 토큰이 통째로 사라지고 그 알은 영영 안 깨진다.
     func testCannotBuyTierThatIsNotSold() {
         let s = activeStore()
         XCTAssertFalse(FreshEgg.shopTiers.contains(.legendary))
