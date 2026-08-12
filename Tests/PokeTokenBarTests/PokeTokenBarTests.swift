@@ -389,6 +389,18 @@ final class ProblemReportTests: XCTestCase {
                        "문제 내용:\n(설명)\n---\n앱 버전: v2.3.3")
     }
 
+    /// newIssueURL 의 폴백 분기(조립된 URL 이 nil 이면 body 없는 issues/new 로 되돌아간다)는
+    /// Foundation 이 실제로 nil 을 돌려주는 입력을 만들 수 없어 이 프로세스에서는 도달 불가능함을
+    /// 실측으로 확인한다 — 그래도 만약을 대비한 방어 코드이므로, 여기서는 "극단적 입력에도 절대
+    /// 크래시 없이 이 포크 저장소를 가리키는 유효한 URL 을 돌려준다"는 더 약한 불변식을 고정한다.
+    func testNewIssueURLNeverCrashesOrGoesEmptyOnOversizedBody() {
+        let hugeBody = String(repeating: "한글🎉a+b\n", count: 200_000)   // ~1.4MB, 유니코드+개행+'+' 혼합
+        let url = ProblemReport.newIssueURL(title: "stress", body: hugeBody)
+        let s = url.absoluteString
+        XCTAssertTrue(s.hasPrefix("https://github.com/\(AppIdentity.releasesRepo)/issues/new"), s)
+        XCTAssertFalse(s.isEmpty)
+    }
+
     func testNewIssueURLEncodesPlusSign() throws {
         let url = ProblemReport.newIssueURL(title: "C++ crash", body: "path a+b\n2+2")
         let s = url.absoluteString
