@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PikaTokenBar — 코딩하면 포켓몬이 자랍니다</title>
-<meta name="description" content="AI 코딩에 쓴 토큰이 메뉴바 속 포켓몬 알을 부화시키는 macOS 메뉴바 앱. 1세대 151종.">
+<title data-i18n="meta.title">PikaTokenBar — 코딩하면 포켓몬이 자랍니다</title>
+<meta name="description" content="AI 코딩에 쓴 토큰이 메뉴바 속 포켓몬 알을 부화시키는 macOS 메뉴바 앱. 1세대 151종." data-i18n-attr-content="meta.desc">
 <style>
 /* =========================================================================
    0. 디자인 토큰
@@ -239,6 +239,31 @@ h1 {
   border-left: 1px solid var(--border);
   margin-left: .3rem;
 }
+
+/* =========================================================================
+   3.5. 언어 스위처 — 스크롤 없이 바로 보이도록 히어로 맨 위, 우측 정렬
+   ========================================================================= */
+.langbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: .4rem;
+  flex-wrap: wrap;
+  padding: .8rem 0 0;
+}
+.lang-btn {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: .72rem;
+  letter-spacing: .01em;
+  padding: .32rem .65rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+.lang-btn:hover { border-color: var(--link); }
+.lang-btn.active { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
 
 /* =========================================================================
    4. 공통 카드 / 게임 패널
@@ -701,6 +726,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
   .item-card > summary { flex-wrap: wrap; }
   /* 스트립이 줄바꿈되면 구분선이 앞줄에 걸린 막대처럼 보인다 → 좁은 화면에선 뗀다 */
   .strip .en { border-left: 0; padding-left: 0; margin-left: 0; }
+  .lang-btn { padding: .3rem .5rem; font-size: .68rem; }
 }
 </style>
 </head>
@@ -716,19 +742,27 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
 
 <main>
 
+<!-- 언어 스위처 — 스크롤 없이 바로 보이도록 맨 위. 라벨은 언어별로 바뀌지 않고
+     항상 각자의 문자로 고정 표기한다(한국어/English/日本語). -->
+<div class="langbar wrap" role="group" aria-label="Language / 언어 / 言語">
+  <button type="button" class="lang-btn" data-lang="ko">한국어</button>
+  <button type="button" class="lang-btn" data-lang="en">English</button>
+  <button type="button" class="lang-btn" data-lang="ja">日本語</button>
+</div>
+
 <!-- ======================================================================
      히어로
      ====================================================================== -->
 <header class="hero wrap">
   <div class="hero-pika-slot">
     <!-- 치수는 CSS 가 잡는다(GIF 가 정사각이 아님). 슬롯 높이가 고정이라 레이아웃은 안 흔들린다. -->
-    <img id="hero-pika" class="sprite" alt="피카츄">
+    <img id="hero-pika" class="sprite" data-i18n-attr-alt="hero.pikaAlt" alt="피카츄">
   </div>
   <h1>PikaTokenBar</h1>
-  <p class="tagline">코딩하면 포켓몬이 자랍니다</p>
+  <p class="tagline" data-i18n="hero.tagline">코딩하면 포켓몬이 자랍니다</p>
   <div class="cta">
-    <a class="btn btn-primary" href="#install" id="cta-install">지금 시작하기</a>
-    <a class="btn" href="https://github.com/LuceteYang/PikaTokenBar">GitHub에서 보기</a>
+    <a class="btn btn-primary" href="#install" id="cta-install" data-i18n="hero.ctaInstall">지금 시작하기</a>
+    <a class="btn" href="https://github.com/LuceteYang/PikaTokenBar" data-i18n="hero.ctaGithub">GitHub에서 보기</a>
   </div>
   <div class="strip">
     <span>🥚</span><span class="arrow">→</span>
@@ -744,8 +778,8 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
      ====================================================================== -->
 <section class="block wrap" id="hatch">
   <p class="eyebrow">01 · Hatch</p>
-  <h2>알이 깨지는 순간</h2>
-  <p class="section-note">메뉴바에서 실제로 일어나는 일입니다 — 토큰을 쓰면 알이 흔들리고, 임계치를 넘으면 부화합니다.</p>
+  <h2 data-i18n="hatch.h2">알이 깨지는 순간</h2>
+  <p class="section-note" data-i18n="hatch.note">메뉴바에서 실제로 일어나는 일입니다 — 토큰을 쓰면 알이 흔들리고, 임계치를 넘으면 부화합니다.</p>
 
   <div class="panel" style="margin-top:1.1rem">
     <div class="hatch-stage">
@@ -761,17 +795,20 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     </div>
 
     <div class="counter">
-      <span>사용한 토큰 <b id="tok">0</b></span>
-      <span>부화 임계 <b>5,000,000</b></span>
+      <span><span data-i18n="hatch.usedLabel">사용한 토큰</span> <b id="tok">0</b></span>
+      <span><span data-i18n="hatch.thresholdLabel">부화 임계</span> <b>5,000,000</b></span>
     </div>
     <div class="bar"><i id="bar"></i></div>
 
     <div class="hatch-actions">
-      <button class="btn btn-sm" id="rehatch" type="button">다시 부화시키기</button>
+      <button class="btn btn-sm" id="rehatch" type="button" data-i18n="hatch.rehatch">다시 부화시키기</button>
+      <!-- data-i18n 없음 — 상태(대기 중/균열/부화 완료)에 따라 JS 가 직접 렌더링하고,
+           언어 전환 시에도 "지금 상태"를 유지한 채 그 언어로 다시 렌더링한다(범용 루프가
+           덮어쓰면 부화 완료 문구가 로딩 문구로 되돌아가 버린다). -->
       <span class="section-note" id="hatch-status" aria-live="polite">토큰이 쌓이는 중…</span>
     </div>
 
-    <p class="odds">
+    <p class="odds" data-i18n-html="hatch.odds">
       후보는 <b>진화 계보 시작점 78종</b>이고, 뽑기 가중치는 PokéAPI 의 실제 <code>capture_rate</code> 입니다 —
       <b>실제 앱과 같은 확률</b>이라 피카츄가 나올 확률은 <b>1.71%</b> 뿐입니다.
       부화한 포켓몬은 아래 도감에 그대로 등록됩니다.
@@ -784,30 +821,32 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
      ====================================================================== -->
 <section class="block wrap" id="evolve">
   <p class="eyebrow">02 · Evolve</p>
-  <h2>토큰을 쓸수록 진화합니다</h2>
-  <p class="section-note">스크롤해 보세요. 아래 임계값은 앱이 실제로 쓰는 값입니다.</p>
+  <h2 data-i18n="evolve.h2">토큰을 쓸수록 진화합니다</h2>
+  <p class="section-note" data-i18n="evolve.note">스크롤해 보세요. 아래 임계값은 앱이 실제로 쓰는 값입니다.</p>
 
   <div class="panel" style="margin-top:1.1rem">
     <div class="evo-track" id="evo-track">
+      <!-- alt/이름은 종 이름 배열(NAMES)에서 언어별로 채워진다 — data-i18n 이 아니라
+           도감 이름 소스와 통일해 언어 전환 시 함께 갱신한다 -->
       <div class="evo-stage" data-stage="0">
         <img class="sprite" data-evo="4" alt="파이리" height="92">
         <div class="nm">파이리</div>
         <div class="id">No.004</div>
       </div>
-      <div class="evo-gate" data-gate="0">→<span class="tok">500M 토큰</span></div>
+      <div class="evo-gate" data-gate="0">→<span class="tok" data-i18n="evo.gateTok0">500M 토큰</span></div>
       <div class="evo-stage" data-stage="1">
         <img class="sprite" data-evo="5" alt="리자드" height="92">
         <div class="nm">리자드</div>
         <div class="id">No.005</div>
       </div>
-      <div class="evo-gate" data-gate="1">→<span class="tok">1B 토큰</span></div>
+      <div class="evo-gate" data-gate="1">→<span class="tok" data-i18n="evo.gateTok1">1B 토큰</span></div>
       <div class="evo-stage" data-stage="2">
         <img class="sprite" data-evo="6" alt="리자몽" height="92">
         <div class="nm">리자몽</div>
         <div class="id">No.006</div>
       </div>
     </div>
-    <p class="evo-grad">
+    <p class="evo-grad" data-i18n-html="evolve.grad">
       최종 진화 후 <b>1.5B 토큰</b>을 더 쓰면 도감에 <b>졸업</b>하고 새 알이 시작됩니다 —
       희귀 등급 3형태 라인의 졸업 총량은 <b>3B 토큰</b>입니다.
     </p>
@@ -819,8 +858,8 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
      ====================================================================== -->
 <section class="block wrap" id="dex">
   <p class="eyebrow">03 · Dex</p>
-  <h2>1세대 151종</h2>
-  <p class="section-note">잡지 않은 칸은 실루엣과 <code>???</code> 로만 보입니다. 잡은 칸에 마우스를 올리거나(모바일은 탭) 눌러 보세요.</p>
+  <h2 data-i18n="dex.h2">1세대 151종</h2>
+  <p class="section-note" data-i18n-html="dex.note">잡지 않은 칸은 실루엣과 <code>???</code> 로만 보입니다. 잡은 칸에 마우스를 올리거나(모바일은 탭) 눌러 보세요.</p>
 
   <div class="dex-shell" style="margin-top:1.1rem">
     <div class="dex-head">
@@ -829,7 +868,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     </div>
     <div class="dex-grid" id="dex-grid"></div>
   </div>
-  <p class="dex-caption">
+  <p class="dex-caption" data-i18n-html="dex.caption">
     이 도감은 <b>페이지 데모용 샘플</b>입니다 — 방문자의 실제 저장 파일이 아니고, 새로고침하면 초기화됩니다.
     위에서 부화시킨 포켓몬만 여기에 추가됩니다.
   </p>
@@ -840,23 +879,23 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
      ====================================================================== -->
 <section class="block wrap" id="install">
   <p class="eyebrow">04 · Item</p>
-  <h2>설치</h2>
+  <h2 data-i18n="install.h2">설치</h2>
 
   <details class="item-card" id="item-card" style="margin-top:1.1rem">
     <summary>
       <span class="icon" aria-hidden="true">📜</span>
       <span>
-        설치 스크립트
-        <span class="who">ITEM · 1개 보유</span>
+        <span data-i18n="install.itemSummary">설치 스크립트</span>
+        <span class="who" data-i18n="install.itemWho">ITEM · 1개 보유</span>
       </span>
-      <span class="go">사용하기</span>
+      <span class="go" data-i18n="install.itemGo">사용하기</span>
     </summary>
     <div class="item-body">
       <div class="code-row">
         <pre id="install-cmd">curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash</pre>
-        <button class="copy" id="copy-btn" type="button">복사</button>
+        <button class="copy" id="copy-btn" type="button" data-i18n="install.copy">복사</button>
       </div>
-      <p class="install-note">같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.</p>
+      <p class="install-note" data-i18n="install.note">같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.</p>
     </div>
   </details>
 </section>
@@ -869,51 +908,51 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
 
   <div class="info-grid">
     <div class="panel info">
-      <h3>요구사항</h3>
+      <h3 data-i18n="info.reqH3">요구사항</h3>
       <ul>
-        <li>macOS 14 이상</li>
-        <li>Apple Silicon, Intel 모두 지원</li>
+        <li data-i18n="info.reqLi1">macOS 14 이상</li>
+        <li data-i18n="info.reqLi2">Apple Silicon, Intel 모두 지원</li>
       </ul>
     </div>
 
     <div class="panel info">
-      <h3>원본과 함께 쓸 수 있습니다</h3>
+      <h3 data-i18n="info.coexistH3">원본과 함께 쓸 수 있습니다</h3>
       <ul>
-        <li>별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.</li>
-        <li>데이터도 분리되어 있어 서로 영향을 주지 않습니다.</li>
-        <li>지울 것도 없습니다 — 필요 없어지면 그냥 <code>/Applications</code>에서 앱을 삭제하면 됩니다.</li>
+        <li data-i18n="info.coexistLi1">별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.</li>
+        <li data-i18n="info.coexistLi2">데이터도 분리되어 있어 서로 영향을 주지 않습니다.</li>
+        <li data-i18n-html="info.coexistLi3">지울 것도 없습니다 — 필요 없어지면 그냥 <code>/Applications</code>에서 앱을 삭제하면 됩니다.</li>
       </ul>
     </div>
 
     <div class="panel info">
-      <h3>서명 안내</h3>
+      <h3 data-i18n="info.signH3">서명 안내</h3>
       <ul>
-        <li>자체 서명(self-signed) 앱이며 공증(notarize)되어 있지 않습니다.</li>
-        <li>위 설치 스크립트가 Gatekeeper 격리 속성(quarantine attribute)을 자동으로 해제합니다.</li>
+        <li data-i18n="info.signLi1">자체 서명(self-signed) 앱이며 공증(notarize)되어 있지 않습니다.</li>
+        <li data-i18n="info.signLi2">위 설치 스크립트가 Gatekeeper 격리 속성(quarantine attribute)을 자동으로 해제합니다.</li>
       </ul>
     </div>
 
     <div class="panel info">
-      <h3>지원 도구</h3>
+      <h3 data-i18n="info.toolsH3">지원 도구</h3>
       <ul class="chips">
         <li>Claude Code</li><li>Codex</li><li>Gemini CLI</li><li>Antigravity</li>
         <li>OpenCode</li><li>Hermes Agent</li><li>Cursor</li><li>Grok CLI</li>
       </ul>
-      <p>전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.</p>
+      <p data-i18n="info.toolsNote">전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.</p>
     </div>
   </div>
 </section>
 
 <footer class="wrap">
-  <div>
+  <div data-i18n-html="foot.credit">
     <a href="https://github.com/chattymin/PokeTokenBar">PokeTokenBar</a>(by chattymin, MIT License)를 기반으로 만들었습니다.
   </div>
   <div class="links">
     <a href="https://github.com/LuceteYang/PikaTokenBar">GitHub</a>
-    <a href="https://github.com/LuceteYang/PikaTokenBar/releases">릴리스</a>
-    <a href="https://github.com/LuceteYang/PikaTokenBar/issues">이슈</a>
+    <a href="https://github.com/LuceteYang/PikaTokenBar/releases" data-i18n="foot.releases">릴리스</a>
+    <a href="https://github.com/LuceteYang/PikaTokenBar/issues" data-i18n="foot.issues">이슈</a>
   </div>
-  <p class="disclaimer">
+  <p class="disclaimer" data-i18n-html="foot.disclaimer">
     비공식 팬 프로젝트입니다. Nintendo, Game Freak, Creatures, The Pokémon Company 와 아무 관련이 없으며
     승인받지 않았습니다. 포켓몬 및 관련 명칭·이미지는 각 권리자의 상표입니다.
     이 저장소와 이 페이지는 포켓몬 이미지를 포함하지 않습니다 — 스프라이트는
@@ -945,6 +984,221 @@ var BASES = [[1,45],[4,45],[7,45],[10,255],[13,255],[16,255],[19,255],[21,255],[
 var NATURES = ["노력","외로움","용감","고집","개구쟁이","대담","온순","무사태평","장난꾸러기","촐랑",
                "겁쟁이","성급","성실","명랑","천진난만","조심","의젓","냉정","수줍음","덜렁",
                "차분","얌전","건방","신중","변덕"];
+
+/* =========================================================================
+   다국어(i18n) — 151종 영어/일본어 이름과 25가지 성격의 영어/일본어 명칭.
+   빌드 시점에 PokéAPI(pokemon-species, nature)에서 한 번 수집해 그대로 박아
+   넣었다 — 페이지는 이 배열들 때문에 런타임에 API를 부르지 않는다.
+   NATURES 와 순서가 같다(같은 한국어 성격 이름끼리 매칭해서 만들었다). */
+var EN = ["Bulbasaur", "Ivysaur", "Venusaur", "Charmander", "Charmeleon", "Charizard", "Squirtle", "Wartortle", "Blastoise", "Caterpie", "Metapod", "Butterfree", "Weedle", "Kakuna", "Beedrill", "Pidgey", "Pidgeotto", "Pidgeot", "Rattata", "Raticate", "Spearow", "Fearow", "Ekans", "Arbok", "Pikachu", "Raichu", "Sandshrew", "Sandslash", "Nidoran♀", "Nidorina", "Nidoqueen", "Nidoran♂", "Nidorino", "Nidoking", "Clefairy", "Clefable", "Vulpix", "Ninetales", "Jigglypuff", "Wigglytuff", "Zubat", "Golbat", "Oddish", "Gloom", "Vileplume", "Paras", "Parasect", "Venonat", "Venomoth", "Diglett", "Dugtrio", "Meowth", "Persian", "Psyduck", "Golduck", "Mankey", "Primeape", "Growlithe", "Arcanine", "Poliwag", "Poliwhirl", "Poliwrath", "Abra", "Kadabra", "Alakazam", "Machop", "Machoke", "Machamp", "Bellsprout", "Weepinbell", "Victreebel", "Tentacool", "Tentacruel", "Geodude", "Graveler", "Golem", "Ponyta", "Rapidash", "Slowpoke", "Slowbro", "Magnemite", "Magneton", "Farfetch’d", "Doduo", "Dodrio", "Seel", "Dewgong", "Grimer", "Muk", "Shellder", "Cloyster", "Gastly", "Haunter", "Gengar", "Onix", "Drowzee", "Hypno", "Krabby", "Kingler", "Voltorb", "Electrode", "Exeggcute", "Exeggutor", "Cubone", "Marowak", "Hitmonlee", "Hitmonchan", "Lickitung", "Koffing", "Weezing", "Rhyhorn", "Rhydon", "Chansey", "Tangela", "Kangaskhan", "Horsea", "Seadra", "Goldeen", "Seaking", "Staryu", "Starmie", "Mr. Mime", "Scyther", "Jynx", "Electabuzz", "Magmar", "Pinsir", "Tauros", "Magikarp", "Gyarados", "Lapras", "Ditto", "Eevee", "Vaporeon", "Jolteon", "Flareon", "Porygon", "Omanyte", "Omastar", "Kabuto", "Kabutops", "Aerodactyl", "Snorlax", "Articuno", "Zapdos", "Moltres", "Dratini", "Dragonair", "Dragonite", "Mewtwo", "Mew"];
+var JA = ["フシギダネ", "フシギソウ", "フシギバナ", "ヒトカゲ", "リザード", "リザードン", "ゼニガメ", "カメール", "カメックス", "キャタピー", "トランセル", "バタフリー", "ビードル", "コクーン", "スピアー", "ポッポ", "ピジョン", "ピジョット", "コラッタ", "ラッタ", "オニスズメ", "オニドリル", "アーボ", "アーボック", "ピカチュウ", "ライチュウ", "サンド", "サンドパン", "ニドラン♀", "ニドリーナ", "ニドクイン", "ニドラン♂", "ニドリーノ", "ニドキング", "ピッピ", "ピクシー", "ロコン", "キュウコン", "プリン", "プクリン", "ズバット", "ゴルバット", "ナゾノクサ", "クサイハナ", "ラフレシア", "パラス", "パラセクト", "コンパン", "モルフォン", "ディグダ", "ダグトリオ", "ニャース", "ペルシアン", "コダック", "ゴルダック", "マンキー", "オコリザル", "ガーディ", "ウインディ", "ニョロモ", "ニョロゾ", "ニョロボン", "ケーシィ", "ユンゲラー", "フーディン", "ワンリキー", "ゴーリキー", "カイリキー", "マダツボミ", "ウツドン", "ウツボット", "メノクラゲ", "ドククラゲ", "イシツブテ", "ゴローン", "ゴローニャ", "ポニータ", "ギャロップ", "ヤドン", "ヤドラン", "コイル", "レアコイル", "カモネギ", "ドードー", "ドードリオ", "パウワウ", "ジュゴン", "ベトベター", "ベトベトン", "シェルダー", "パルシェン", "ゴース", "ゴースト", "ゲンガー", "イワーク", "スリープ", "スリーパー", "クラブ", "キングラー", "ビリリダマ", "マルマイン", "タマタマ", "ナッシー", "カラカラ", "ガラガラ", "サワムラー", "エビワラー", "ベロリンガ", "ドガース", "マタドガス", "サイホーン", "サイドン", "ラッキー", "モンジャラ", "ガルーラ", "タッツー", "シードラ", "トサキント", "アズマオウ", "ヒトデマン", "スターミー", "バリヤード", "ストライク", "ルージュラ", "エレブー", "ブーバー", "カイロス", "ケンタロス", "コイキング", "ギャラドス", "ラプラス", "メタモン", "イーブイ", "シャワーズ", "サンダース", "ブースター", "ポリゴン", "オムナイト", "オムスター", "カブト", "カブトプス", "プテラ", "カビゴン", "フリーザー", "サンダー", "ファイヤー", "ミニリュウ", "ハクリュー", "カイリュー", "ミュウツー", "ミュウ"];
+var SPECIES_NAMES = { ko: KO, en: EN, ja: JA };
+function speciesName(id) { return (SPECIES_NAMES[currentLang] || KO)[id - 1]; }
+
+var EN_NATURES = ["Hardy", "Lonely", "Brave", "Adamant", "Naughty", "Bold", "Docile", "Relaxed", "Impish", "Lax", "Timid", "Hasty", "Serious", "Jolly", "Naive", "Modest", "Mild", "Quiet", "Bashful", "Rash", "Calm", "Gentle", "Sassy", "Careful", "Quirky"];
+var JA_NATURES = ["がんばりや", "さみしがり", "ゆうかん", "いじっぱり", "やんちゃ", "ずぶとい", "すなお", "のんき", "わんぱく", "のうてんき", "おくびょう", "せっかち", "まじめ", "ようき", "むじゃき", "ひかえめ", "おっとり", "れいせい", "てれや", "うっかりや", "おだやか", "おとなしい", "なまいき", "しんちょう", "きまぐれ"];
+var NATURE_NAMES = { ko: NATURES, en: EN_NATURES, ja: JA_NATURES };
+
+var RARITY_NAMES = {
+  ko: ["커먼", "고급", "희귀", "전설"],
+  en: ["Common", "Uncommon", "Rare", "Legendary"],
+  ja: ["コモン", "アンコモン", "レア", "レジェンダリー"]
+};
+
+/* 화면 문구 사전 — data-i18n/-html/-attr-* 로 표시된 요소와 JS 가 만드는 문자열이
+   전부 여기서 나온다. {name} 같은 자리표시자는 실제 값으로 치환한다(TF 참고).
+   세 언어 모두 같은 키 집합을 가져야 한다 — ?i18ncheck=1 로 접속하면 어긋난
+   키를 콘솔에 찍어준다. */
+var I18N = {
+  ko: {
+    "meta.title": "PikaTokenBar — 코딩하면 포켓몬이 자랍니다",
+    "meta.desc": "AI 코딩에 쓴 토큰이 메뉴바 속 포켓몬 알을 부화시키는 macOS 메뉴바 앱. 1세대 151종.",
+    "hero.pikaAlt": "피카츄",
+    "hero.tagline": "코딩하면 포켓몬이 자랍니다",
+    "hero.ctaInstall": "지금 시작하기",
+    "hero.ctaGithub": "GitHub에서 보기",
+    "hatch.h2": "알이 깨지는 순간",
+    "hatch.note": "메뉴바에서 실제로 일어나는 일입니다 — 토큰을 쓰면 알이 흔들리고, 임계치를 넘으면 부화합니다.",
+    "hatch.usedLabel": "사용한 토큰",
+    "hatch.thresholdLabel": "부화 임계",
+    "hatch.rehatch": "다시 부화시키기",
+    "hatch.odds": "후보는 <b>진화 계보 시작점 78종</b>이고, 뽑기 가중치는 PokéAPI 의 실제 <code>capture_rate</code> 입니다 — <b>실제 앱과 같은 확률</b>이라 피카츄가 나올 확률은 <b>1.71%</b> 뿐입니다. 부화한 포켓몬은 아래 도감에 그대로 등록됩니다.",
+    "hatch.pending": "토큰이 쌓이는 중…",
+    "hatch.cracking": "금이 가고 있습니다…",
+    "hatch.doneNew": "{name} 부화! 도감에 등록되었습니다.",
+    "hatch.doneDup": "{name} 부화! 이미 도감에 있습니다.",
+    "evolve.h2": "토큰을 쓸수록 진화합니다",
+    "evolve.note": "스크롤해 보세요. 아래 임계값은 앱이 실제로 쓰는 값입니다.",
+    "evo.gateTok0": "500M 토큰",
+    "evo.gateTok1": "1B 토큰",
+    "evolve.grad": "최종 진화 후 <b>1.5B 토큰</b>을 더 쓰면 도감에 <b>졸업</b>하고 새 알이 시작됩니다 — 희귀 등급 3형태 라인의 졸업 총량은 <b>3B 토큰</b>입니다.",
+    "dex.h2": "1세대 151종",
+    "dex.note": "잡지 않은 칸은 실루엣과 <code>???</code> 로만 보입니다. 잡은 칸에 마우스를 올리거나(모바일은 탭) 눌러 보세요.",
+    "dex.caption": "이 도감은 <b>페이지 데모용 샘플</b>입니다 — 방문자의 실제 저장 파일이 아니고, 새로고침하면 초기화됩니다. 위에서 부화시킨 포켓몬만 여기에 추가됩니다.",
+    "dex.notCaught": "아직 잡지 않았습니다 — ???",
+    "card.nature": "성격",
+    "card.rarity": "희귀도",
+    "card.hatchDate": "부화일",
+    "install.h2": "설치",
+    "install.itemSummary": "설치 스크립트",
+    "install.itemWho": "ITEM · 1개 보유",
+    "install.itemGo": "사용하기",
+    "install.copy": "복사",
+    "install.copyDone": "복사됨",
+    "install.copyFail": "실패",
+    "install.copyToast": "Gotcha! 설치 명령을 복사했습니다!",
+    "install.note": "같은 명령으로 업데이트도 됩니다 — 설치와 업데이트가 하나의 명령입니다.",
+    "info.reqH3": "요구사항",
+    "info.reqLi1": "macOS 14 이상",
+    "info.reqLi2": "Apple Silicon, Intel 모두 지원",
+    "info.coexistH3": "원본과 함께 쓸 수 있습니다",
+    "info.coexistLi1": "별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.",
+    "info.coexistLi2": "데이터도 분리되어 있어 서로 영향을 주지 않습니다.",
+    "info.coexistLi3": "지울 것도 없습니다 — 필요 없어지면 그냥 <code>/Applications</code>에서 앱을 삭제하면 됩니다.",
+    "info.signH3": "서명 안내",
+    "info.signLi1": "자체 서명(self-signed) 앱이며 공증(notarize)되어 있지 않습니다.",
+    "info.signLi2": "위 설치 스크립트가 Gatekeeper 격리 속성(quarantine attribute)을 자동으로 해제합니다.",
+    "info.toolsH3": "지원 도구",
+    "info.toolsNote": "전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.",
+    "foot.credit": "<a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a>(by chattymin, MIT License)를 기반으로 만들었습니다.",
+    "foot.releases": "릴리스",
+    "foot.issues": "이슈",
+    "foot.disclaimer": "비공식 팬 프로젝트입니다. Nintendo, Game Freak, Creatures, The Pokémon Company 와 아무 관련이 없으며 승인받지 않았습니다. 포켓몬 및 관련 명칭·이미지는 각 권리자의 상표입니다. 이 저장소와 이 페이지는 포켓몬 이미지를 포함하지 않습니다 — 스프라이트는 <a href=\"https://github.com/PokeAPI/sprites\">PokéAPI</a> 에서 실행 시점에 불러옵니다.",
+    "shiny.on": "✨ 이로치 모드!",
+    "shiny.off": "이로치 모드 해제"
+  },
+  en: {
+    "meta.title": "PikaTokenBar — Code, and a Pokémon grows",
+    "meta.desc": "A macOS menu bar app where the tokens you spend coding with AI hatch a Pokémon egg right in your menu bar. All 151 Gen-1 species.",
+    "hero.pikaAlt": "Pikachu",
+    "hero.tagline": "Code, and a Pokémon grows.",
+    "hero.ctaInstall": "Get Started",
+    "hero.ctaGithub": "View on GitHub",
+    "hatch.h2": "The moment the egg cracks",
+    "hatch.note": "This is exactly what happens in the menu bar — spend tokens and the egg shakes; cross the threshold and it hatches.",
+    "hatch.usedLabel": "Tokens used",
+    "hatch.thresholdLabel": "Hatch threshold",
+    "hatch.rehatch": "Hatch again",
+    "hatch.odds": "The pool is the <b>78 base species that start an evolution line</b>, and the draw is weighted by PokéAPI’s real <code>capture_rate</code> — <b>the exact same odds as the app</b>, so the chance of getting Pikachu is only <b>1.71%</b>. Whatever hatches gets added straight to the Pokédex below.",
+    "hatch.pending": "Accumulating tokens…",
+    "hatch.cracking": "Cracks are spreading…",
+    "hatch.doneNew": "{name} hatched! Added to the Pokédex.",
+    "hatch.doneDup": "{name} hatched! Already in the Pokédex.",
+    "evolve.h2": "The more tokens you spend, the more it evolves",
+    "evolve.note": "Try scrolling — the thresholds below are the exact values the app uses.",
+    "evo.gateTok0": "500M tokens",
+    "evo.gateTok1": "1B tokens",
+    "evolve.grad": "Spend <b>1.5B more tokens</b> after the final evolution and it <b>graduates</b> into the Pokédex, starting a fresh egg — a rare-tier 3-stage line graduates after <b>3B tokens</b> total.",
+    "dex.h2": "All 151 Gen-1 species",
+    "dex.note": "Uncaught slots show only a silhouette and <code>???</code>. Hover a caught slot (tap on mobile) to see its details.",
+    "dex.caption": "This Pokédex is a <b>demo sample built for this page</b> — it isn’t a visitor’s real save data, and it resets on refresh. Only Pokémon hatched above get added here.",
+    "dex.notCaught": "Not caught yet — ???",
+    "card.nature": "Nature",
+    "card.rarity": "Rarity",
+    "card.hatchDate": "Hatch date",
+    "install.h2": "Install",
+    "install.itemSummary": "Install script",
+    "install.itemWho": "ITEM · Have 1",
+    "install.itemGo": "Use",
+    "install.copy": "Copy",
+    "install.copyDone": "Copied",
+    "install.copyFail": "Failed",
+    "install.copyToast": "Gotcha! Install command copied!",
+    "install.note": "The same command updates it too — install and update are the same command.",
+    "info.reqH3": "Requirements",
+    "info.reqLi1": "macOS 14 or later",
+    "info.reqLi2": "Supports both Apple Silicon and Intel",
+    "info.coexistH3": "Runs alongside the original",
+    "info.coexistLi1": "Installs as a separate app — runs side-by-side with the original PokeTokenBar.",
+    "info.coexistLi2": "Its data is separate too, so neither one affects the other.",
+    "info.coexistLi3": "Nothing to clean up, either — once you don’t need it, just delete the app from <code>/Applications</code>.",
+    "info.signH3": "Signing note",
+    "info.signLi1": "This is a self-signed app and is not notarized.",
+    "info.signLi2": "The install script above automatically clears the Gatekeeper quarantine attribute.",
+    "info.toolsH3": "Supported tools",
+    "info.toolsNote": "All read locally — no external CLI required.",
+    "foot.credit": "Built on <a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a> (by chattymin, MIT License).",
+    "foot.releases": "Releases",
+    "foot.issues": "Issues",
+    "foot.disclaimer": "This is an unofficial fan project. It has no affiliation with, and is not endorsed by, Nintendo, Game Freak, Creatures, or The Pokémon Company. Pokémon and related names/images are trademarks of their respective rights holders. This repository and this page contain no Pokémon images — sprites are loaded at runtime from <a href=\"https://github.com/PokeAPI/sprites\">PokéAPI</a>.",
+    "shiny.on": "✨ Shiny mode!",
+    "shiny.off": "Shiny mode off"
+  },
+  ja: {
+    "meta.title": "PikaTokenBar — コーディングでポケモンが育つ",
+    "meta.desc": "AIコーディングで使ったトークンでメニューバーのポケモンのタマゴが孵化する、macOS メニューバーアプリ。第1世代151種対応。",
+    "hero.pikaAlt": "ピカチュウ",
+    "hero.tagline": "コーディングでポケモンが育つ。",
+    "hero.ctaInstall": "今すぐ始める",
+    "hero.ctaGithub": "GitHubで見る",
+    "hatch.h2": "タマゴが割れる瞬間",
+    "hatch.note": "メニューバーで実際に起きることそのままです — トークンを使うとタマゴが震え、しきい値を超えると孵化します。",
+    "hatch.usedLabel": "使用トークン",
+    "hatch.thresholdLabel": "孵化しきい値",
+    "hatch.rehatch": "もう一度孵化させる",
+    "hatch.odds": "候補は<b>進化ラインの起点となる78種</b>で、抽選の重みは PokéAPI の実際の <code>capture_rate</code> です — <b>アプリと同じ確率</b>なので、ピカチュウが出る確率はわずか<b>1.71%</b>。孵化したポケモンはそのまま下の図鑑に登録されます。",
+    "hatch.pending": "トークンが積み重なっています…",
+    "hatch.cracking": "ヒビが広がっています…",
+    "hatch.doneNew": "{name}が孵化！ 図鑑に登録されました。",
+    "hatch.doneDup": "{name}が孵化！ すでに図鑑にいます。",
+    "evolve.h2": "トークンを使うほど進化します",
+    "evolve.note": "スクロールしてみてください。下のしきい値はアプリが実際に使う値です。",
+    "evo.gateTok0": "500Mトークン",
+    "evo.gateTok1": "1Bトークン",
+    "evolve.grad": "最終進化後さらに<b>1.5Bトークン</b>を使うと図鑑に<b>卒業</b>し、新しいタマゴが始まります — レア等級の3段階進化ラインの卒業総量は<b>3Bトークン</b>です。",
+    "dex.h2": "第1世代151種",
+    "dex.note": "未捕獲のマスはシルエットと <code>???</code> だけが表示されます。捕獲済みのマスにマウスを乗せる（モバイルはタップ）と詳細が見られます。",
+    "dex.caption": "この図鑑は<b>このページ用のデモサンプル</b>です — 訪問者本人の実際のセーブデータではなく、リロードすると初期化されます。上で孵化させたポケモンだけがここに追加されます。",
+    "dex.notCaught": "まだ捕獲していません — ???",
+    "card.nature": "せいかく",
+    "card.rarity": "レア度",
+    "card.hatchDate": "孵化日",
+    "install.h2": "インストール",
+    "install.itemSummary": "インストールスクリプト",
+    "install.itemWho": "ITEM · 所持数1",
+    "install.itemGo": "使う",
+    "install.copy": "コピー",
+    "install.copyDone": "コピー済み",
+    "install.copyFail": "失敗",
+    "install.copyToast": "Gotcha！ インストールコマンドをコピーしました！",
+    "install.note": "同じコマンドで更新もできます — インストールと更新は同じコマンドです。",
+    "info.reqH3": "必要環境",
+    "info.reqLi1": "macOS 14以降",
+    "info.reqLi2": "Apple SiliconとIntelの両方に対応",
+    "info.coexistH3": "オリジナルと併用できます",
+    "info.coexistLi1": "別のアプリとしてインストールされます — オリジナルのPokeTokenBarと並行して起動できます。",
+    "info.coexistLi2": "データも分離されているため、互いに影響しません。",
+    "info.coexistLi3": "後片付けも不要です — 不要になったら <code>/Applications</code> からアプリを削除するだけです。",
+    "info.signH3": "署名について",
+    "info.signLi1": "自己署名（self-signed）アプリであり、Notarize（公証）されていません。",
+    "info.signLi2": "上記のインストールスクリプトが Gatekeeper の隔離属性（quarantine attribute）を自動で解除します。",
+    "info.toolsH3": "対応ツール",
+    "info.toolsNote": "すべてローカルで読み取り、外部CLIは不要です。",
+    "foot.credit": "<a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a>（by chattymin, MIT License）をベースに作成しました。",
+    "foot.releases": "リリース",
+    "foot.issues": "Issues",
+    "foot.disclaimer": "これは非公式のファンプロジェクトです。Nintendo、Game Freak、Creatures、The Pokémon Company とは一切関係がなく、承認も受けていません。ポケモンおよび関連する名称・画像は各権利者の商標です。このリポジトリおよびこのページはポケモンの画像を含んでいません — スプライトは実行時に <a href=\"https://github.com/PokeAPI/sprites\">PokéAPI</a> から読み込まれます。",
+    "shiny.on": "✨ 色違いモード！",
+    "shiny.off": "色違いモード解除"
+  }
+};
+
+var currentLang = "ko";
+/* dict[key] 를 반환한다 — 없으면 ko 로 폴백하고, ko 에도 없으면 키 자체를 돌려준다 */
+function T(key) {
+  var dict = I18N[currentLang] || I18N.ko;
+  if (key in dict) return dict[key];
+  if (key in I18N.ko) return I18N.ko[key];
+  return key;
+}
+/* {var} 형태의 자리표시자를 치환한 T() — 이름처럼 언어마다 어순이 달라지는 값에 쓴다 */
+function TF(key, vars) {
+  var s = T(key);
+  Object.keys(vars || {}).forEach(function (k) {
+    s = s.split("{" + k + "}").join(vars[k]);
+  });
+  return s;
+}
 
 var SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/";
 var HATCH_THRESHOLD = 5000000;   // 앱의 PokemonBalance.eggHatchThreshold
@@ -1068,7 +1322,7 @@ function markCaught(id, animate) {
   caughtCount++;
   var cell = cells[id];
   cell.classList.add("caught");
-  cell.setAttribute("aria-label", "No." + pad3(id) + " " + KO[id - 1]);
+  cell.setAttribute("aria-label", "No." + pad3(id) + " " + speciesName(id));
   if (animate && !reduceMotion) {
     cell.classList.remove("just");
     void cell.offsetWidth;
@@ -1081,28 +1335,29 @@ function markCaught(id, animate) {
 /* 상세 카드 — 잡은 칸에만 뜬다 */
 var card = document.getElementById("dex-card");
 var STAR = ["★☆☆☆", "★★☆☆", "★★★☆", "★★★★"];
-var RARITY_KO = ["커먼", "고급", "희귀", "전설"];
+var openCardId = null;   // 지금 카드에 떠 있는 도감 번호(언어 전환 시 다시 그리려고 기억해 둔다)
 
 function demoFields(id) {
   var r = rng(id * 2654435761 + 7);
-  var nature = NATURES[Math.floor(r() * NATURES.length)];
+  var natureIdx = Math.floor(r() * NATURES.length);   // 성격은 인덱스로 갖고 있다가 표시 시점에 언어별 이름으로 바꾼다
   /* 부화일 — 고정 구간(2026-01-01 ~ 2026-08-01)에서 결정론적으로 고른다.
      오늘 날짜를 쓰지 않는 건 "방문자의 실제 기록"처럼 보이지 않게 하려는 것. */
   var start = Date.UTC(2026, 0, 1), end = Date.UTC(2026, 7, 1);
   var d = new Date(start + Math.floor(r() * (end - start)));
   var date = d.getUTCFullYear() + "-" + pad2(d.getUTCMonth() + 1) + "-" + pad2(d.getUTCDate());
-  return { nature: nature, date: date, rarity: RAR[id - 1] };
+  return { natureIdx: natureIdx, date: date, rarity: RAR[id - 1] };
 }
 
 function showCard(id, rect) {
+  openCardId = id;
   var f = demoFields(id);
   card.innerHTML =
-    '<div class="cn">' + KO[id - 1] + '</div>' +
+    '<div class="cn">' + speciesName(id) + '</div>' +
     '<div class="cid">No.' + pad3(id) + '</div>' +
     '<dl>' +
-      '<dt>성격</dt><dd>' + f.nature + '</dd>' +
-      '<dt>희귀도</dt><dd><span class="rank">' + STAR[f.rarity] + '</span> ' + RARITY_KO[f.rarity] + '</dd>' +
-      '<dt>부화일</dt><dd>' + f.date + '</dd>' +
+      '<dt>' + T("card.nature") + '</dt><dd>' + NATURE_NAMES[currentLang][f.natureIdx] + '</dd>' +
+      '<dt>' + T("card.rarity") + '</dt><dd><span class="rank">' + STAR[f.rarity] + '</span> ' + RARITY_NAMES[currentLang][f.rarity] + '</dd>' +
+      '<dt>' + T("card.hatchDate") + '</dt><dd>' + f.date + '</dd>' +
     '</dl>';
   card.classList.remove("hidden");
 
@@ -1117,6 +1372,7 @@ function showCard(id, rect) {
 }
 function hideCard() {
   card.classList.add("hidden");
+  openCardId = null;
   var a = grid.querySelector(".cell.active");
   if (a) a.classList.remove("active");
 }
@@ -1135,7 +1391,7 @@ grid.addEventListener("click", function (e) {
   var cell = e.target.closest(".cell");
   if (!cell) return;
   var id = +cell.getAttribute("data-id");
-  if (!caught[id]) { toast("아직 잡지 않았습니다 — ???"); return; }
+  if (!caught[id]) { toast(T("dex.notCaught")); return; }
   if (cell.classList.contains("active")) { hideCard(); return; }
   hideCard();
   cell.classList.add("active");
@@ -1182,6 +1438,20 @@ var rehatchBtn = document.getElementById("rehatch");
 
 var hatching = false;
 var rafId = null;
+var lastHatchedId = null;                  // 화면에 보이는 부화 결과(언어 전환 시 다시 그리려고 기억)
+var hatchStatusState = { type: "pending" }; // hatch-status 의 "지금 상태" — 언어 전환 시 이 상태 그대로 다시 그린다
+
+/* hatch-status 를 지금 상태(hatchStatusState)와 현재 언어로 렌더링한다.
+   범용 data-i18n 루프에 맡기지 않는 이유: 부화가 끝난 뒤에도 언어를 바꾸면
+   "쌓이는 중…" 문구로 되돌아가 버리기 때문이다 — 상태를 직접 들고 있어야 한다. */
+function renderHatchStatus() {
+  var s = hatchStatusState;
+  if (!s) return;
+  if (s.type === "pending") statusEl.textContent = T("hatch.pending");
+  else if (s.type === "cracking") statusEl.textContent = T("hatch.cracking");
+  else if (s.type === "doneNew") statusEl.textContent = TF("hatch.doneNew", { name: speciesName(s.id) });
+  else if (s.type === "doneDup") statusEl.textContent = TF("hatch.doneDup", { name: speciesName(s.id) });
+}
 
 function resetHatch() {
   cancelAnimationFrame(rafId);
@@ -1198,9 +1468,9 @@ function finishHatch() {
   var id = drawSpecies();
   var rar = RAR[id - 1];
   setAnim(revImg, id);
-  revImg.alt = KO[id - 1];
-  revName.textContent = KO[id - 1];
-  revMeta.textContent = "No." + pad3(id) + " · " + STAR[rar] + " " + RARITY_KO[rar];
+  revImg.alt = speciesName(id);
+  revName.textContent = speciesName(id);
+  revMeta.textContent = "No." + pad3(id) + " · " + STAR[rar] + " " + RARITY_NAMES[currentLang][rar];
 
   eggEl.classList.add("hidden");
   revealEl.classList.remove("hidden");
@@ -1211,7 +1481,9 @@ function finishHatch() {
   }
 
   var isNew = markCaught(id, true);
-  statusEl.textContent = KO[id - 1] + " 부화! " + (isNew ? "도감에 등록되었습니다." : "이미 도감에 있습니다.");
+  lastHatchedId = id;
+  hatchStatusState = { type: isNew ? "doneNew" : "doneDup", id: id };
+  renderHatchStatus();
   hatching = false;
   rehatchBtn.disabled = false;
 }
@@ -1230,7 +1502,8 @@ function runHatch() {
     return;
   }
 
-  statusEl.textContent = "토큰이 쌓이는 중…";
+  hatchStatusState = { type: "pending" };
+  renderHatchStatus();
   var DURATION = 2600;
   var t0 = performance.now();
   var announcedCrack = false;   // aria-live 영역이라 같은 문장을 매 프레임 다시 쓰면 안 된다
@@ -1245,7 +1518,8 @@ function runHatch() {
     if (p > 0.72 && !announcedCrack) {
       announcedCrack = true;
       eggEl.classList.add("cracked");
-      statusEl.textContent = "금이 가고 있습니다…";
+      hatchStatusState = { type: "cracking" };
+      renderHatchStatus();
     }
 
     if (p < 1) { rafId = requestAnimationFrame(step); return; }
@@ -1336,9 +1610,9 @@ document.getElementById("copy-btn").addEventListener("click", function () {
   var text = document.getElementById("install-cmd").textContent;
   var btn = this;
   function done(ok) {
-    btn.textContent = ok ? "복사됨" : "실패";
-    setTimeout(function () { btn.textContent = "복사"; }, 1600);
-    if (ok) toast("Gotcha! 설치 명령을 복사했습니다!", true);
+    btn.textContent = ok ? T("install.copyDone") : T("install.copyFail");
+    setTimeout(function () { btn.textContent = T("install.copy"); }, 1600);
+    if (ok) toast(T("install.copyToast"), true);
   }
   /* clipboard API 가 "있는지"와 "성공하는지"는 다른 문제다 — 권한 거부로 reject 되면
      구식 경로로 다시 시도한다(존재 여부만 보고 실패로 끝내면 안 된다). */
@@ -1378,11 +1652,116 @@ function toggleShiny() {
       badge.textContent = "✨ SHINY MODE";
       document.body.appendChild(badge);
     }
-    toast("✨ 이로치 모드!");
+    toast(T("shiny.on"));
   } else if (badge) {
     badge.remove();
-    toast("이로치 모드 해제");
+    toast(T("shiny.off"));
   }
+}
+
+/* =========================================================================
+   언어 전환 — 사전을 문서에 적용하고, 사전 밖(포켓몬 이름·성격·희귀도 배열)에서
+   오는 값과 "지금 상태가 있는" UI(부화 상태, 열린 상세 카드 등)를 다시 그린다.
+   ========================================================================= */
+function applyLang(lang) {
+  if (!I18N[lang]) lang = "ko";
+  currentLang = lang;
+  var dict = I18N[lang];
+  document.documentElement.lang = lang;
+
+  document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    var v = dict[el.getAttribute("data-i18n")];
+    if (v != null) el.textContent = v;
+  });
+  document.querySelectorAll("[data-i18n-html]").forEach(function (el) {
+    var v = dict[el.getAttribute("data-i18n-html")];
+    if (v != null) el.innerHTML = v;
+  });
+  document.querySelectorAll("[data-i18n-attr-content]").forEach(function (el) {
+    var v = dict[el.getAttribute("data-i18n-attr-content")];
+    if (v != null) el.setAttribute("content", v);
+  });
+  document.querySelectorAll("[data-i18n-attr-alt]").forEach(function (el) {
+    var v = dict[el.getAttribute("data-i18n-attr-alt")];
+    if (v != null) el.setAttribute("alt", v);
+  });
+  document.querySelectorAll(".lang-btn").forEach(function (b) {
+    b.classList.toggle("active", b.getAttribute("data-lang") === lang);
+  });
+
+  refreshDynamic();
+  try { localStorage.setItem("ptkb-lang", lang); } catch (e) {}
+}
+
+/* 사전 밖에서 오는 값(포켓몬 이름 등)과, "지금 상태"가 있어서 범용 루프로는
+   못 덮어쓰는 UI를 다시 그린다. */
+function refreshDynamic() {
+  evoStages.forEach(function (el) {
+    var img = el.querySelector("img");
+    var id = +img.getAttribute("data-evo");
+    var name = speciesName(id);
+    img.alt = name;
+    el.querySelector(".nm").textContent = name;
+  });
+
+  Object.keys(caught).forEach(function (idStr) {
+    var id = +idStr;
+    if (cells[id]) cells[id].setAttribute("aria-label", "No." + pad3(id) + " " + speciesName(id));
+  });
+
+  if (openCardId != null && cells[openCardId]) {
+    showCard(openCardId, cells[openCardId].getBoundingClientRect());
+  }
+
+  if (lastHatchedId != null) {
+    var id = lastHatchedId, rar = RAR[id - 1], name = speciesName(id);
+    revImg.alt = name;
+    revName.textContent = name;
+    revMeta.textContent = "No." + pad3(id) + " · " + STAR[rar] + " " + RARITY_NAMES[currentLang][rar];
+  }
+
+  renderHatchStatus();
+}
+
+/* 언어 감지: localStorage 에 저장된 선택 → navigator.language → en.
+   "ko"로 시작하거나 "ja"로 시작하는 경우만 특별 취급하고, 그 외는 전부 en 으로 떨어진다. */
+(function initLang() {
+  var stored = null;
+  try { stored = localStorage.getItem("ptkb-lang"); } catch (e) {}
+  if (!stored) {
+    var nav = (navigator.language || "en").toLowerCase();
+    stored = nav.indexOf("ko") === 0 ? "ko" : nav.indexOf("ja") === 0 ? "ja" : "en";
+  }
+  applyLang(stored);
+})();
+
+document.querySelectorAll(".lang-btn").forEach(function (b) {
+  b.addEventListener("click", function () { applyLang(b.getAttribute("data-lang")); });
+});
+
+/* =========================================================================
+   i18n 키 정합성 자가진단 — ?i18ncheck=1 로 접속하면 ko/en/ja 세 사전의 키
+   집합을 비교해서, 한쪽에만 있고 다른 쪽엔 없는 키를 콘솔에 찍는다.
+   운영 경로에는 영향이 없는 개발 전용 분기다.
+   ========================================================================= */
+if (location.search.indexOf("i18ncheck=1") !== -1) {
+  (function () {
+    var langs = Object.keys(I18N);
+    var allKeys = {};
+    langs.forEach(function (l) {
+      Object.keys(I18N[l]).forEach(function (k) { allKeys[k] = true; });
+    });
+    var missing = 0;
+    Object.keys(allKeys).forEach(function (k) {
+      langs.forEach(function (l) {
+        if (!(k in I18N[l])) {
+          console.error("[i18ncheck] missing key:", JSON.stringify(k), "in lang:", l);
+          missing++;
+        }
+      });
+    });
+    console.log("[i18ncheck] langs:", langs.join(", "), "· total keys:", Object.keys(allKeys).length, "· missing:", missing);
+  })();
 }
 </script>
 </body>
