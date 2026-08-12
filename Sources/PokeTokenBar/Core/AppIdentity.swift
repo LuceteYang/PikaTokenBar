@@ -27,6 +27,16 @@ enum AppIdentity {
     /// 다운로드로 유도하면 1세대 패치가 없는 빌드로 갈아타게 된다.
     static let releasesRepo = "LuceteYang/PikaTokenBar"
 
+    /// 이 포크의 Homebrew cask 토큰. tap 은 `LuceteYang/homebrew-tap`,
+    /// 설치는 `brew install --cask LuceteYang/tap/pika-token-bar`, 갱신은 `brew upgrade --cask <이것>`.
+    ///
+    /// **원본 토큰(`poke-token-bar`)을 여기 넣으면 안 된다.** 이 값이 소스에 인라인으로 박혀 있어
+    /// 포크 때 같이 안 바뀐 것이 ba041b8 에서 brew 분기를 통째로 들어낸 원인이다 — 원본이 brew 로
+    /// 설치된 Mac 에서 `brew list --cask poke-token-bar` 가 **원본의** cask 를 보고 성공해,
+    /// 포크가 자신을 종료한 뒤 원본 번들(`/Applications/PokeTokenBar.app`)을 덮어쓰고
+    /// 정작 자신은 영영 갱신되지 않았다. 정체성 문자열은 예외 없이 이 파일에서만 나온다.
+    static let brewCaskToken = "pika-token-bar"
+
     /// 앱 전용 저장 디렉토리. 없으면 만든다.
     static var supportDirectory: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

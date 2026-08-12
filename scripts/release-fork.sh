@@ -13,6 +13,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 REPO="LuceteYang/PikaTokenBar"
+TAP_REPO="LuceteYang/homebrew-tap"
+CASK_PATH="Casks/pika-token-bar.rb"
 APP_NAME="PikaTokenBar"
 # 내 self-signed 인증서의 leaf SHA-1. 인증서를 재생성하면 이 값을 갱신해야 한다.
 EXPECTED_LEAF="AD9CB282F034186623289577B6E95B3F4030827E"
@@ -282,6 +284,37 @@ else
 fi
 rm -f "$NOTES"
 
+echo "▶ 8/8 Homebrew cask 갱신 ($TAP_REPO)"
+# cask 를 손으로 갱신하면 언젠가 잊는다 — 그러면 brew 로 설치한 팀원만 조용히 옛 버전에 남는다.
+# 릴리스 자산을 실제로 받아 sha256 을 계산한다(로컬 zip 을 믿지 않는다 — GitHub 이 재인코딩하거나
+# 업로드가 잘렸으면 로컬과 다르고, 팀원이 받는 건 GitHub 쪽이다).
+CASK_TMP=$(mktemp -d); trap 'rm -rf "$CASK_TMP"' EXIT
+ASSET_URL="https://github.com/$REPO/releases/download/v$VERSION/$APP_NAME.zip"
+if curl -fsSL "$ASSET_URL" -o "$CASK_TMP/app.zip"; then
+  ASSET_SHA=$(shasum -a 256 "$CASK_TMP/app.zip" | awk '{print $1}')
+  if git clone -q "https://github.com/$TAP_REPO.git" "$CASK_TMP/tap" 2>/dev/null; then
+    CASK_FILE="$CASK_TMP/tap/$CASK_PATH"
+    perl -pi -e "s/^  version \"[^\"]*\"/  version \"$VERSION\"/" "$CASK_FILE"
+    perl -pi -e "s/^  sha256 \"[^\"]*\"/  sha256 \"$ASSET_SHA\"/" "$CASK_FILE"
+    # 실제로 바뀌었는지 확인 — perl 이 조용히 아무것도 안 바꿨을 수 있다.
+    if /usr/bin/grep -q "version \"$VERSION\"" "$CASK_FILE" && /usr/bin/grep -q "sha256 \"$ASSET_SHA\"" "$CASK_FILE"; then
+      ( cd "$CASK_TMP/tap" \
+        && git add -A \
+        && git commit -q -m "cask: pika-token-bar $VERSION" \
+        && git push -q origin HEAD ) \
+        && echo "  ✓ cask $VERSION (sha256 ${ASSET_SHA:0:12}…)" \
+        || echo "  ⚠ cask 커밋·push 실패 — 수동: $TAP_REPO 의 $CASK_PATH 를 version $VERSION / sha256 $ASSET_SHA 로 갱신"
+    else
+      echo "  ⚠ cask 파일 치환 실패(형식이 바뀌었을 수 있음) — 수동으로 version $VERSION / sha256 $ASSET_SHA 갱신"
+    fi
+  else
+    echo "  ⚠ $TAP_REPO 클론 실패 — 수동으로 version $VERSION / sha256 $ASSET_SHA 갱신"
+  fi
+else
+  echo "  ⚠ 릴리스 자산을 받지 못해 cask 를 갱신하지 못했습니다 — 수동 확인: $ASSET_URL"
+fi
+
 echo "✓ v$VERSION 배포 완료."
 echo "  공유: https://github.com/$REPO/releases/latest"
-echo "  팀원 명령: curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash"
+echo "  팀원 명령(brew): brew install --cask LuceteYang/tap/pika-token-bar"
+echo "  팀원 명령(curl): curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash"
