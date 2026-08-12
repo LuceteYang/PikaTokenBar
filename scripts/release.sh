@@ -11,6 +11,14 @@
 #       6)GitHub Release 7)Homebrew cask 8)Pages 재빌드. 각 단계 실패 시 즉시 중단(set -e).
 #
 set -euo pipefail
+
+# 이 포크에서는 실행 금지 — 이 스크립트는 원작자 저장소(chattymin)와 원작자 서명 인증서로
+# 배포하도록 고정돼 있다. 실수로 실행되면 버전 범프가 커밋·push 되고 남의 저장소에 릴리스를
+# 시도한다. 문서 경고로는 언젠가 실행되므로 여기서 막는다. 포크 배포는 release-fork.sh 를 쓴다.
+echo "✗ 이 포크(PikaTokenBar)에서는 release.sh 를 쓰지 않습니다 → ./scripts/release-fork.sh <version>" >&2
+echo "  (upstream 원본 릴리스 절차를 참고할 때만 이 파일을 읽으세요.)" >&2
+exit 1
+
 cd "$(dirname "$0")/.."
 
 REPO="chattymin/PokeTokenBar"
