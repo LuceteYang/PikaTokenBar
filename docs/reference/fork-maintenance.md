@@ -28,7 +28,7 @@ read_when:
 
 배포 후 공유할 것은 링크 하나다 — 설치와 업데이트가 같은 명령이다:
 
-    curl -fsSL https://github.com/LuceteYang/PokeTokenBar/releases/latest/download/install.sh | bash
+    curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 
 `install.sh` 는 실행 중이면 로그인 에이전트를 먼저 내리고(bootout) 프로세스를 정리한 뒤 새 버전을
 풀어 quarantine 을 해제한다(`xattr -dr com.apple.quarantine`) — 자체서명 앱이라 공증이 없고, Gatekeeper

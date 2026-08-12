@@ -25,7 +25,7 @@ enum AppIdentity {
 
     /// 업데이트 확인 대상. **원본이 아니라 내 포크다** — 원본 릴리스가 이 앱 사용자를 원본
     /// 다운로드로 유도하면 1세대 패치가 없는 빌드로 갈아타게 된다.
-    static let releasesRepo = "LuceteYang/PokeTokenBar"
+    static let releasesRepo = "LuceteYang/PikaTokenBar"
 
     /// 앱 전용 저장 디렉토리. 없으면 만든다.
     static var supportDirectory: URL {

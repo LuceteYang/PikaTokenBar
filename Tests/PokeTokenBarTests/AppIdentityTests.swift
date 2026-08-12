@@ -19,7 +19,7 @@ final class AppIdentityTests: XCTestCase {
         XCTAssertEqual(AppIdentity.logFileName, "PikaTokenBar.log")
         XCTAssertEqual(AppIdentity.loginAgentLabel, "sh.otis.pikatokenbar.login")
         XCTAssertEqual(AppIdentity.loginAgentPlistName, "sh.otis.pikatokenbar.login.plist")
-        XCTAssertEqual(AppIdentity.releasesRepo, "LuceteYang/PokeTokenBar")
+        XCTAssertEqual(AppIdentity.releasesRepo, "LuceteYang/PikaTokenBar")
     }
 
     func testLoginItemUsesForkIdentity() {

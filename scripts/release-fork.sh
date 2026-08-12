@@ -12,7 +12,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-REPO="LuceteYang/PokeTokenBar"
+REPO="LuceteYang/PikaTokenBar"
 APP_NAME="PikaTokenBar"
 # 내 self-signed 인증서의 leaf SHA-1. 인증서를 재생성하면 이 값을 갱신해야 한다.
 EXPECTED_LEAF="AD9CB282F034186623289577B6E95B3F4030827E"

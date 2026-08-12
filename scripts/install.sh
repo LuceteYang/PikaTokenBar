@@ -2,12 +2,12 @@
 # PikaTokenBar 설치/업데이트 — 최신 릴리스를 받아 /Applications 에 설치하고 실행한다.
 # 설치와 업데이트가 같은 명령이다(GitHub 의 latest/download 가 항상 최신을 가리킨다).
 #
-#   curl -fsSL https://github.com/LuceteYang/PokeTokenBar/releases/latest/download/install.sh | bash
+#   curl -fsSL https://github.com/LuceteYang/PikaTokenBar/releases/latest/download/install.sh | bash
 set -euo pipefail
 
 APP_NAME="PikaTokenBar"
 AGENT_LABEL="sh.otis.pikatokenbar.login"
-REPO="LuceteYang/PokeTokenBar"
+REPO="LuceteYang/PikaTokenBar"
 ZIP_URL="https://github.com/$REPO/releases/latest/download/$APP_NAME.zip"
 DEST="/Applications/$APP_NAME.app"
 TMP=$(mktemp -d)
