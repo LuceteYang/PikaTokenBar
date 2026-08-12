@@ -142,8 +142,12 @@ actor PokeAPIClient: PokeProviding {
             start += batchSize
         }
         // 네트워크가 많이 깨졌으면 빈약한 인덱스를 영속하지 않고 다음 세션 재시도.
-        guard Self.isRESTIndexUsable(attempted: attempted, failed: failed) else {
-            AppLog.write("base index: REST build incomplete (\(failed)/\(attempted) failed) — not cached, will retry next session")
+        guard Self.shouldPersistRESTIndex(attempted: attempted, failed: failed, foundCount: bases.count) else {
+            if attempted > 0, failed == 0 {
+                AppLog.write("base index: REST sweep succeeded but found 0 bases — not cached, will retry next session")
+            } else {
+                AppLog.write("base index: REST build incomplete (\(failed)/\(attempted) failed) — not cached, will retry next session")
+            }
             return
         }
         bases.sort { $0.id < $1.id }
@@ -162,6 +166,16 @@ actor PokeAPIClient: PokeProviding {
     nonisolated static func isRESTIndexUsable(attempted: Int, failed: Int) -> Bool {
         guard attempted > 0 else { return false }
         return failed * 10 <= attempted   // 실패율 10% 이하만 영속
+    }
+
+    /// 실패율 판정을 통과했더라도 그대로 캐싱해선 안 되는 경우가 하나 더 있다 — 요청이 전부
+    /// 성공했는데(failed == 0) base 를 하나도 못 찾은 경우다(PokéAPI 스키마 변경으로
+    /// `evolves_from_species` 파싱이 깨지거나, `hasAnimatedSprite` 설정 오류 등). 그때 실패율은
+    /// 0%라 `isRESTIndexUsable` 만으로는 통과해버리고, 빈 배열을 캐싱하면 `baseIndexCache != nil`
+    /// 이 되어 이번 세션 내내 재시도가 막힌다(REST 자가치유 자신도, GraphQL 실패 경로도).
+    /// 그래서 "실패율" 과 "뭔가는 찾았는가" 를 함께 봐야 영속 여부가 결정된다.
+    nonisolated static func shouldPersistRESTIndex(attempted: Int, failed: Int, foundCount: Int) -> Bool {
+        isRESTIndexUsable(attempted: attempted, failed: failed) && foundCount > 0
     }
 
     /// base 후보 질의. "base" 는 `evolves_from IS NULL` 만으로 부족하다 — 피카츄(#25)의 진화 전은

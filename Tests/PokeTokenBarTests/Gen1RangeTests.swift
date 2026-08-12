@@ -131,6 +131,26 @@ final class RESTIndexCompletenessTests: XCTestCase {
         XCTAssertTrue(q.contains("_lte: 151"), "질의가 실제 범위 상한을 따르지 않는다")
     }
 
+    // MARK: 요청은 다 성공했는데 base 를 하나도 못 찾은 경우
+    //
+    // 실패율만 보면 이 경우를 놓친다 — failed == 0 이라 `isRESTIndexUsable` 는 통과한다. 하지만 빈
+    // 배열을 캐싱하면 `baseIndexCache != nil` 이 되어 이번 세션 내내 재시도가 막힌다(REST 재구축
+    // 자신도, GraphQL 실패 경로도). `shouldPersistRESTIndex` 가 이 조건을 추가로 걸러낸다.
+
+    func testRejectsCleanSweepThatFoundNothing() {
+        XCTAssertFalse(PokeAPIClient.shouldPersistRESTIndex(attempted: 151, failed: 0, foundCount: 0),
+                        "요청이 전부 성공했어도 base 를 하나도 못 찾았으면 캐싱하면 안 된다")
+    }
+
+    func testPersistsCleanSweepThatFoundBases() {
+        XCTAssertTrue(PokeAPIClient.shouldPersistRESTIndex(attempted: 151, failed: 0, foundCount: 78))
+    }
+
+    func testShouldPersistStillRespectsFailureRate() {
+        XCTAssertFalse(PokeAPIClient.shouldPersistRESTIndex(attempted: 151, failed: 16, foundCount: 78),
+                        "실패율 판정을 우회하면 안 된다")
+    }
+
     // MARK: base 판정의 파싱 실패 가드
     //
     // `baseSpecies(id:)` 는 진화 전 URL 을 `id(from:)` 로 파싱해 그 id 가 범위 밖이면 base 로 인정한다.
@@ -143,7 +163,14 @@ final class RESTIndexCompletenessTests: XCTestCase {
 
     func testIDFromReturnsZeroOnMalformedURL() {
         XCTAssertEqual(PokeAPIClient.id(from: "not-a-url"), 0)
-        // 결론: 0 은 "이 종의 id" 가 아니라 "파싱 불가"를 뜻하므로, base 판정에서 0 을 "범위 밖"으로
-        // 오인해선 안 된다 — `guard preEvoID > 0` 이 그 오인을 막는다(baseSpecies(id:) 참고).
+    }
+
+    /// 0 은 "이 종의 id" 가 아니라 "파싱 불가"를 뜻한다. 그런데 0 은 애니메이션 스프라이트 범위
+    /// (1...151) 밖이라 `!hasAnimatedSprite(0)` 는 true — `guard preEvoID > 0` 이 없으면 파싱 실패가
+    /// "진화 전이 범위 밖"으로 오인되어 진화 중간체가 base(=부화 가능)로 잘못 승격된다.
+    /// `preEvoID > 0` 가드가 그 오인을 막는 절반이다(baseSpecies(id:) 참고).
+    func testZeroLooksOutOfRangeWithoutTheParseGuard() {
+        XCTAssertFalse(PokemonAssets.hasAnimatedSprite(speciesID: 0),
+                        "0 은 범위 밖으로 보이므로 guard 없이는 base 로 승격된다")
     }
 }
