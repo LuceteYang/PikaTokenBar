@@ -39,12 +39,18 @@ read_when:
 앱은 **내 포크 릴리스만** 확인한다(`AppIdentity.releasesRepo`). 원본이 새 버전을 내도 팀원 앱은
 조용하다. 반영 여부는 내가 정한다.
 
+    git config rerere.enabled true             # 같은 자리 충돌이 매번 나므로 한 번 켜 둔다
     git fetch upstream
     git log --oneline main..upstream/main     # 무엇이 바뀌었나
-    git diff main..upstream/main -- Sources/  # 내 변경과 겹치는가
-    git merge upstream/main                    # 반영하기로 한 경우만
+    git diff main...upstream/main --stat      # 내 변경과 겹치는가
+    git merge upstream/main                    # 항상 통째로 — 거부는 그 위의 revert 커밋으로
     swift test && ./scripts/test-gate.sh
     ./scripts/release-fork.sh <version>
+
+**원하는 커밋만 cherry-pick 하지 않는다** — merge-base 가 제자리에 머물러 다음 동기화 때 이미 판단한
+커밋이 전부 다시 올라온다. 거부는 머지 뒤에 `git revert` + `upstream-reject <sha>: <이유>` 커밋으로
+표현한다(그래야 git history 가 곧 결정 로그가 된다). 동기화 결과를 **스쿼시 머지로 올리면 안 된다** —
+머지 커밋의 upstream 계보가 날아가 통째로 머지한 의미가 사라진다. 자세한 절차는 `upstream-sync` 스킬.
 
 ## 포크가 소유한 파일 — 충돌 시 내 쪽을 지킨다
 
@@ -55,11 +61,11 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
 |---|---|
 | `Sources/PokeTokenBar/Core/AppIdentity.swift` | 전체 (포크 전용 파일 — 정체성 단일 진실원) |
 | `Core/LoginItem.swift` | `plistName`·`label` 이 `AppIdentity` 참조 |
-| `Core/UpdateChecker.swift` | `repo` 가 `AppIdentity.releasesRepo` 참조. **Homebrew cask 분기는
-  통째로 삭제돼 있다** — 이 포크는 GitHub Release + `install.sh` 로만 배포하고 cask 를 절대 안 내므로,
-  `brew list --cask` 로 원본 cask 를 오탐해 원본 앱 번들을 덮어쓰는 경로 자체가 없다. 머지가 그 분기를
-  되살리면 되돌린다. (`pgrep`/`launchctl` 로 실행 중인 인스턴스를 내리는 로직은 이 파일이 아니라
-  `scripts/install.sh` 쪽에 있다.) |
+| `Core/UpdateChecker.swift` | `repo` 가 `AppIdentity.releasesRepo` 참조. **cask 판정 토큰은 반드시
+  `AppIdentity.brewCaskToken`(`pika-token-bar`)** 이다 — 한때 이 분기를 통째로 지웠던 이유가 원본 토큰으로
+  `brew list --cask` 를 돌리면 원본 설치본을 오탐해 원본 앱 번들을 덮어쓰기 때문이었다. 지금은 포크가
+  자체 cask 를 내므로 분기가 되살아나 있고, **머지가 토큰을 원본 것으로 되돌리면 그때가 위험**하다.
+  (`pgrep`/`launchctl` 로 실행 중인 인스턴스를 내리는 로직은 이 파일이 아니라 `scripts/install.sh` 쪽에 있다.) |
 | `Core/AppLog.swift`, `CrashReporter.swift`, `Localization.swift` | 로그 파일명 |
 | `Core/CompanionStore.swift`, `PokeAPIClient.swift`, `LocalUsageCache.swift`, `UsageStore.swift`, `UI/SpriteLoader.swift` | 저장 경로가 `AppIdentity.supportDirectory` |
 | `Core/CompanionModel.swift` | `animatedSpeciesIDs = 1...151`, `EvoLine.init` 의 re-root |
@@ -71,8 +77,8 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
   비면 즉시 `exit 1` 로 죽으므로 실패는 시끄럽게 난다(의도된 설계). |
 | `scripts/release.sh` | 맨 위 중단 가드 |
 | `scripts/e2e.sh`, `parity-check.sh` | 번들·로그·스냅샷 경로 |
-| `UI/SettingsView.swift` | 푸터 Web·Sponsor 링크는 **의도적으로 upstream 그대로 둔다** — 이 포크엔
-  랜딩 페이지가 없어 바꾸면 404 가 되고, 후원은 이 앱을 만든 원작자에게 가는 게 맞다. 반대로
+| `UI/SettingsView.swift` | 푸터 **Web 은 이 포크의 랜딩**(`luceteyang.github.io/PikaTokenBar/`)이고,
+  **Sponsor 만 의도적으로 upstream 그대로 둔다** — 후원은 이 앱을 만든 원작자에게 가는 게 맞다. 그리고
   **"문제점 알리기"는 upstream 이 아니라 이 포크로 되돌린다** — `ProblemReport.newIssueURL` 이
   `AppIdentity.releasesRepo` 이슈 화면을 연다. 팀원이 겪은 1세대 전용 버그가 그가 본 적 없는
   빌드에 대해 원작자에게 가면 안 되기 때문이다. 이 비대칭(Web·Sponsor 는 upstream / 문제 리포트는
@@ -111,4 +117,13 @@ rare 1135 / legendary 57 로 나뉜다. 649종 전체 풀과 비교하면 **unco
 ## 하지 않는 것
 
 - Apple 공증 — 개발자 계정 비용. 대신 `install.sh` 가 quarantine 을 해제한다.
-- Homebrew cask·랜딩 페이지·다국어 README 갱신 — 원본 파이프라인의 산출물이고 이 포크엔 없다.
+
+## 포크도 내는 것
+
+한때 이 문서가 "원본 파이프라인의 산출물이고 이 포크엔 없다"고 적어 뒀던 것들이다. 지금은 있다.
+
+- **Homebrew cask** — `AppIdentity.brewCaskToken` = `pika-token-bar`. 업데이트 버튼이 cask 설치본이면
+  `brew upgrade` 로 간다(`UpdateChecker`).
+- **랜딩 페이지** — `luceteyang.github.io/PikaTokenBar/`. 설정 푸터의 Web 링크가 여기를 연다.
+- 다국어 README 는 계속 유지한다(en/ko/ja) — 1세대 문구·설치 경로가 포크 값이라 upstream 머지에서
+  매번 충돌한다. `rerere` 를 켜 두면 같은 해소가 재사용된다.
