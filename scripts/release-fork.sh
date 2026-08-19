@@ -290,7 +290,19 @@ echo "▶ 8/8 Homebrew cask 갱신 ($TAP_REPO)"
 # 업로드가 잘렸으면 로컬과 다르고, 팀원이 받는 건 GitHub 쪽이다).
 CASK_TMP=$(mktemp -d); trap 'rm -rf "$CASK_TMP"' EXIT
 ASSET_URL="https://github.com/$REPO/releases/download/v$VERSION/$APP_NAME.zip"
-if curl -fsSL "$ASSET_URL" -o "$CASK_TMP/app.zip"; then
+# 이 단계가 실패했는지 끝까지 들고 간다 — 실패해도 아래 요약이 "✓ 배포 완료"로 끝나던 탓에
+# 경고 한 줄이 성공 메시지에 묻혔다(v1.1.0 실측). 요약이 곧 사람이 읽는 유일한 결과다.
+CASK_OK=0
+CASK_FIX=""      # 실패 시 사람이 그대로 복사해 쓸 복구 지시
+# 단발 curl 은 일시적 네트워크·TLS 오류 하나에 그대로 무너진다 — v1.1.0 에서 방금 올린 자산을
+# 받다가 LibreSSL "bad decrypt" 로 실패해 cask 만 옛 버전에 남았다. 재시도로 그 부류를 흡수한다.
+DOWNLOADED=0
+for attempt in 1 2 3; do
+  if curl -fsSL --retry 2 --retry-delay 2 "$ASSET_URL" -o "$CASK_TMP/app.zip"; then DOWNLOADED=1; break; fi
+  echo "  … 자산 다운로드 실패(시도 $attempt/3) — 재시도"
+  sleep 3
+done
+if [[ "$DOWNLOADED" == "1" ]]; then
   ASSET_SHA=$(shasum -a 256 "$CASK_TMP/app.zip" | awk '{print $1}')
   if git clone -q "https://github.com/$TAP_REPO.git" "$CASK_TMP/tap" 2>/dev/null; then
     CASK_FILE="$CASK_TMP/tap/$CASK_PATH"
@@ -302,19 +314,29 @@ if curl -fsSL "$ASSET_URL" -o "$CASK_TMP/app.zip"; then
         && git add -A \
         && git commit -q -m "cask: pika-token-bar $VERSION" \
         && git push -q origin HEAD ) \
-        && echo "  ✓ cask $VERSION (sha256 ${ASSET_SHA:0:12}…)" \
-        || echo "  ⚠ cask 커밋·push 실패 — 수동: $TAP_REPO 의 $CASK_PATH 를 version $VERSION / sha256 $ASSET_SHA 로 갱신"
+        && { echo "  ✓ cask $VERSION (sha256 ${ASSET_SHA:0:12}…)"; CASK_OK=1; } \
+        || CASK_FIX="$TAP_REPO 의 $CASK_PATH 를 version $VERSION / sha256 $ASSET_SHA 로 갱신 후 push (커밋·push 실패)"
     else
-      echo "  ⚠ cask 파일 치환 실패(형식이 바뀌었을 수 있음) — 수동으로 version $VERSION / sha256 $ASSET_SHA 갱신"
+      CASK_FIX="$TAP_REPO 의 $CASK_PATH 를 version $VERSION / sha256 $ASSET_SHA 로 갱신 (치환 실패 — cask 형식이 바뀌었을 수 있음)"
     fi
   else
-    echo "  ⚠ $TAP_REPO 클론 실패 — 수동으로 version $VERSION / sha256 $ASSET_SHA 갱신"
+    CASK_FIX="$TAP_REPO 를 클론해 $CASK_PATH 를 version $VERSION / sha256 $ASSET_SHA 로 갱신 (클론 실패)"
   fi
 else
-  echo "  ⚠ 릴리스 자산을 받지 못해 cask 를 갱신하지 못했습니다 — 수동 확인: $ASSET_URL"
+  CASK_FIX="$ASSET_URL 를 받아 shasum -a 256 으로 sha256 을 구한 뒤 $TAP_REPO 의 $CASK_PATH 를 version $VERSION 으로 갱신 (자산 다운로드 3회 실패)"
 fi
 
-echo "✓ v$VERSION 배포 완료."
-echo "  공유: https://github.com/$REPO/releases/latest"
-echo "  팀원 명령(brew): brew install --cask LuceteYang/tap/pika-token-bar"
-echo "  팀원 명령(curl): curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash"
+if [[ "$CASK_OK" == "1" ]]; then
+  echo "✓ v$VERSION 배포 완료."
+  echo "  공유: https://github.com/$REPO/releases/latest"
+  echo "  팀원 명령(brew): brew install --cask LuceteYang/tap/pika-token-bar"
+  echo "  팀원 명령(curl): curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash"
+else
+  # 릴리스 자체는 나갔다 — 여기서 exit 1 로 죽여 "다시 돌려라"로 읽히게 하면 안 된다(universal
+  # 재빌드까지 되돌아간다). 대신 요약이 부분 성공임을 분명히 말하고, brew 경로는 **안내하지 않는다** —
+  # 옛 버전을 깔라고 시키는 셈이기 때문이다.
+  echo "⚠ v$VERSION 릴리스는 나갔지만 Homebrew cask 는 갱신되지 않았습니다."
+  echo "  → brew 로 설치한 사람은 여전히 이전 버전을 받습니다. 아래를 수동으로 처리하세요:"
+  echo "     $CASK_FIX"
+  echo "  공유(그 전까지 curl 경로만): curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash"
+fi
