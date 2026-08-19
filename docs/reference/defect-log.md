@@ -43,6 +43,10 @@ read_when:
 
 ## 외부 로그·사용량 소스
 
+- **append-only SQLite watermark 루프를 프로바이더마다 복사하지 마라.** Cursor 와 Copilot 이
+  같은 `didReset` / `highWater == 0` 규칙을 두 벌로 들고 있으면 한쪽만 고친 수정이 다른 쪽에 남는다
+  (#157). 루프는 `scanIncrementalStores` 한 곳, 포맷만 콜백. 회귀는 공유 헬퍼 테스트 **그리고**
+  Copilot-only / Cursor-only 각 경로(A\|\|B 의 B 단독)를 모두 밟아야 한다.
 - **외부 로그 포맷은 *상위 소스의 writer* 로 검증한다 — 내 픽스처는 증거가 아니다.** 새 프로바이더 파서를
   쓸 때 "이렇게 생겼을 것"으로 픽스처를 만들면 파서와 픽스처가 같은 오해를 공유해 테스트가 전부 통과하면서
   실사용은 0 을 표시한다(#133: 봉투 래퍼 키를 `update` 로 봤으나 실제는 `params`, `timestamp` 는 ISO 문자열이
@@ -67,6 +71,16 @@ read_when:
   `zsh -ilc` 를 띄운다) — 새 환경변수도 `BinaryLocator.shellEnvironmentValue` 로 조회한다. 단 셸 spawn 은
   실측 ~0.44s 라 **프로세스 생애 1회만**(`static let` lazy) 캐시하고, 주기적으로 갱신되는 캐시(TTL)에 묶지 마라 —
   그 값을 안 쓰는 대다수 사용자까지 갱신마다 비용을 문다.
+- **위 규칙이 문서에만 있으면 다음 프로바이더가 그대로 어긴다 — 조회 지점을 하나로 모으고 테스트로 막아라.**
+  실제로 그렇게 됐다: 규칙을 적어 둔 뒤 추가된 `OPENCODE_DATA_DIR`·`HERMES_HOME`·`COPILOT_HOME`·`GROK_HOME`
+  네 개가 전부 `ProcessInfo.processInfo.environment` 직독으로 들어왔고, 해당 사용자는 배포된 앱에서만 조용히
+  적은 숫자를 봤다. 원인은 구현이 아니라 **강제 수단의 부재**다 — 산문 규칙은 새 파일을 리뷰할 때만 작동한다.
+  이제 조회는 `UsageEnvironment` 한 곳이고(이름은 `UsageEnvironment.names` 에 추가),
+  `testNoProviderReadsUsageLocationEnvDirectly` 가 `Sources/` 를 스캔해 직독 지점을 실패시킨다(허용 목록은
+  사용자 override 가 아닌 것만 — `SHELL`·`PTB_STATE_DIR` 등). 조회는 **이름 수와 무관하게 spawn 1회**로 묶는다
+  (`shellEnvironmentValues`) — 이름마다 띄우면 프로바이더가 늘수록 기동이 그만큼 느려진다.
+  프로세스 환경에 전부 있으면 셸을 아예 안 띄우는 분기도 함께 가드한다(`…SkipsShellLookup`).
+  `export FOO=` 처럼 **빈 값은 미설정으로** 취급한다 — 값으로 받으면 없는 경로를 스캔하고 조용히 0 이 된다.
 - **디렉터리 탐색은 깊이만 막으면 폭이 안 막히지만, 이름 기반 가지치기는 더 위험하다.** 깊이 가지치기는
   `> maxDepth` 가 아니라 `>= maxDepth` 에서 걸어야 한 단계 더 내려가지 않는다(전자는 상한+1 까지 방문).
   깊이 상한은 **실제 레이아웃 깊이를 테스트로 고정**하고 여유를 둔다 — 경계에 붙여 두면 상위 소스가 한 단계
@@ -202,8 +216,71 @@ read_when:
   받아 문자열 비교(`VAR=$(cmd 2>&1 || true); [[ "$VAR" == *needle* ]]`) 또는 `grep -c`. 재발 방지 메커니즘:
   `release-fork.sh --check-only` 를 **스크립트로** 돌려 이 게이트를 실제 아티팩트로 실행한다 — 인터랙티브
   확인은 검증이 아니다.
+## 프로세스·인스턴스
+
+- **로그인 실행을 LaunchAgent 로 등록하면 "등록하는 순간" 앱이 한 번 더 뜬다.** plist 의 `RunAtLoad` 는
+  로그인 때만이 아니라 **에이전트가 로드되는 시점**의 실행을 뜻하고, `SMAppService.agent.register()` 가
+  곧 그 로드다. 앱이 떠 있는 채로 등록되는 경로가 둘이라 둘 다 아이콘이 두 개가 된다 — 설정 토글
+  (`LoginItem.setEnabled(true)`)과 구 로그인아이템 사용자의 업데이트 첫 기동
+  (`migrateFromLegacyLoginItemIfNeeded()`). 후자는 **사용자가 아무것도 누르지 않아도** 일어난다.
+  **LaunchServices 의 중복 실행 방지를 믿지 마라** — GUI 로 여는 경로(Finder·`open`)에만 걸리고
+  launchd 는 `Contents/MacOS/…` 를 직접 exec 한다. **피해는 아이콘이 아니라 상태다**: 두 인스턴스가
+  `CompanionStore`·`UsageStore` 를 같은 파일에 각자 써서 저장이 last-writer-wins 가 되고, 진화·사용량이
+  조용히 덮인다. 방어는 기동 지점 한 곳에서 판정하고
+  (`SingleInstance` — 나중에 뜬 쪽이 물러난다) **메뉴바 항목을 만들기 전**에 둔다. 위치는
+  `CrashReporter.install` **앞**이어야 한다: 뒤면 물러나는 인스턴스가 running 마커를 덮어쓰고 종료 시
+  `markClean()` 이 발화해, 살아남은 쪽이 나중에 크래시해도 다음 실행이 정상 종료로 읽는다.
+  물러나기 직전 로그는 `AppLog.flush()` 로 밀어낸다 — `write` 가 async 라 `terminate` 이 `exit(0)` 에
+  닿으면 사라지고(실측 100회 중 42회), 그 줄이 없으면 가드 오작동("앱이 안 뜬다")과 크래시를 구별할
+  단서가 없다. **대가를 함께 적어둔다: 물러나는 쪽이 launchd 소유라 살아남는 인스턴스는 워치독 밖이고,
+  크래시 자동 재실행은 다음 로그인까지 꺼진다** — 메뉴바 앱은 로그아웃 없이 몇 주를 돌아 공백이 길다.
+  반대 방향(먼저 뜬 쪽이 물러남)은 워치독을 즉시 지키지만 토글 직후 창이 사라져 크래시처럼 읽힌다.
+- **프로세스 나이를 `NSRunningApplication.launchDate` 로 재지 마라 — launchd 가 exec 한 프로세스에선 nil 이다.**
+  그 값은 LaunchServices 가 띄운 프로세스에만 기록된다. 하필 물러나야 할 쪽이 launchd 가 띄운
+  인스턴스라, launchDate 로 판정하면 **가드가 통째로 무효인데 테스트는 전부 통과한다**(실측: 로그인
+  에이전트가 띄운 인스턴스는 `launchDate == nil`, 같은 pid 의 `p_starttime` 은 정상). 커널
+  `p_starttime`(`sysctl` `KERN_PROC_PID`)은 두 경로 모두에 남고 프로세스 간 비교도 성립한다.
+  일반화: **판정을 순수 함수로 뺐어도 그 함수에 들어가는 입력이 무테스트면 결함은 입력 쪽에 산다** —
+  입력을 읽어내는 층에도 가드를 따로 둔다. 회귀 가드: `SingleInstanceTests` 의 판정 8건 + 입력 3건
+  (`testProcessStartTimeIsReadableForTheCurrentProcess`·`…IsPlausible`·`…IsNilForAnUnknownProcess`).
+  시작 시각을 못 읽거나 같으면 아무도 물러나지 않는다 — 아이콘 하나 더 뜨는 것보다 둘 다 사라지는 쪽이 나쁘다.
 
 ## 표시·UI
+- **앱 언어와 시스템 로케일은 다른 축이다 — SwiftUI 가 스스로 만드는 문장은 로케일을 따른다.**
+  `L` 문구는 `AppLanguage` 를 따르는데 `Text(_, style: .relative)` 는 `Locale.current` 를 따라, 한국어
+  Mac 에서 앱을 영어로 쓰면 "Catch log" 옆에 "3시간 46분" 이 붙는 한 화면 두 언어가 된다. 팝오버 루트
+  (`PopoverView.body`)에서 `.environment(\.locale, companion.language.displayLocale)` 로 내려 8곳
+  (한도 7 · 포획 로그 1)을 한 번에 맞춘다. **`body` 안에서 줘야 한다** — `rootView` 조립 시점에 주면
+  설정에서 언어를 바꿔도 팝오버를 다시 열기까지 안 바뀐다. 경계: 이 환경값은 SwiftUI 가 생성하는
+  문장에만 걸리고 `TokenFormatter` 처럼 포매터를 직접 만드는 코드는 여전히 시스템 로케일을 쓴다
+  (ko/en/ja 는 천 단위 구분자가 같아 차이가 안 보인다). 회귀 가드 `DisplayLocaleTests` 는 코드 비교로
+  끝내지 않고 **그 로케일이 실제로 해당 언어의 상대 시각을 만드는지**까지 본다 — 코드만 비교하면
+  `.current` 로 잘못 매핑해도 통과한다.
+- **`.task(id:)` 키와 그 안의 재로드 가드는 같은 축 집합을 써야 한다.** 두 곳이 어긋나면 태스크는
+  재실행되는데 안의 작업만 조용히 건너뛴다 — 실패가 화면에만 남고 로그엔 안 남는다. `SpriteView` 는
+  `.task(id:)` 에 `종+shiny` 를 담고 내부 가드는 `loadedID`(종)만 비교해, 도감의 이로치 토글
+  (종 고정·shiny 만 뒤집힘)에서 색이 바뀌지 않았다 — 재렌더 플래시를 막던 가드가 토글을 삼킨 것.
+  판정은 순수 함수로 빼고(`SpriteView.needsReload` — `frameDelay` 와 같은 이유) 축마다 회귀 테스트를
+  둔다(`SpriteShinyReloadTests`, 양방향 토글). 부류 스윕 확인분: `menuSpriteKey`("id-shiny" 포함)·
+  `SpriteStore.cacheKey`(3축)·`DexEntryRow`(항목+언어) 안전 — `SpriteView` 만 결함이었다.
+  같은 상태를 두 곳에 나눠 들면 재발하므로, 축을 늘릴 땐 `SpriteSubject` 처럼 주체 하나로 모으는 쪽이
+  낫다(현재는 `loadedShiny` 가 subject 밖에 있어 반영 시점을 손으로 맞춘다).
+- **지연 백필로 채워지는 데이터는 화면마다 트리거가 필요하다 — 새 화면은 그 트리거를 물려받지 않는다.**
+  `DexEntry.names` 는 나중에 생긴 필드라 그 전 졸업분은 `nil` 이고, 포획 로그가 행이 뜰 때
+  `dexResolveChainNames` 로 채워 왔다. 종 격자는 저장분만 읽어서 구버전 저장분이 `#41` 로 남았고,
+  하필 격자가 기본 화면이라 로그를 눌러야 고쳐지는 상태가 됐다 — 자가치유가 *다른 화면*에 달려 있으면
+  그 화면을 안 여는 사용자에게는 치유가 없다. 파생 화면을 새로 만들 땐 원본 화면이 하던 **조회·백필까지**
+  같이 옮겼는지 본다(`DexGridView.task` → `backfillMissingDexNames`). 폴백(`#id`)은 저장하지 말 것 —
+  저장하면 이름이 영구히 번호로 굳는다(`testBackfillRetriesAfterAnOfflineAttempt`).
+  부류 스윕 확인분: 저장분을 읽는 소비자는 `DexEntryRow`(자체 백필 보유)와 격자뿐이고,
+  `activeDexEntry`·`graduate()` 의 `line.names` 는 소비가 아니라 생성 지점이라 무관.
+- **영구 기록과 임시 상태를 한 목록에 섞을 땐 임시 쪽에 표식이 필요하다.** 도감·수집 화면은 "쌓이기만
+  한다"는 약속을 주는데, 현재 키우는 개체에서 파생된 항목은 알을 새로 사면(`buyEgg` 는 `active` 만 버리고
+  `dex` 는 안 건드린다) 또는 메타몽이 리빌하면(`pathIDs` 가 통째로 교체) 사라진다 — 총계가 줄어 결함처럼
+  보인다. 포획 로그는 행에 `키우는 중` 뱃지가 있어 괜찮았지만 종 격자는 표식 없이 같은 모양이었다.
+  판정 기준은 "현재 개체에 속하는가"가 아니라 **"졸업 기록이 있는가"** 다(`DexSpecies.isRaising` =
+  `!isGraduated`) — 같은 라인을 다시 키우는 중이면 이미 확정분이라 표식 대상이 아니고, 이 분기가
+  두 규칙이 갈리는 유일한 지점이라 회귀 테스트도 그 상태(졸업분 + 같은 라인 육성 중)로 쓴다.
 
 - **컴팩트 표시는 오늘 사용한 프로바이더만.** 메뉴바(`menuLines`) 등 좁은 표시에서 한도·상태를 보일 땐
   `snapshots` 의 오늘 토큰>0 으로 게이트한다 — 설치만 되고 오늘 안 쓴 프로바이더(Codex 등)를 노출하지

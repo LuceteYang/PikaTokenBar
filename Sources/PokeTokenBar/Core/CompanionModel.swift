@@ -7,18 +7,21 @@ enum CompanionStateKind: String, Sendable {
 
 /// 앱 언어. 포켓몬 이름은 PokéAPI 다국어 names 에서 가져온다.
 enum AppLanguage: String, Codable, Sendable, CaseIterable {
-    case ko, en, ja
+    case ko, en, ja, es
     /// PokéAPI language.name 후보(첫 매칭 사용)
     var apiCodes: [String] {
         switch self {
         case .ko: return ["ko"]
         case .en: return ["en"]
         case .ja: return ["ja-Hrkt", "ja"]
+        case .es: return ["es"]
         }
     }
     var label: String {
-        switch self { case .ko: return "한국어"; case .en: return "English"; case .ja: return "日本語" }
+        switch self { case .ko: return "한국어"; case .en: return "English"; case .ja: return "日本語"; case .es: return "Español" }
     }
+
+    var displayLocale: Locale { Locale(identifier: rawValue) }
 
     /// byLang(langCode→name) 에서 이 언어의 이름을 고른다(apiCodes 첫 매칭 → 영어 폴백).
     func resolveName(_ byLang: [String: String]) -> String? {
@@ -27,11 +30,12 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
     }
 
     /// 신규 설치 기본 언어 — 시스템 선호 언어에서 유추(글로벌 출시: 한국어 강제 금지).
-    /// ko/ja 만 매칭, 그 외 전부 영어(fallback-of-fallback). 기존 사용자는 저장된 언어를 그대로 쓴다.
+    /// ko/ja/es 만 매칭, 그 외 전부 영어(fallback-of-fallback). 기존 사용자는 저장된 언어를 그대로 쓴다.
     static var systemDefault: AppLanguage {
         switch Locale.preferredLanguages.first?.prefix(2).lowercased() {
         case "ko": return .ko
         case "ja": return .ja
+        case "es": return .es
         default:   return .en
         }
     }
@@ -40,7 +44,11 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
 /// 희귀도 — PokéAPI capture_rate / is_legendary 로 판정.
 enum Rarity: String, Codable, Sendable {
     case common, uncommon, rare, legendary
-    /// 정렬 순위(높을수록 희귀). 도감 정렬 — legendary→rare→uncommon→common.
+    /// 등급 크기(높을수록 희귀) — 두 `Rarity` 를 비교하기 위한 순위.
+    /// **목록 정렬용이 아니다**: 포획 로그는 기록 시각순, 도감은 도감 번호순이고 희귀도는 필터로만 좁힌다.
+    /// 유일한 소비자는 프리미엄 알의 보증 관문(`hatch` 의 `line.rarity.sortRank < tier.sortRank`) —
+    /// 뽑힌 등급이 산 보증보다 낮은지 판정한다. 순서가 뒤집히면 고급/희귀 알이 조용히 낮은 등급을
+    /// 통과시키므로 `testSortRankOrdersRarityAscendingByValue` 가 순서를 고정한다.
     var sortRank: Int {
         switch self {
         case .common:    return 0
@@ -323,37 +331,37 @@ enum PokemonNature: String, Codable, Sendable, CaseIterable {
     case modest, mild, quiet, bashful, rash
     case calm, gentle, sassy, careful, quirky
 
-    /// 본가 공식 번역 명칭 (ko/en/ja).
+    /// 본가 공식 번역 명칭 (ko/en/ja/es).
     func name(_ lang: AppLanguage) -> String {
-        let names: (String, String, String)
+        let names: (String, String, String, String)
         switch self {
-        case .hardy:   names = ("노력", "Hardy", "がんばりや")
-        case .lonely:  names = ("외로움", "Lonely", "さみしがり")
-        case .brave:   names = ("용감", "Brave", "ゆうかん")
-        case .adamant: names = ("고집", "Adamant", "いじっぱり")
-        case .naughty: names = ("개구쟁이", "Naughty", "やんちゃ")
-        case .bold:    names = ("대담", "Bold", "ずぶとい")
-        case .docile:  names = ("온순", "Docile", "すなお")
-        case .relaxed: names = ("무사태평", "Relaxed", "のんき")
-        case .impish:  names = ("장난꾸러기", "Impish", "わんぱく")
-        case .lax:     names = ("촐랑", "Lax", "のうてんき")
-        case .timid:   names = ("겁쟁이", "Timid", "おくびょう")
-        case .hasty:   names = ("성급", "Hasty", "せっかち")
-        case .serious: names = ("성실", "Serious", "まじめ")
-        case .jolly:   names = ("명랑", "Jolly", "ようき")
-        case .naive:   names = ("천진난만", "Naive", "むじゃき")
-        case .modest:  names = ("조심", "Modest", "ひかえめ")
-        case .mild:    names = ("의젓", "Mild", "おっとり")
-        case .quiet:   names = ("냉정", "Quiet", "れいせい")
-        case .bashful: names = ("수줍음", "Bashful", "てれや")
-        case .rash:    names = ("덜렁", "Rash", "うっかりや")
-        case .calm:    names = ("차분", "Calm", "おだやか")
-        case .gentle:  names = ("얌전", "Gentle", "おとなしい")
-        case .sassy:   names = ("건방", "Sassy", "なまいき")
-        case .careful: names = ("신중", "Careful", "しんちょう")
-        case .quirky:  names = ("변덕", "Quirky", "きまぐれ")
+        case .hardy:   names = ("노력", "Hardy", "がんばりや", "Fuerte")
+        case .lonely:  names = ("외로움", "Lonely", "さみしがり", "Huraña")
+        case .brave:   names = ("용감", "Brave", "ゆうかん", "Audaz")
+        case .adamant: names = ("고집", "Adamant", "いじっぱり", "Firme")
+        case .naughty: names = ("개구쟁이", "Naughty", "やんちゃ", "Pícara")
+        case .bold:    names = ("대담", "Bold", "ずぶとい", "Osada")
+        case .docile:  names = ("온순", "Docile", "すなお", "Dócil")
+        case .relaxed: names = ("무사태평", "Relaxed", "のんき", "Plácida")
+        case .impish:  names = ("장난꾸러기", "Impish", "わんぱく", "Agitada")
+        case .lax:     names = ("촐랑", "Lax", "のうてんき", "Floja")
+        case .timid:   names = ("겁쟁이", "Timid", "おくびょう", "Miedosa")
+        case .hasty:   names = ("성급", "Hasty", "せっかち", "Activa")
+        case .serious: names = ("성실", "Serious", "まじめ", "Seria")
+        case .jolly:   names = ("명랑", "Jolly", "ようき", "Alegre")
+        case .naive:   names = ("천진난만", "Naive", "むじゃき", "Ingenua")
+        case .modest:  names = ("조심", "Modest", "ひかえめ", "Modesta")
+        case .mild:    names = ("의젓", "Mild", "おっとり", "Afable")
+        case .quiet:   names = ("냉정", "Quiet", "れいせい", "Mansa")
+        case .bashful: names = ("수줍음", "Bashful", "てれや", "Tímida")
+        case .rash:    names = ("덜렁", "Rash", "うっかりや", "Alocada")
+        case .calm:    names = ("차분", "Calm", "おだやか", "Serena")
+        case .gentle:  names = ("얌전", "Gentle", "おとなしい", "Amable")
+        case .sassy:   names = ("건방", "Sassy", "なまいき", "Grosera")
+        case .careful: names = ("신중", "Careful", "しんちょう", "Cauta")
+        case .quirky:  names = ("변덕", "Quirky", "きまぐれ", "Rara")
         }
-        switch lang { case .ko: return names.0; case .en: return names.1; case .ja: return names.2 }
+        switch lang { case .ko: return names.0; case .en: return names.1; case .ja: return names.2; case .es: return names.3 }
     }
 }
 

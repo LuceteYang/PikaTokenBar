@@ -126,6 +126,15 @@ private struct FallbackOnlyProvider: PokeProviding {
     func baseSpecies(id: Int) async throws -> BaseSpecies? { BaseSpecies(id: id, captureRate: 100) }
 }
 
+/// line() 호출 횟수를 센다 — 이미 저장된 항목에 불필요한 조회가 붙는지 검증용.
+private final class CountingLineProvider: PokeProviding, @unchecked Sendable {
+    let value: EvoLine
+    nonisolated(unsafe) private(set) var lineCalls = 0
+    init(value: EvoLine) { self.value = value }
+    func line(baseSpeciesID: Int) async throws -> EvoLine { lineCalls += 1; return value }
+    func baseSpeciesIndex() async throws -> [BaseSpecies] { [BaseSpecies(id: value.baseID, captureRate: 255)] }
+}
+
 /// line() 자체가 실패(오프라인) — 도감 이름 조회 폴백 검증용.
 private struct LineThrowsProvider: PokeProviding {
     func line(baseSpeciesID: Int) async throws -> EvoLine { throw PokeStubError.boom }
@@ -289,6 +298,206 @@ final class CompanionStoreTests: XCTestCase {
         let names = await s.dexResolveChainNames(s.state.dex[0])
         XCTAssertEqual(names, [1: "포1", 2: "포2", 3: "포3"])       // fetch 로 체인 전부
         XCTAssertEqual(s.state.dex.first?.names?[2]?["ko"], "포2")  // 항목에 백필 저장됨(트리거 브랜치)
+    }
+
+    // MARK: 도감 (종 단위 집계 — 로그의 개체 단위와 축이 다르다)
+
+    /// 같은 라인을 두 번 졸업해도 종은 한 칸으로 접힌다 — 로그가 2행인 게 정상이고, 중복은 도감
+    /// 쪽에서 구조적으로 사라진다. 도감은 종 정보만 담으므로 성격·획득 횟수는 여기서 보지 않는다.
+    func testDexSpeciesFoldsDuplicateLinesToOneCellPerSpecies() throws {
+        let entries = [
+            DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow,
+                     nature: .rash,
+                     names: [1: ["ko": "포1"], 2: ["ko": "포2"], 3: ["ko": "포3"]]),
+            DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow,
+                     nature: .lax),
+        ]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let dexJSON = String(decoding: try JSONEncoder().encode(entries), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"language":"ko"}"#.utf8).write(to: url)
+
+        let s = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(s.state.dex.count, 2, "로그(개체 단위)는 2건")
+
+        let folded = s.dexSpecies
+        XCTAssertEqual(folded.map(\.id), [1, 2, 3], "6칸이 아니라 종별 1칸, 도감 번호 오름차순")
+        XCTAssertEqual(folded.map(\.name), ["포1", "포2", "포3"], "저장된 이름을 현재 언어로")
+        XCTAssertEqual(folded.map(\.rarity), [.common, .common, .common])
+    }
+
+    /// 현재 개체는 **도달분**만 보유로 잡힌다. 졸업분을 비워 두면 누수가 종 목록에 그대로 드러난다 —
+    /// pathIDs 전체를 쓰면 [1,2], plannedPathIDs(계획 경로)를 쓰면 [1,2,3] 이 되므로 한 상태로
+    /// 두 오용을 동시에 가드한다.
+    func testDexSpeciesCountsOnlyReachedStagesOfActive() throws {
+        let active = MonState(baseID: 1, pathIDs: [1, 2], plannedPathIDs: [1, 2, 3], stageIndex: 0,
+                              usedAtStage: 0, rarity: .common, totalForms: 3, nature: .brave)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let json = String(decoding: try JSONEncoder().encode(active), as: UTF8.self)
+        try Data(#"{"active":\#(json),"language":"ko"}"#.utf8).write(to: url)
+
+        let s = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertTrue(s.state.dex.isEmpty)
+        XCTAssertEqual(s.state.active?.stageIndex, 0)
+        XCTAssertEqual(s.dexSpecies.map(\.id), [1], "미도달 단계가 보유로 새지 않는다")
+    }
+
+    /// 이로치는 종 단위 플래그다 — 개체 하나가 이로치면 그 개체가 지나온 체인 전 종에 표식이 선다.
+    /// 일반 개체와 이로치 개체를 둘 다 가진 종도 한 칸으로 접히되 플래그가 서고, 칸은 기본 일반색으로
+    /// 그려 두었다가 선택하면 이로치색으로 바꾼다(두 모습을 다 볼 수 있게).
+    func testDexSpeciesMarksShinyAcrossTheChain() throws {
+        let entries = [
+            DexEntry(baseID: 1, finalID: 2, chainOrder: [1, 2], rarity: .common, caughtAt: fixedNow,
+                     isShiny: false),
+            DexEntry(baseID: 1, finalID: 2, chainOrder: [1, 2], rarity: .common, caughtAt: fixedNow,
+                     isShiny: true),
+        ]
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let dexJSON = String(decoding: try JSONEncoder().encode(entries), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"language":"ko"}"#.utf8).write(to: url)
+        let s = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                              fileURL: url, rng: SeededRNG(seed: 7))
+
+        let folded = s.dexSpecies
+        XCTAssertEqual(folded.map(\.id), [1, 2], "이로치 개체가 지나온 체인 전 종")
+        XCTAssertEqual(folded.map(\.isShiny), [true, true], "한 개체라도 이로치면 종에 플래그")
+    }
+
+    /// 위장 메타몽은 리빌 전까지 이로치를 숨긴다 — 도감도 그 규칙을 따라야 한다
+    /// (currentIsShiny 를 재사용하는 지점. 직접 isShiny 를 읽으면 정체가 미리 새어 나간다).
+    func testDexSpeciesHidesShinyWhileDittoIsDisguised() throws {
+        func store(revealed: Bool) throws -> CompanionStore {
+            let active = MonState(baseID: 1, pathIDs: [1], stageIndex: 0, usedAtStage: 0,
+                                  rarity: .common, totalForms: 3, isShiny: true,
+                                  dittoDisguise: 1, dittoRevealed: revealed)
+            let url = FileManager.default.temporaryDirectory
+                .appendingPathComponent("poke-\(UUID().uuidString).json")
+            let json = String(decoding: try JSONEncoder().encode(active), as: UTF8.self)
+            try Data(#"{"active":\#(json),"language":"ko"}"#.utf8).write(to: url)
+            return CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                                  fileURL: url, rng: SeededRNG(seed: 7))
+        }
+        let disguised = try store(revealed: false)
+        XCTAssertTrue(disguised.state.active?.isShiny ?? false, "내부적으론 이로치")
+        XCTAssertEqual(disguised.dexSpecies.first?.isShiny, false, "위장 중엔 도감에도 숨김")
+
+        let revealed = try store(revealed: true)
+        XCTAssertEqual(revealed.dexSpecies.first?.isShiny, true, "리빌 후엔 도감에 공개")
+    }
+
+    /// 지금 키우는 종의 이름은 **로드된 라인**에서 온다 — 졸업분이 아직 없어도 `#id` 로 떨어지지 않는다.
+    /// (부화 직후가 이 경로다. 파일 주입 테스트는 currentLine 이 nil 이라 이 분기를 밟지 못한다.)
+    func testDexSpeciesNamesActiveSpeciesFromLoadedLine() async {
+        let s = store(linear3)
+        s.setLanguage(.ko)
+        await s.hatch(baseID: 1)
+        let sp = s.dexSpecies
+        XCTAssertEqual(sp.map(\.id), [1], "도달분만 — 아직 진화 전이라 2·3 은 미보유")
+        XCTAssertEqual(sp.first?.name, "포1")
+    }
+
+    // MARK: 도감 이름 백필 (격자는 저장분만 읽는다)
+
+    /// 이름이 저장되기 전 버전의 졸업분은 격자에서 `#id` 로 뜬다 — 격자 진입 시 백필이 이를 채운다.
+    /// 백필 전/후를 한 테스트에서 함께 본다: 백필 호출을 지우면 첫 단언에서 멈추므로 가드가 살아 있다.
+    func testBackfillFillsNamesForEntriesSavedBeforeNamesExisted() async throws {
+        let s = try storeWithNamelessEntry()
+        XCTAssertNil(s.state.dex.first?.names, "구버전 저장분엔 이름이 없다")
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["#1", "#2", "#3"], "백필 전엔 종 번호")
+
+        await s.backfillMissingDexNames()
+
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+        XCTAssertNotNil(s.state.dex.first?.names, "항목에 저장돼 다음 실행부터 네트워크 0")
+    }
+
+    /// 이미 이름이 저장된 항목은 조회하지 않는다 — 격자를 열 때마다 도감 전체를 다시 받아오면 안 된다.
+    func testBackfillDoesNotFetchWhenNamesAreAlreadyStored() async throws {
+        let entry = DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow,
+                             names: [1: ["ko": "포1"], 2: ["ko": "포2"], 3: ["ko": "포3"]])
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let dexJSON = String(decoding: try JSONEncoder().encode([entry]), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"language":"ko"}"#.utf8).write(to: url)
+        let provider = CountingLineProvider(value: linear3)
+        let s = CompanionStore(provider: provider, clock: { fixedNow }, fileURL: url, rng: SeededRNG(seed: 7))
+
+        await s.backfillMissingDexNames()
+
+        XCTAssertEqual(provider.lineCalls, 0, "저장분은 건너뛴다")
+        XCTAssertEqual(s.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+    }
+
+    /// 오프라인이면 폴백(`#id`)을 **저장하지 않는다** — 저장해 버리면 이름이 영원히 번호로 굳는다.
+    /// 다음 진입(온라인)에서 다시 시도해 채워지는 것까지 확인한다.
+    func testBackfillRetriesAfterAnOfflineAttempt() async throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let bare = DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow)
+        let dexJSON = String(decoding: try JSONEncoder().encode([bare]), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"language":"ko"}"#.utf8).write(to: url)
+
+        let offline = CompanionStore(provider: LineThrowsProvider(), clock: { fixedNow },
+                                     fileURL: url, rng: SeededRNG(seed: 7))
+        await offline.backfillMissingDexNames()
+        XCTAssertNil(offline.state.dex.first?.names, "폴백은 저장하지 않는다")
+        XCTAssertEqual(offline.dexSpecies.map(\.name), ["#1", "#2", "#3"])
+
+        // 같은 저장 파일을 온라인 provider 로 다시 연다(= 다음 진입).
+        let online = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                                    fileURL: url, rng: SeededRNG(seed: 7))
+        await online.backfillMissingDexNames()
+        XCTAssertEqual(online.dexSpecies.map(\.name), ["포1", "포2", "포3"])
+    }
+
+    // MARK: 도감 "키우는 중" 표식 (아직 확정이 아닌 칸)
+
+    /// 졸업 기록이 없는 종은 현재 개체가 사라지면 함께 사라진다 — **도달 단계 전부**에 표식이 선다.
+    /// (진화 3단까지 왔으면 3칸 모두. 알을 새로 사면 실제로 3칸이 다 빠진다.)
+    func testDexSpeciesMarksEveryUnsecuredStageAsRaising() async {
+        let s = store(linear3)
+        s.setLanguage(.ko)
+        await s.hatch(baseID: 1)
+        s.applyUsage(PokemonBalance.phaseThreshold(rarity: .common, totalForms: 3, stageIndex: 0))
+        XCTAssertEqual(s.state.active?.stageIndex, 1, "2단계까지 진화")
+
+        let sp = s.dexSpecies
+        XCTAssertEqual(sp.map(\.id), [1, 2])
+        XCTAssertEqual(sp.map(\.isRaising), [true, true], "졸업 기록이 없으니 둘 다 미확정")
+    }
+
+    /// 트리거 브랜치 — 같은 라인을 졸업한 뒤 **다시 키우는 중**. 종은 이미 영구 보존분이라 사라지지 않으므로
+    /// 표식이 서면 안 된다. "현재 개체에 속하면 표식"으로 판정하면 여기서 깨진다.
+    func testAlreadyGraduatedSpeciesIsNotMarkedWhileRaisedAgain() throws {
+        let graduated = DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow,
+                                 names: [1: ["ko": "포1"], 2: ["ko": "포2"], 3: ["ko": "포3"]])
+        let active = MonState(baseID: 1, pathIDs: [1, 2, 3], stageIndex: 1,
+                              usedAtStage: 0, rarity: .common, totalForms: 3, nature: .brave)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let dexJSON = String(decoding: try JSONEncoder().encode([graduated]), as: UTF8.self)
+        let activeJSON = String(decoding: try JSONEncoder().encode(active), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"active":\#(activeJSON),"language":"ko"}"#.utf8).write(to: url)
+
+        let s = CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                               fileURL: url, rng: SeededRNG(seed: 7))
+        XCTAssertEqual(s.dexSpecies.map(\.isRaising), [false, false, false],
+                       "졸업분이 있는 종은 현재 키우는 중이어도 확정분")
+    }
+
+    /// 졸업분만 있고 현재 개체가 없으면 표식은 하나도 없다(모두 영구 기록).
+    func testGraduatedOnlyDexHasNoRaisingMark() throws {
+        let s = try storeWithNamelessEntry()
+        XCTAssertNil(s.state.active)
+        XCTAssertEqual(s.dexSpecies.map(\.isRaising), [false, false, false])
+    }
+
+    /// 이름 없는 구버전 졸업분 1건(체인 1→2→3)만 담긴 store — 백필/표식 테스트 공용.
+    private func storeWithNamelessEntry() throws -> CompanionStore {
+        let bare = DexEntry(baseID: 1, finalID: 3, chainOrder: [1, 2, 3], rarity: .common, caughtAt: fixedNow)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
+        let dexJSON = String(decoding: try JSONEncoder().encode([bare]), as: UTF8.self)
+        try Data(#"{"dex":\#(dexJSON),"language":"ko"}"#.utf8).write(to: url)
+        return CompanionStore(provider: StubProvider(value: linear3), clock: { fixedNow },
+                              fileURL: url, rng: SeededRNG(seed: 7))
     }
 
     /// 오프라인(line fetch 실패) + 저장 없음 → chainOrder 전 종을 종 번호(#id)로 폴백.
@@ -915,18 +1124,55 @@ final class CompanionStoreTests: XCTestCase {
     }
 }
 
-// MARK: 도감 정렬 / 요약
+// MARK: 표시 로케일 (자동 생성 문장)
+
+/// 앱 언어와 시스템 로케일이 다를 때 `Text(_, style: .relative)` 같은 자동 문장이 시스템을 따라가면
+/// 한 화면에 두 언어가 섞인다(한국어 Mac + 영어 앱 → "Catch log" 옆에 "3시간 46분").
+/// 팝오버 루트가 `\.locale` 로 앱 언어를 내려주므로, 그 매핑이 실제로 해당 언어의 상대 시각을
+/// 만들어내는지까지 고정한다 — 코드만 비교하면 잘못 매핑해도 통과한다.
+final class DisplayLocaleTests: XCTestCase {
+    func testDisplayLocaleMatchesLanguageCode() {
+        XCTAssertEqual(AppLanguage.ko.displayLocale.identifier, "ko")
+        XCTAssertEqual(AppLanguage.en.displayLocale.identifier, "en")
+        XCTAssertEqual(AppLanguage.ja.displayLocale.identifier, "ja")
+    }
+
+    func testRelativeTimeFollowsAppLanguageNotSystem() {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let past = now.addingTimeInterval(-3 * 3600)
+
+        func relative(_ lang: AppLanguage) -> String {
+            let f = RelativeDateTimeFormatter()
+            f.locale = lang.displayLocale
+            return f.localizedString(for: past, relativeTo: now)
+        }
+
+        XCTAssertTrue(relative(.en).contains("hour"), "영어: \(relative(.en))")
+        XCTAssertTrue(relative(.ko).contains("시간"), "한국어: \(relative(.ko))")
+        XCTAssertTrue(relative(.ja).contains("時間"), "일본어: \(relative(.ja))")
+        // 세 언어가 서로 달라야 한다 — 하나로 고정돼 있으면 매핑이 죽은 것이다.
+        XCTAssertEqual(Set([relative(.en), relative(.ko), relative(.ja)]).count, 3)
+    }
+}
+
+// MARK: 포획 로그 정렬 / 요약
 
 @MainActor
 final class DexSortingTests: XCTestCase {
+    /// sortRank 는 목록 정렬 키가 아니지만(로그는 시각순) 프리미엄 알의 등급 게이트가
+    /// `line.rarity.sortRank < tier.sortRank` 로 쓴다 — 순서가 뒤집히면 고급/희귀 알이 조용히
+    /// 낮은 등급을 통과시킨다. 그래서 순서 보증만 여기 남긴다.
     func testSortRankOrdersRarityAscendingByValue() {
         XCTAssertLessThan(Rarity.common.sortRank, Rarity.uncommon.sortRank)
         XCTAssertLessThan(Rarity.uncommon.sortRank, Rarity.rare.sortRank)
         XCTAssertLessThan(Rarity.rare.sortRank, Rarity.legendary.sortRank)
     }
 
-    func testDexEntriesSortedLegendaryFirstThenRecency() async {
-        // common 라인 2개(시각 다름) + legendary 라인 1개를 같은 store 에 졸업시킨다.
+    /// 로그는 시간순 기록이다 — 희귀도가 높아도 오래되면 아래로 내려간다.
+    /// legendary 를 **가장 먼저** 졸업시켜, 희귀도 우선 정렬이면 통과하지 못하게 한다
+    /// (과거 정렬은 legendary 를 맨 앞에 고정해 오래된 상위 희귀도가 최신 일반 위에 남았다).
+    func testDexEntriesSortedByRecencyRegardlessOfRarity() async {
+        // legendary 1개 + common 라인 2개(시각 다름)를 같은 store 에 졸업시킨다.
         // StubProvider 는 라인 1개만 주므로, 라인별로 store 를 분리하지 않고
         // 직접 졸업 흐름을 재현: 무진화(단일 임계) 라인을 hatch→applyUsage 로 졸업.
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("poke-\(UUID().uuidString).json")
@@ -937,32 +1183,28 @@ final class DexSortingTests: XCTestCase {
                                clock: { fixedNow.addingTimeInterval(TimeInterval(tick)) },
                                fileURL: url, rng: SeededRNG(seed: 3))
 
-        // common #1 (가장 먼저)
-        provider.line = makeLine(base: 100, tree: node(100), rarity: .common)
-        tick = 1; await s.hatch(baseID: 100)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))
-
-        // common #2 (더 나중)
-        provider.line = makeLine(base: 101, tree: node(101), rarity: .common)
-        tick = 2; await s.hatch(baseID: 101)
-        s.applyUsage(PokemonBalance.graduationTotal(.common))
-
-        // legendary (가장 나중이지만 희귀도가 더 높음)
+        // legendary (가장 먼저 — 희귀도 우선 정렬이면 맨 앞으로 올라온다)
         provider.line = makeLine(base: 200, tree: node(200), rarity: .legendary)
-        tick = 3; await s.hatch(baseID: 200)
+        tick = 1; await s.hatch(baseID: 200)
         s.applyUsage(PokemonBalance.graduationTotal(.legendary))
+
+        // common #1
+        provider.line = makeLine(base: 100, tree: node(100), rarity: .common)
+        tick = 2; await s.hatch(baseID: 100)
+        s.applyUsage(PokemonBalance.graduationTotal(.common))
+
+        // common #2 (가장 나중)
+        provider.line = makeLine(base: 101, tree: node(101), rarity: .common)
+        tick = 3; await s.hatch(baseID: 101)
+        s.applyUsage(PokemonBalance.graduationTotal(.common))
 
         XCTAssertEqual(s.dexEntries.count, 3)
         let sorted = s.dexEntriesSorted
-        // legendary 가 맨 앞
-        XCTAssertEqual(sorted[0].rarity, .legendary)
-        XCTAssertEqual(sorted[0].finalID, 200)
-        // 그다음 common 끼리는 최신(101)이 먼저
-        XCTAssertEqual(sorted[1].rarity, .common)
-        XCTAssertEqual(sorted[1].finalID, 101)
-        XCTAssertEqual(sorted[2].finalID, 100)
+        // 순수 시간 역순 — 희귀도는 순서에 관여하지 않는다.
+        XCTAssertEqual(sorted.map(\.finalID), [101, 100, 200])
+        XCTAssertEqual(sorted[2].rarity, .legendary, "가장 오래된 legendary 는 맨 뒤")
 
-        // 희귀도별 카운트
+        // 희귀도별 카운트(요약 헤더 — 정렬과 무관하게 개체 수 기준)
         XCTAssertEqual(s.dexCount(.common), 2)
         XCTAssertEqual(s.dexCount(.legendary), 1)
         XCTAssertEqual(s.dexCount(.rare), 0)
