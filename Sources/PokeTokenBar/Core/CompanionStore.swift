@@ -61,20 +61,9 @@ final class CompanionStore {
     }
 
     static func defaultURL() -> URL {
-        // 상태 파일 위치. 기본은 Application Support/<AppIdentity.supportDirectoryName>. `PTB_STATE_DIR` 환경변수가 있으면
-        // 그 디렉토리를 쓴다 — 개발/QA 격리용(실제 companion 상태를 건드리지 않고 데모 상태로 실행).
-        // 프로덕션은 이 변수가 없어 무영향.
-        // 공백만 있는 값은 무시(URL(fileURLWithPath:)가 CWD 상대경로로 해석되는 것 방지).
-        let override = (ProcessInfo.processInfo.environment["PTB_STATE_DIR"] ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        let dir: URL
-        if !override.isEmpty {
-            dir = URL(fileURLWithPath: override, isDirectory: true)
-        } else {
-            dir = AppIdentity.supportDirectory
-        }
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir.appendingPathComponent("companion-state.json")
+        // 상태 파일 위치. 기본은 Application Support/<AppIdentity.supportDirectoryName>, `PTB_STATE_DIR`
+        // 이 있으면 그 디렉토리 — 해석은 AppIdentity.stateDirectory 가 전담한다(환경변수 직독 금지).
+        AppIdentity.stateDirectory.appendingPathComponent("companion-state.json")
     }
 
     // MARK: 파생값 (UI)
