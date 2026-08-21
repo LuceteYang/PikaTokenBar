@@ -24,6 +24,27 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertTrue(UpdateChecker.isNewer("2.0.1", than: "2.0"))   // 2.0.1 > 2.0.0
         XCTAssertFalse(UpdateChecker.isNewer("2.0", than: "2.0.0"))  // 동일
     }
+
+    // MARK: - Detached upgrade script wait loop (#175)
+
+    func testDetachedUpgradeScriptWaitsOnPidNotProcessName() {
+        let script = UpdateChecker.detachedUpgradeScript
+        XCTAssertFalse(
+            script.contains("pgrep -x"),
+            "pgrep -x matches any instance by name and always times out when a duplicate runs"
+        )
+        XCTAssertTrue(
+            script.contains("kill -0 \"$3\""),
+            "the wait loop must wait on the specific terminating PID via $3"
+        )
+    }
+
+    func testDetachedUpgradeScriptUsesPositionalParameters() {
+        let script = UpdateChecker.detachedUpgradeScript
+        XCTAssertTrue(script.contains("\"$1\" update"), "must execute brew via $1 positional arg")
+        XCTAssertTrue(script.contains("\"$1\" upgrade"), "must execute brew upgrade via $1 positional arg")
+        XCTAssertTrue(script.contains("open \"$2\""), "must open bundlePath via $2 positional arg")
+    }
 }
 
 // MARK: brew cask 업그레이드 경로
@@ -31,7 +52,7 @@ final class UpdateCheckerTests: XCTestCase {
 // 이 경로는 한 번 통째로 삭제된 적이 있다(ba041b8). cask 토큰만 원본 것으로 남아 있어서, 원본을
 // brew 로 설치한 Mac 에서 포크가 자신을 종료한 뒤 **원본 번들을 덮어쓰고** 정작 자신은 갱신되지
 // 않았다. 아래 테스트는 그 결함이 되돌아오는 경로를 각각 하나씩 막는다 — 실행 없이 텍스트로
-// 검증할 수 있게 `upgradeScript`·`caskListArguments` 가 프로퍼티로 뽑혀 있다.
+// 검증할 수 있게 `detachedUpgradeScript`·`caskListArguments` 가 프로퍼티로 뽑혀 있다.
 
 final class UpdateCheckerBrewTests: XCTestCase {
 
@@ -74,8 +95,8 @@ final class UpdateCheckerBrewTests: XCTestCase {
 
     // MARK: 업그레이드 스크립트
 
-    func testUpgradeScriptUpgradesThisForksCask() {
-        let s = UpdateChecker.upgradeScript
+    func testDetachedUpgradeScriptUpgradesThisForksCask() {
+        let s = UpdateChecker.detachedUpgradeScript
         XCTAssertTrue(s.contains("upgrade --cask pika-token-bar"))
         XCTAssertFalse(s.contains("poke-token-bar"),
                        "원본 cask 를 업그레이드하면 /Applications/PokeTokenBar.app 을 덮어쓴다")
@@ -83,8 +104,8 @@ final class UpdateCheckerBrewTests: XCTestCase {
 
     /// `brew update` 가 빠지면 로컬 tap 이 낡아 `upgrade` 가 no-op(exit 0) 이 되고,
     /// 앱만 종료된 채 아무것도 안 바뀐다 — 원본이 실제로 겪은 회귀다.
-    func testUpgradeScriptRefreshesTapBeforeUpgrading() {
-        let s = UpdateChecker.upgradeScript
+    func testDetachedUpgradeScriptRefreshesTapBeforeUpgrading() {
+        let s = UpdateChecker.detachedUpgradeScript
         guard let update = s.range(of: "\"$1\" update"),
               let upgrade = s.range(of: "\"$1\" upgrade") else {
             return XCTFail("update 또는 upgrade 호출을 찾지 못했다")
@@ -92,29 +113,36 @@ final class UpdateCheckerBrewTests: XCTestCase {
         XCTAssertTrue(update.lowerBound < upgrade.lowerBound, "update 는 upgrade 보다 먼저여야 한다")
     }
 
-    /// 실행 중 번들 교체 레이스 회피 — 종료를 기다리는 대상이 이 앱이어야 한다.
-    func testUpgradeScriptWaitsForThisAppToExit() {
-        XCTAssertTrue(UpdateChecker.upgradeScript.contains("pgrep -x \(AppIdentity.executableName)"))
-        XCTAssertTrue(UpdateChecker.upgradeScript.contains("pgrep -x PikaTokenBar"))
+    /// 실행 중 번들 교체 레이스 회피 — 종료를 기다리는 대상이 **이 프로세스**여야 한다.
+    ///
+    /// 한때 이 가드는 `pgrep -x \(AppIdentity.executableName)` 을 단정했다(이름으로 기다림). upstream
+    /// #175 가 그 방식을 PID 감시로 바꿨고 — 중복 인스턴스가 떠 있으면 이름 매칭이 20s 타임아웃까지
+    /// 헛돈다 — 포크는 그 수정을 받았다. 이름이 스크립트 본문에서 사라졌으므로 정체성은 여기서 지킬 게
+    /// 없고, 대기 대상이 PID 라는 것만 남는다(같은 취지의 upstream 가드가
+    /// `testDetachedUpgradeScriptWaitsOnPidNotProcessName`).
+    func testDetachedUpgradeScriptWaitsForThisAppToExit() {
+        let s = UpdateChecker.detachedUpgradeScript
+        XCTAssertTrue(s.contains("kill -0 \"$3\""), "종료 대기가 PID($3) 기준이 아니다")
+        XCTAssertFalse(s.contains("pgrep"), "이름 매칭으로 되돌아가면 중복 인스턴스에서 20s 를 버린다")
     }
 
     /// 재오픈은 이 포크의 로그인 에이전트를 깨워야 한다 — 라벨이 어긋나면 앱이 안 돌아온다.
-    func testUpgradeScriptReopensThisForksAgent() {
-        XCTAssertTrue(UpdateChecker.upgradeScript.contains("gui/$(id -u)/\(AppIdentity.loginAgentLabel)"))
-        XCTAssertFalse(UpdateChecker.upgradeScript.contains("chattymin"))
+    func testDetachedUpgradeScriptReopensThisForksAgent() {
+        XCTAssertTrue(UpdateChecker.detachedUpgradeScript.contains("gui/$(id -u)/\(AppIdentity.loginAgentLabel)"))
+        XCTAssertFalse(UpdateChecker.detachedUpgradeScript.contains("chattymin"))
     }
 
     /// brew 가 멈춰도 앱이 종료된 채 영영 안 돌아오면 안 된다 — 워치독과 재오픈 폴백.
-    func testUpgradeScriptCannotLeaveTheAppDown() {
-        let s = UpdateChecker.upgradeScript
+    func testDetachedUpgradeScriptCannotLeaveTheAppDown() {
+        let s = UpdateChecker.detachedUpgradeScript
         XCTAssertTrue(s.contains("kill -0"), "brew hang 감시 루프가 없다")
         XCTAssertTrue(s.contains("kill \"$brew_pid\""), "hang 시 brew 를 정리하지 않는다")
         XCTAssertTrue(s.contains("open \"$2\""), "kickstart 실패 시 open 폴백이 없다")
     }
 
     /// 경로는 본문에 보간하지 않고 positional 인자로만 넘긴다 — 공백·따옴표가 섞이면 셸 인젝션이다.
-    func testUpgradeScriptTakesPathsPositionally() {
-        let s = UpdateChecker.upgradeScript
+    func testDetachedUpgradeScriptTakesPathsPositionally() {
+        let s = UpdateChecker.detachedUpgradeScript
         XCTAssertTrue(s.contains("\"$1\""), "brew 경로가 positional 이 아니다")
         XCTAssertTrue(s.contains("\"$2\""), "번들 경로가 positional 이 아니다")
         XCTAssertFalse(s.contains("/Applications/"), "번들 경로가 스크립트 본문에 박혀 있다")
