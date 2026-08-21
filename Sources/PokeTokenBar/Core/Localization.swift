@@ -108,6 +108,14 @@ struct L {
     var todayTokensShort: String { t("오늘 토큰", "Today's tokens", "本日のトークン", "Tokens de hoy") }
     var todayCost: String { t("오늘 비용 ($)", "Today's cost ($)", "本日のコスト ($)", "Coste de hoy ($)") }
     var limitPercent: String { t("한도 %", "Limit %", "上限 %", "Límite %") }
+    var animationQualityLabel: String { t("애니메이션", "Animation", "アニメーション", "Animación") }
+    var animationQualityHint: String {
+        t("부드러울수록 배터리를 더 씁니다", "Smoother uses more battery",
+          "滑らかにするとバッテリー消費が増えます", "Más fluido consume más batería")
+    }
+    var animationPowerSaver: String { t("배터리 절약", "Power saver", "バッテリー優先", "Ahorro de batería") }
+    var animationBalanced: String { t("기본", "Balanced", "標準", "Equilibrado") }
+    var animationSmooth: String { t("부드럽게", "Smooth", "滑らか", "Fluido") }
     var limitDisplayModeLabel: String { t("한도 표시 방식", "Limit display", "上限の表示", "Visualización del límite") }
     var limitDisplayUsed: String { t("사용량", "Used", "使用量", "Usado") }
     var limitDisplayRemaining: String { t("남은 양", "Remaining", "残量", "Restante") }

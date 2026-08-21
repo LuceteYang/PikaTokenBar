@@ -45,7 +45,7 @@ struct ItemIconView: View {
 
 /// SpriteView 가 그리는 주체(정적 이미지 + 그 이미지가 어느 종의 것인지)의 전이 규칙.
 ///
-/// SwiftUI `.task` 는 호스트 없이 돌릴 수 없어 규칙만 순수 값 전이로 빼 둔다(`frameDelay` 와 같은 방식).
+/// SwiftUI `.task` 는 호스트 없이 돌릴 수 없어 규칙만 순수 값 전이로 빼 둔다(`GIFDecoder.capFrameRate` 와 같은 방식).
 /// 여기 담긴 규칙은 둘 다 "화면에 남은 픽셀이 지금 주체의 것인가"를 지킨다.
 struct SpriteSubject: Equatable {
     var image: NSImage?
@@ -84,7 +84,9 @@ struct SpriteView: View {
     var animated: Bool = false
     var shiny: Bool = false
     /// GIF 프레임 지속의 하한(초). 0=원본 delay 그대로. >0 이면 fps 상한 + wakeup 코얼레싱을 적용해
-    /// idle 배터리를 통제한다 — 항상 떠 있는 플로팅 펫(0.4s≈2.5fps)이 메뉴바 GIF 규율과 동치가 되게.
+    /// idle 배터리를 통제한다 — 항상 떠 있는 플로팅 펫(`FloatingPetView.frameFloor`)이 메뉴바 GIF
+    /// (`AppDelegate.menuFrameFloor`)와 **같은 규율**을 쓰게. 규율 = "캡이 존재한다"이며 값은 표면
+    /// 크기에 따라 다를 수 있다(22px 메뉴바보다 큰 펫은 같은 fps 에서도 끊김이 더 보인다).
     /// 팝오버 등 일시적 표시는 0(기본)으로 두어 네이티브 fps 유지.
     var minFrameDelay: TimeInterval = 0
     @State private var img: NSImage?
@@ -111,8 +113,12 @@ struct SpriteView: View {
         _loadedShiny = State(initialValue: shiny)
     }
 
-    /// 프레임 지속(초) = max(원본 delay, 하한). 순수·테스트용 — fps 상한 회귀 가드.
-    static func frameDelay(base: TimeInterval, floor: TimeInterval) -> TimeInterval { max(base, floor) }
+    /// GIF 프레임 로드 task 의 정체성 — 바뀌면 재디코드·재솎아내기. **하한을 포함한다**:
+    /// 프레임은 하한에 맞춰 솎아낸 결과물이라, 빠지면 fps 설정 변경이 종 교체까지 안 먹는다
+    /// (`AppDelegate.menuSpriteKey` 와 같은 이유). 순수·테스트용.
+    static func frameTaskID(speciesID: Int?, shiny: Bool, floor: TimeInterval) -> String {
+        "\(speciesID.map(String.init) ?? "nil")-\(shiny)-\(floor)"
+    }
 
     /// 디코드된 GIF 프레임 중 실제로 재생할 것 — 취소됐거나 2프레임 미만이면 빈 배열(정적 폴백).
     /// 취소 검사가 여기 있는 이유: `frames` 는 body 에서 `img` 보다 먼저 그려지므로, 취소된 로드가
@@ -133,7 +139,7 @@ struct SpriteView: View {
         loadedID = next.loadedID
     }
     /// 정적 스프라이트를 다시 불러야 하는가 — 종이 바뀌었거나 **이로치 여부가 뒤집혔을 때**.
-    /// 순수·테스트용(frameDelay 와 같은 이유). 종만 비교하던 과거 판정은 도감의 이로치 토글에서
+    /// 순수·테스트용(`GIFDecoder.capFrameRate` 와 같은 이유). 종만 비교하던 과거 판정은 도감의 이로치 토글에서
     /// .task 가 다시 돌아도 "이미 그 종을 로드했다"로 판정해 색이 안 바뀌는 회귀를 낳았다.
     static func needsReload(loadedID: Int?, loadedShiny: Bool, id: Int, shiny: Bool) -> Bool {
         loadedID != id || loadedShiny != shiny
@@ -155,7 +161,7 @@ struct SpriteView: View {
         }
         // GIF 재생 중엔 bob 정지(프레임 자체가 움직임) — 폴백/정적일 때만 상하 움직임
         .offset(y: bob && frames.isEmpty && up ? -3 : 0)
-        .task(id: "\(speciesID.map(String.init) ?? "nil")-\(shiny)") {
+        .task(id: Self.frameTaskID(speciesID: speciesID, shiny: shiny, floor: minFrameDelay)) {
             // animated 프레임은 id/shiny 변경 시 항상 초기화(이전 개체 프레임 잔상 방지)
             frames = []
             frameIndex = 0
@@ -191,14 +197,19 @@ struct SpriteView: View {
             // 단일 프레임/디코드 실패 → 정적 폴백. 취소됐으면 아예 반영하지 않는다(빈 배열이라 아래서 종료).
             let ready = Self.framesToApply(GIFDecoder.frames(from: data), cancelled: Task.isCancelled)
             guard !ready.isEmpty else { return }
-            frames = ready
+            // fps 캡을 여기서 한 번 적용한다(루프에서 프레임마다 늘리면 재생 속도가 느려진다 —
+            // `GIFDecoder.capFrameRate` 주석 참조). floor=0(팝오버)이면 그대로 통과한다.
+            frames = GIFDecoder.capFrameRate(ready, floor: minFrameDelay)
             // delay 기반 프레임 advance. .task 취소 시(speciesID 변경/뷰 소멸) 루프 종료 — 누수 없음
             while !Task.isCancelled {
-                let delay = Self.frameDelay(base: frames[frameIndex % frames.count].delay, floor: minFrameDelay)
-                // minFrameDelay>0(플로팅 펫): fps 상한 + tolerance 로 wakeup 코얼레싱 — 메뉴바
-                // max(0.4,delay)+timer.tolerance 규율과 동치(항상 뜬 표면의 idle 배터리 통제). 0 이면 네이티브.
-                try? await Task.sleep(for: .seconds(delay),
-                                      tolerance: minFrameDelay > 0 ? .seconds(delay * 0.5) : .zero)
+                let delay = frames[frameIndex % frames.count].delay
+                // minFrameDelay>0(플로팅 펫): tolerance 로 wakeup 코얼레싱 — 메뉴바 `Timer.tolerance`
+                // 와 같은 규율(항상 뜬 표면의 idle 배터리 통제). 0 이면 코얼레싱 없이 네이티브.
+                // 코얼레싱 배수는 메뉴바와 공유한다 — 늦게만 발화하므로 크게 두면 재생이 늘어진다
+                // (`AppDelegate.menuFrameTolerance` 주석).
+                try? await Task.sleep(
+                    for: .seconds(delay),
+                    tolerance: minFrameDelay > 0 ? .seconds(delay * AppDelegate.menuFrameTolerance) : .zero)
                 if Task.isCancelled { break }
                 frameIndex = (frameIndex + 1) % frames.count
             }

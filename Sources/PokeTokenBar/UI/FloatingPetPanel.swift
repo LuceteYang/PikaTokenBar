@@ -411,7 +411,6 @@ final class PetHostingView: NSHostingView<AnyView> {
 }
 
 struct FloatingPetView: View {
-    static let frameFloor: TimeInterval = 0.4
     var animated: Bool = true
     @Environment(UsageStore.self) private var store
     @Environment(CompanionStore.self) private var companion
@@ -426,7 +425,8 @@ struct FloatingPetView: View {
             }
 
             SpriteView(speciesID: companion.currentSpeciesID, size: size, animated: animated,
-                       shiny: companion.currentIsShiny, minFrameDelay: Self.frameFloor)
+                       shiny: companion.currentIsShiny,
+                       minFrameDelay: store.animationQuality.frameFloor)
                 .frame(width: size, height: size)
                 .zIndex(0)
         }
