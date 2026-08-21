@@ -88,9 +88,10 @@ struct SpriteView: View {
     var animated: Bool = false
     var shiny: Bool = false
     /// GIF 프레임 지속의 하한(초). 0=원본 delay 그대로. >0 이면 fps 상한 + wakeup 코얼레싱을 적용해
-    /// idle 배터리를 통제한다 — 항상 떠 있는 플로팅 펫(`FloatingPetView.frameFloor`)이 메뉴바 GIF
-    /// (`AppDelegate.menuFrameFloor`)와 **같은 규율**을 쓰게. 규율 = "캡이 존재한다(>0)"이며 값의
-    /// 일치가 아니다 — 22px 메뉴바보다 큰 펫은 같은 fps 에서도 끊김이 더 보인다.
+    /// idle 배터리를 통제한다 — 항상 떠 있는 플로팅 펫과 메뉴바 GIF 가 **같은 규율**을 쓰게.
+    /// 규율 = "캡이 존재한다(>0)"이며, 두 표면은 지금 같은 사용자 설정
+    /// (`UsageStore.AnimationQuality.frameFloor`)을 읽는다. 값이 표면별로 갈릴 수는 있다 —
+    /// 22px 메뉴바보다 큰 펫은 같은 fps 에서도 끊김이 더 보인다.
     /// 팝오버 등 일시적 표시는 0(기본)으로 두어 네이티브 fps 유지.
     var minFrameDelay: TimeInterval = 0
     @State private var img: NSImage?
@@ -117,6 +118,12 @@ struct SpriteView: View {
         _loadedShiny = State(initialValue: shiny)
     }
 
+    /// GIF 프레임 로드 task 의 정체성 — 바뀌면 재디코드·재솎아내기. **하한을 포함한다**:
+    /// 프레임은 하한에 맞춰 솎아낸 결과물이라, 빠지면 fps 설정 변경이 종 교체까지 안 먹는다
+    /// (`AppDelegate.menuSpriteKey` 와 같은 이유). 순수·테스트용.
+    static func frameTaskID(speciesID: Int?, shiny: Bool, floor: TimeInterval) -> String {
+        "\(speciesID.map(String.init) ?? "nil")-\(shiny)-\(floor)"
+    }
 
     /// 디코드된 GIF 프레임 중 실제로 재생할 것 — 취소됐거나 2프레임 미만이면 빈 배열(정적 폴백).
     /// 취소 검사가 여기 있는 이유: `frames` 는 body 에서 `img` 보다 먼저 그려지므로, 취소된 로드가
@@ -174,7 +181,7 @@ struct SpriteView: View {
         }
         // GIF 재생 중엔 bob 정지(프레임 자체가 움직임) — 폴백/정적일 때만 상하 움직임
         .offset(y: bob && frames.isEmpty && up ? -3 : 0)
-        .task(id: "\(speciesID.map(String.init) ?? "nil")-\(shiny)") {
+        .task(id: Self.frameTaskID(speciesID: speciesID, shiny: shiny, floor: minFrameDelay)) {
             // animated 프레임은 id/shiny 변경 시 항상 초기화(이전 개체 프레임 잔상 방지)
             frames = []
             frameIndex = 0

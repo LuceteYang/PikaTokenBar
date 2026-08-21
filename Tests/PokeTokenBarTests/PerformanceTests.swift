@@ -127,19 +127,16 @@ final class StoreTerminationTests: XCTestCase {
 /// 같은 규율(fps 하한 + 저전력 정적화)을 공유한다. 여기선 그 순수 판정만 고정한다.
 @MainActor
 final class FloatingPetEnergyTests: XCTestCase {
-    /// [회귀] 상시 표시 표면(메뉴바·펫)의 GIF 는 fps 하한으로 캡 — 네이티브 fps 로 돌면 프레임마다
-    /// 재합성(CA 커밋→디스플레이 사이클 wakeup)이 늘어 메뉴바 회귀를 그대로 반복한다. 두 표면을
-    /// **함께** 단정한다: 펫 캡만 상수로 잠겨 있고 메뉴바는 인라인 리터럴이던 동안, 메뉴바 캡이
-    /// 통째로 사라져도 이 스위트는 통과했다(가드 비대칭).
-    func testAlwaysVisibleSurfacesAreCapped() {
-        XCTAssertGreaterThan(AppDelegate.menuFrameFloor, 0, "메뉴바 캡이 풀리면 idle wakeup 회귀")
-        XCTAssertGreaterThan(FloatingPetView.frameFloor, 0, "펫 캡이 풀리면 idle wakeup 회귀")
-        for floor in [AppDelegate.menuFrameFloor, FloatingPetView.frameFloor] {
-            let capped = GIFDecoder.capFrameRate(Self.uniformFrames(count: 20, delay: 0.1), floor: floor)
-            XCTAssertTrue(capped.allSatisfy { $0.delay >= floor - 1e-9 },
-                          "floor=\(floor): 빠른 프레임은 캡 이상으로 묶여야 한다")
+    /// [회귀] 상시 표시 표면의 GIF 는 **어떤 프리셋에서도** fps 하한으로 캡 — 네이티브 fps 로 돌면
+    /// 프레임마다 재합성(CA 커밋→디스플레이 사이클 wakeup)이 늘어 메뉴바 회귀를 그대로 반복한다.
+    func testEveryPresetCapsFramesWithoutChangingSpeed() {
+        for q in UsageStore.AnimationQuality.allCases {
+            let capped = GIFDecoder.capFrameRate(Self.uniformFrames(count: 20, delay: 0.1),
+                                                floor: q.frameFloor)
+            XCTAssertTrue(capped.allSatisfy { $0.delay >= q.frameFloor - 1e-9 },
+                          "\(q.rawValue): 빠른 프레임은 캡 이상으로 묶여야 한다")
             XCTAssertEqual(capped.reduce(0) { $0 + $1.delay }, 2.0, accuracy: 1e-6,
-                           "floor=\(floor): 속도는 원본 유지")
+                           "\(q.rawValue): 속도는 원본 유지")
         }
     }
 
@@ -203,6 +200,51 @@ final class FloatingPetEnergyTests: XCTestCase {
         let worstCase = loop * (1 + AppDelegate.menuFrameTolerance)
         XCTAssertLessThanOrEqual(worstCase, loop * 1.15,
                                  "최악의 경우 재생이 15% 이상 늘어지면 팝오버와 속도가 어긋나 보인다")
+    }
+
+    /// [회귀] **어떤 프리셋도 캡을 해제하지 못한다.** 사용자에게 fps 선택권을 주면서 0(네이티브)이
+    /// 새는 게 가장 위험한 회귀 — 프리셋을 추가해도 이 가드가 자동으로 걸린다(개별 상수 단정과 달리).
+    func testNoAnimationQualityPresetDisablesTheCap() {
+        XCTAssertFalse(UsageStore.AnimationQuality.allCases.isEmpty)
+        for q in UsageStore.AnimationQuality.allCases {
+            XCTAssertGreaterThan(q.frameFloor, 0, "\(q.rawValue): 캡이 해제되면 idle wakeup 회귀")
+        }
+    }
+
+    /// 프리셋 순서 계약 — powerSaver 가 가장 느리고(하한 큼) smooth 가 가장 부드럽다. 라벨과 실제
+    /// 동작이 어긋나면 사용자가 정반대를 고르게 된다.
+    func testAnimationQualityPresetsAreOrdered() {
+        let q = UsageStore.AnimationQuality.self
+        XCTAssertGreaterThan(q.powerSaver.frameFloor, q.balanced.frameFloor)
+        XCTAssertGreaterThan(q.balanced.frameFloor, q.smooth.frameFloor)
+    }
+
+    /// [회귀] 설정을 바꾸면 **즉시** 반영돼야 한다. 두 표면 모두 "정체성이 바뀌면 재로딩" 기계로
+    /// 프레임을 갱신하는데, 그 정체성 키에 하한이 빠져 있으면 종이 바뀔 때까지 옛 fps 로 계속 돈다
+    /// (`menuSpriteKey` = "id-shiny", `SpriteView.task(id:)` = "id-shiny" 였다 — 설계 시 확인된 함정).
+    func testIdentityKeysIncludeTheFrameFloor() {
+        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.4),
+                          AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.1),
+                          "메뉴바: 하한이 키에 없으면 설정 변경이 안 먹는다")
+        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, shiny: false, floor: 0.4),
+                          SpriteView.frameTaskID(speciesID: 41, shiny: false, floor: 0.1),
+                          "펫: 하한이 task id 에 없으면 설정 변경이 안 먹는다")
+        // 종·이로치 구분은 그대로 유지(하한 추가가 기존 판정을 덮어쓰지 않는다).
+        XCTAssertNotEqual(AppDelegate.menuSpriteKey(id: 41, shiny: false, floor: 0.2),
+                          AppDelegate.menuSpriteKey(id: 41, shiny: true, floor: 0.2))
+        XCTAssertNotEqual(SpriteView.frameTaskID(speciesID: 41, shiny: true, floor: 0.2),
+                          SpriteView.frameTaskID(speciesID: 42, shiny: true, floor: 0.2))
+    }
+
+    /// 두 상시 표시 표면(메뉴바·펫)은 이제 **같은 설정값**을 읽는다(`animationQuality.frameFloor`)
+    /// — 한쪽만 캡이 풀리는 비대칭이 구조적으로 불가능해졌다. 남은 위험은 호출부가 0 을 직접
+    /// 넘기는 것뿐인데, 두 호출부 모두 SwiftUI/AppKit 뷰라 헤드리스로 잡을 수 없어 여기선
+    /// 프리셋 자체의 계약만 잠근다(`testNoAnimationQualityPresetDisablesTheCap`).
+    /// 일시적 표시(팝오버)는 의도적으로 floor 0 = 네이티브 fps 다.
+    func testTransientSurfaceIsTheOnlyUncappedOne() {
+        XCTAssertEqual(GIFDecoder.capFrameRate(Self.uniformFrames(count: 10, delay: 0.03),
+                                               floor: 0).count, 10, "팝오버는 네이티브 유지")
+        XCTAssertTrue(UsageStore.AnimationQuality.allCases.allSatisfy { $0.frameFloor > 0 })
     }
 
     /// Bubble needs headroom + width beyond the square pet size — otherwise content is clipped.

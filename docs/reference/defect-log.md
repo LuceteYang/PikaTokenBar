@@ -368,10 +368,12 @@ read_when:
   diff-gate(동일 프레임 객체 재대입 스킵 — 애니 프레임은 서로 다른 객체라 정상 통과) + GIF fps 하한
   (`AppDelegate.menuFrameFloor`, 당시 0.4s≈2.5fps) + `Timer.tolerance` 0.5(코얼레싱)로 ~5 wakeup/s(−89%),
   애니메이션 유지. **캡 값 자체는 튜닝 가능하고 0 만 금지**다 — 세 대책 중 CPU 14%의 주범은 CA 전환·팝오버
-  상주였고 fps 캡의 몫은 wakeup 을 프레임 수에 비례해 줄이는 것뿐이다(CA 전환이 제거된 뒤라 14% 당시와
-  같은 조건이 아니다. 단 **fps 를 올리면 CPU 는 실제로 오른다**: 실측 idle 0.2s/tol 0.5 = 1.8% →
-  0.1s/tol 0.1 = 5.1%(2.8배). "CA 전환이 주범이었으니 fps 는 공짜"가 아니라, 주범이 사라진 만큼의
-  여유가 생긴 것뿐이다).
+  상주였고 fps 캡의 몫은 wakeup 을 프레임 수에 비례해 줄이는 것뿐이다(22px 에서도 2.5fps 는 느리다는
+  지적이 있어 값을 사용자 선택으로 열었다 — `UsageStore.AnimationQuality` 의 0.4/0.2/0.1. CA 전환이
+  제거된 뒤라 14% 당시와 같은 조건이 아니다. 단 **fps 를 올리면 CPU 는 실제로 오른다**: 실측 idle
+  0.2s/tol 0.5 = 1.8% → 0.1s/tol 0.1 = 5.1%(2.8배). "CA 전환이 주범이었으니 fps 는 공짜"가 아니라,
+  주범이 사라진 만큼의 여유가 생긴 것뿐이다. 그래서 **기본값은 이 설정 이전과 같은 0.4s(powerSaver)**
+  이고, 더 부드러운 쪽은 opt-in 이다).
   배터리-vs-AC/thermal 적응·CADisplayLink
   전환은 1인 로컬 노트북 기준 수확체감으로 판정, 미도입(필요 시 Agent Team 계획 참조). (Agent Team 조사 + 실측, 2026-07-22.)
 - **fps 캡은 hold 가 아니라 decimate 다 — `max(floor, delay)` 는 애니메이션을 슬로모션으로 만든다.**
@@ -397,15 +399,18 @@ read_when:
 - **항상 뜬 애니메이션 표면은 메뉴바와 같은 idle 규율을 공유한다.** 플로팅 펫(`FloatingPetPanel`)처럼 상시
   표시되는 두 번째 GIF 표면을 더할 땐 메뉴바 규율을 그대로 상속해야 회귀(#102 후속)를 안 만든다. **규율 =
   "캡이 존재한다(>0)"이며 값의 일치가 아니다** — 표면이 크면 같은 fps 에서도 끊김이 더 보여 값은 갈릴 수
-  있다: ① GIF fps 하한(`SpriteView(minFrameDelay:)` — 펫은 `FloatingPetView.frameFloor`, 메뉴바는
+  있다(현재는 두 표면이 사용자 설정 `UsageStore.AnimationQuality` 하나를 공유한다 — 표면별로 값을
+  갈라야 할 근거가 생기면 그때 프리셋에서 표면별 값을 뽑아라): ① GIF fps 하한
+  (`SpriteView(minFrameDelay:)` — 펫은 `store.animationQuality.frameFloor`, 메뉴바는
   `AppDelegate.menuFrameFloor`, 팝오버 등 *일시적* 표시는 0=네이티브) + `Task.sleep(for:tolerance:)` 코얼레싱, ② 저전력 모드 정적화(`FloatingPetController.shouldAnimate(lowPower:)`
   — `NSProcessInfoPowerStateDidChange` 관찰 후 콘텐츠 재구성), ③ 숨김/슬립 시 `contentView=nil` 로 프레임 루프 정지
   (팝오버 `popoverDidClose` 패턴). 회귀 가드: `FloatingPetEnergyTests`(fps 하한 clamp·`frameFloor>0`·팝오버 불변·
   low-power 정적화 순수 판정 — SwiftUI `.task` 타이밍 자체는 호스트 없이 xctest 불가라 순수 경로만 잠금).
   **가드 비대칭 주의:** 펫 캡만 상수로 잠겨 있었고 메뉴바 캡은 인라인 리터럴 `max(0.4, delay)` 여서
-  *캡이 통째로 사라져도 테스트가 못 잡았다*. 상시 표시 표면을 더할 땐 캡을 반드시 **이름 있는 상수**로
-  두고 두 표면을 한 테스트에서 `>0` 로 단정한다(`testAlwaysVisibleSurfacesAreCapped` — 캡=0 주입으로
-  실패 확인). occlusion 게이팅은
+  *캡이 통째로 사라져도 테스트가 못 잡았다*. 지금은 두 표면이 같은 프리셋 값을 읽어 비대칭 자체가
+  구조적으로 불가능하고, 가드는 프리셋 계약에 걸린다(`testNoAnimationQualityPresetDisablesTheCap`,
+  `testTransientSurfaceIsTheOnlyUncappedOne` — 캡=0 주입으로 실패 확인). 상시 표시 표면을 더할 땐
+  캡을 반드시 **이름 있는 값**으로 두고 `>0` 를 단정한다. occlusion 게이팅은
   all-spaces/`.floating` 펫이 실제로 거의 안 가려져 메뉴바와 동일 수확체감으로 미도입. (#102 리뷰 지적 반영, 2026-07-22.)
 
 ## 알림
