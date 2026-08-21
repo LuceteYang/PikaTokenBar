@@ -98,6 +98,7 @@ The tokens you've already used are your currency. Spend them in the new <b>Shop<
 ## Also in the box
 
 - **Representative Pokémon** — pin any owned Pokédex species to the menu bar and optional floating pet, independently of the companion you're raising. While pinned, the menu bar stops following egg, hatch, and evolution changes; raising progress remains visible on Home.
+- **Animation quality** — pick how smoothly the menu bar sprite and floating pet animate (Power saver / Balanced / Smooth). Both always-visible surfaces share the setting; the default Balanced keeps idle CPU at ~1.8% instead of the ~6.3% Smooth costs.
 - **Interactive floating pet** — hover for today's usage, click to open the main window, right-click for a menu, and show limit alerts as speech bubbles.
 - **Per-service tabs** — when two or more of Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, and Kiro CLI are detected, compact tabs switch between them; today's total stays combined.
 - **Official limits** — Claude & Codex 5-hour / weekly utilization with reset countdowns, right under today's numbers.
