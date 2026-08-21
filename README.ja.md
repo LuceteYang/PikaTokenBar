@@ -178,6 +178,7 @@ swift test                   # ユニットテスト
 | `~/.copilot/session-store.db` | Copilot CLI daily/blocks/weekly/monthly | SQLite 読み取り専用；`assistant_usage_events` の1行が API 呼び出し1回；`$COPILOT_HOME` を設定していればそのパス；`input_tokens` にキャッシュ分が含まれるため cache read/write を差し引いて集計；premium request 課金のためコストは推定しない |
 | `~/Library/Application Support/kiro-cli/data.sqlite3` | Kiro CLI daily/blocks/weekly/monthly | SQLite 読み取り専用；会話履歴 JSON（`conversations`/`conversations_v2`）；Kiro のローカル DB は実際のトークン数を記録せず、サーバー側セッションも無いため、input は毎ターン再送される累積会話テキストをバイト÷4 で**推定**（output は実際のストリーミング応答バイトから算出）；`/clear`・圧縮で消えた会話の集計済みトークンはアプリ再起動まで数え続ける；コストは推定しない |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude 公式 5h/週間 % | 非公式 endpoint；Keychain は**更新ボタンを押した時のみ**読み取り — 自動更新では読みません |
+| `session-key.json` → `claude.ai/api` | Claude 公式 5h/週間 % | 任意：設定に claude.ai の `sessionKey` クッキーを貼り付けると、**Keychain のプロンプトなしで**自動更新でも上限が更新されます |
 | `codex app-server` | Codex 公式 5h/週間 % | ローカル子プロセス；アカウント snapshot のみ、モデル turn なし |
 | [PokéAPI](https://pokeapi.co/) — `pokeapi.co`, `graphql.pokeapi.co` | ポケモンの種・進化 | ランタイム取得；ローカルキャッシュ、バンドルしない |
 | `raw.githubusercontent.com/PokeAPI/sprites` | ポケモン・アイテムのスプライト | ランタイム取得；Application Support にキャッシュ、バンドルしない |
@@ -187,8 +188,9 @@ swift test                   # ユニットテスト
 ## プライバシー & 権限
 
 - **オンデバイス。** トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI データから直接読み取ります。使用量のアップロードも、モデルの推論実行も行いません。
-- **外部リクエスト。** 本アプリは完全オフラインではありません。7つのホストに接続します — `pokeapi.co`・`graphql.pokeapi.co`（種・進化）、`raw.githubusercontent.com`（スプライト）、`api.anthropic.com`（Claude 公式の上限）、`status.claude.com`・`status.openai.com`（障害バナー — 設定でオフ可）、`api.github.com`（アップデート確認）。**いずれのリクエストにも使用量・トークン・プロンプト・プロジェクトのパスは含まれません** — 送られるのはリクエストそのものだけです。
+- **外部リクエスト。** 本アプリは完全オフラインではありません。8つのホストに接続します — `pokeapi.co`・`graphql.pokeapi.co`（種・進化）、`raw.githubusercontent.com`（スプライト）、`api.anthropic.com` と — セッションキーを保存した場合のみ — `claude.ai`（Claude 公式の上限）、`status.claude.com`・`status.openai.com`（障害バナー — 設定でオフ可）、`api.github.com`（アップデート確認）。**いずれのリクエストにも使用量・トークン・プロンプト・プロジェクトのパスは含まれません** — 送られるのはリクエストそのものだけです。
 - **Keychain（任意）。** Claude OAuth 資格情報は**更新ボタンを押した時のみ**読み取ります（設定、またはポップオーバーの上限行）。自動更新では Keychain に触れないためパスワードのプロンプトは表示されず、`~/.claude/.credentials.json` があればそちらから取得します。トークンはメモリ上にのみ保持し、**アプリ自身の Keychain 項目は作成しません。** トークンが期限切れになると、上限は更新するまで以前の値（stale）として表示されます。設定でオフにすると上限セクションが非表示になります。
+- **セッションキー（任意）。** 設定に claude.ai の `sessionKey` を貼り付けると、Keychain に触れずに上限を取得します — 自動更新が続くため stale のまま固まりません。キーは `~/Library/Application Support/PikaTokenBar/session-key.json` に所有者のみ読み取り可能（`0600`）な**平文**で保存されます（アプリ自身の Keychain 項目を作るとプロンプトが復活するため、あえてファイルにします）。このキーは claude.ai アカウントへのアクセス権を持つため、取り扱いにはご注意ください — 設定から削除するか、ブラウザでログアウトすれば即時無効になります。
 - **ポケモンのアセット** はランタイムに PokéAPI から取得し、`~/Library/Application Support/PikaTokenBar/` にのみキャッシュされます。アプリのバイナリおよびリリース成果物にポケモンのアセットは含まれません。
 
 ## コントリビューター

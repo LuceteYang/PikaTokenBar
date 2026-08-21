@@ -8,6 +8,7 @@ read_when:
   - 스프라이트·이미지를 고정 크기 프레임에 그릴 때(비율 왜곡 부류)
   - 세이브 이전/병합·외부 파일 입력 경로를 만들 때
   - `scripts/` 의 셸 스크립트에서 파이프(`|`)로 외부 명령 출력을 검사하는 게이트를 만들거나 리뷰할 때
+  - 외부 HTTP 엔드포인트(claude.ai·api.anthropic.com)를 새로 붙이거나 "죽었다"고 판단할 때
 ---
 
 # 결함 대응 축적 규칙
@@ -228,6 +229,36 @@ read_when:
   파싱 실패를 형식 오류로 뭉뚱그리면 "재로그인하면 된다"를 안내 못 해 한도 섹션이 원인 불명으로 사라진다.
   → `LimitsError.credentialMissingAccountOAuth` 로 구분해 재로그인 안내를 띄운다
   (`OAuthCredentialData.isAccountOAuthMissing`).
+- **claude.ai 세션 키도 앱 keychain 에 넣지 않는다 — 평문 파일(0600) + `AppIdentity.stateDirectory`.**
+  세션 키 경로(`SessionKeyLimitsProvider`)를 넣은 이유가 Keychain 프롬프트 회피인데, 참조 구현
+  (hamed-elfayome/Claude-Usage-Tracker)처럼 키를 앱 keychain 항목에 저장하면 위 금지 부류(#58)를 그대로
+  다시 밟아 프롬프트가 부활한다. 저장은 `session-key.json`(0600) 이고, 권한은 **쓰기 전 `createFile`
+  attributes 로** 준다 — 먼저 쓰고 나중에 chmod 하면 그 사이 0644 로 노출된다. `.atomic` 교체가 기존
+  권한을 물려받는 건 실측 결과일 뿐 문서화된 보장이 아니라 쓴 뒤 한 번 더 못박는다. 회귀 가드:
+  `testStoreRoundTripsCredentialWithOwnerOnlyPermissions`(두 메커니즘을 다 빼면 0644 로 실패 — 확인함).
+- **한도 조회 경로를 늘렸으면 `disableKeychainAccess` 게이트를 다시 읽어라.** 그 토글의 의미는 "Keychain
+  팝업 차단"이지 "한도 끄기"가 아니다. 세션 키 경로는 Keychain 을 안 읽는데도 토글 하나로 같이 막히면,
+  키를 넣은 사용자가 한도를 영영 못 본다(`refresh` 의 게이트 + `didSet` 두 곳 모두). 회귀 가드:
+  `testKeychainDisabledStillFetchesLimitsWhenSessionKeyIsConfigured` / `…SkipsLimitsWithoutSessionKey`.
+
+## 외부 HTTP 엔드포인트
+
+- **claude.ai API 는 curl 로 검증하면 안 된다 — Cloudflare 가 curl 만 챌린지한다.** 같은 헤더·같은 쿠키로
+  `GET https://claude.ai/api/organizations` 를 쳤을 때 curl 은 **403 + `cf-mitigated: challenge` + HTML**,
+  `URLSession` 은 **200 + JSON** 이었다(TLS/HTTP2 지문 차이). curl 로 먼저 재보고 "엔드포인트가 죽었다"고
+  판단하면 실제로는 동작하는 경로를 버린다. 반대 방향 함정도 있다 — 참조 구현 주석의
+  "`api.anthropic.com/api/oauth/usage` 는 disabled" 를 믿고 폴백을 들어내려 했지만, 실제 토큰으로 쳐보니
+  200 이었다. **남의 주석도, curl 결과도 근거가 아니다. 앱과 같은 클라이언트로 직접 확인한다** —
+  `scripts/probe-session-key.swift`(opt-in, CI 제외. CI 에서는 애초에 검증 불가라 HTTP 계층을 시임으로
+  갈아끼운 단위 테스트가 대신 선다).
+- **"첫 번째 조직"을 고르면 조용히 0% 를 표시한다.** claude.ai 계정에는 실사용 조직 말고도 로그인만 해둔
+  개인 org·API 전용 org 가 함께 온다(실측 3개: 개인 org=0%/`resets_at` null, API org=**403**
+  `permission_error`, 회사 Team=25%/32%). 참조 구현의 `organizations.first!` 는 이 계정에서 영구히 0% 를
+  내고(게다가 빈 배열에서 크래시), **오류가 아니라 그럴듯한 오답이라 아무도 눈치채지 못한다.**
+  → `capabilities` 에 `chat` 없는 조직은 아예 조회하지 않고, 200 인 것 중 사용 흔적(`utilization > 0` 또는
+  `resets_at != nil`, 신형 응답은 `limits[]`)이 있는 조직을 고른 뒤 캐시한다. 캐시된 조직이 403 이면
+  (탈퇴·권한 회수) 재탐색하지만 401(키 무효)은 재탐색하지 않는다 — 같은 401 이 반복될 뿐이다.
+  회귀 가드: `testFetchSkipsForbiddenOrgAndPicksTheOneWithUsage`(참조 구현 로직을 주입하면 실패 — 확인함).
 
 ## 동시성
 

@@ -173,6 +173,44 @@ struct L {
     var launchAtLogin: String { t("로그인 시 자동 시작", "Launch at login", "ログイン時に自動起動", "Iniciar al arrancar sesión") }
     var bundledOnly: String { t(".app 번들로 설치된 경우에만 사용 가능 (scripts/build-app.sh)", "Available only when installed as an .app bundle (scripts/build-app.sh)", ".appバンドルでインストールした場合のみ利用可能 (scripts/build-app.sh)", "Disponible solo si se instaló como paquete .app (scripts/build-app.sh)") }
     var notificationsSection: String { t("알림", "Notifications", "通知", "Notificaciones") }
+    // MARK: claude.ai 세션 키 (Keychain 프롬프트 없는 한도 경로)
+    var sessionKeyLabel: String { t("claude.ai 세션 키", "claude.ai session key", "claude.ai セッションキー", "Clave de sesión de claude.ai") }
+    var sessionKeyHint: String {
+        t("Keychain 팝업 없이 공식 한도를 조회합니다. 브라우저 개발자도구 → Application → Cookies → claude.ai → sessionKey 값을 붙여넣으세요.",
+          "Fetches official limits with no Keychain pop-up. Paste the value from DevTools → Application → Cookies → claude.ai → sessionKey.",
+          "Keychain のポップアップなしで公式上限を取得します。開発者ツール → Application → Cookies → claude.ai → sessionKey の値を貼り付けてください。",
+          "Obtiene los límites oficiales sin avisos de Keychain. Pega el valor de DevTools → Application → Cookies → claude.ai → sessionKey.")
+    }
+    /// 평문 보관을 숨기지 않는다 — 사용자가 무엇을 맡기는지, 어떻게 취소하는지 알아야 한다.
+    var sessionKeyStorageNote: String {
+        t("키는 이 Mac 의 앱 폴더에 본인만 읽을 수 있는 파일로 저장됩니다(암호화 아님). 브라우저에서 로그아웃하면 즉시 무효화됩니다.",
+          "The key is stored in this Mac's app folder as an owner-only file (not encrypted). Logging out in your browser invalidates it immediately.",
+          "キーはこの Mac のアプリフォルダに本人のみ読み取り可能なファイルとして保存されます(暗号化なし)。ブラウザでログアウトすると即時無効になります。",
+          "La clave se guarda en la carpeta de la app de este Mac como archivo solo para el propietario (sin cifrar). Al cerrar sesión en el navegador se invalida de inmediato.")
+    }
+    var sessionKeySaved: String { t("설정됨", "Saved", "設定済み", "Guardada") }
+    var save: String { t("저장", "Save", "保存", "Guardar") }
+    var delete: String { t("삭제", "Delete", "削除", "Eliminar") }
+    var sessionKeyOrganizationLabel: String { t("조직", "Organization", "組織", "Organización") }
+    var sessionKeyMalformedError: String {
+        t("세션 키 형식이 아닙니다. sessionKey 쿠키 값 전체를 붙여넣었는지 확인하세요(sk-ant- 로 시작).",
+          "That isn't a session key. Check you pasted the whole sessionKey cookie value (starts with sk-ant-).",
+          "セッションキーの形式ではありません。sessionKey クッキーの値全体を貼り付けたか確認してください(sk-ant- で始まります)。",
+          "Eso no es una clave de sesión. Comprueba que pegaste todo el valor de la cookie sessionKey (empieza por sk-ant-).")
+    }
+    var sessionKeyExpiredError: String {
+        t("세션 키가 만료됐습니다. 브라우저에서 다시 복사해 붙여넣으세요.",
+          "The session key expired. Copy a fresh one from your browser and paste it again.",
+          "セッションキーの有効期限が切れました。ブラウザから再度コピーして貼り付けてください。",
+          "La clave de sesión caducó. Copia una nueva desde el navegador y pégala otra vez.")
+    }
+    var sessionKeyNoOrgError: String {
+        t("이 키로 한도를 볼 수 있는 조직이 없습니다.",
+          "No organization on this key can show limits.",
+          "このキーで上限を確認できる組織がありません。",
+          "Ninguna organización de esta clave puede mostrar límites.")
+    }
+
     var limitNotificationsLabel: String { t("한도 알림", "Limit alerts", "上限通知", "Alertas de límite") }
     var companionNotificationsLabel: String { t("Companion 이벤트 (부화·진화·졸업)", "Companion events (hatch / evolve / graduate)", "コンパニオンイベント（孵化・進化・卒業）", "Eventos del compañero (eclosión / evolución / graduación)") }
     var statusChecksLabel: String { t("프로바이더 상태 확인", "Provider status checks", "プロバイダー状態チェック", "Comprobación de estado de proveedores") }

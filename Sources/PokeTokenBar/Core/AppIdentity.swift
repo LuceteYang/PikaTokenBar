@@ -37,6 +37,22 @@ enum AppIdentity {
     /// 정작 자신은 영영 갱신되지 않았다. 정체성 문자열은 예외 없이 이 파일에서만 나온다.
     static let brewCaskToken = "pika-token-bar"
 
+    /// 상태 파일(companion 상태·세션 키 등)을 둘 디렉토리. 기본은 `supportDirectory`,
+    /// `PTB_STATE_DIR` 이 있으면 그 디렉토리 — 개발/QA 격리용(실제 세이브·자격증명을 건드리지 않고
+    /// 데모 상태로 실행). 프로덕션은 이 변수가 없어 무영향.
+    ///
+    /// **환경변수를 읽는 유일한 지점이다.** 상태 경로마다 각자 `ProcessInfo` 를 뒤지면 격리가 반쪽만
+    /// 걸려 QA 실행이 실제 데이터를 섞어 쓴다(`UsageEnvironmentTests` 의 직독 금지 가드가 이걸 잡는다).
+    /// 공백만 있는 값은 무시한다 — `URL(fileURLWithPath:)` 가 CWD 상대경로로 해석하는 것 방지.
+    static var stateDirectory: URL {
+        let override = (ProcessInfo.processInfo.environment["PTB_STATE_DIR"] ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !override.isEmpty else { return supportDirectory }
+        let dir = URL(fileURLWithPath: override, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
+
     /// 앱 전용 저장 디렉토리. 없으면 만든다.
     static var supportDirectory: URL {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

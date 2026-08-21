@@ -178,6 +178,7 @@ swift test                   # 단위 테스트
 | `~/.copilot/session-store.db` | Copilot CLI daily/blocks/weekly/monthly | SQLite 읽기 전용; `assistant_usage_events` 1행 = API 호출 1건; `$COPILOT_HOME` 설정 시 그 경로; `input_tokens` 에 캐시 프롬프트가 이미 포함돼 캐시 read/write 를 빼고 집계; premium request 과금이라 비용은 추정하지 않음 |
 | `~/Library/Application Support/kiro-cli/data.sqlite3` | Kiro CLI daily/blocks/weekly/monthly | SQLite 읽기 전용; 대화 히스토리 JSON(`conversations`/`conversations_v2`); Kiro 로컬 DB 는 실제 토큰 수를 저장하지 않고 서버 측 세션도 없어, input 은 매 턴 재전송되는 누적 대화 텍스트를 바이트÷4 로 **추정**(output 은 실제 스트리밍 응답 바이트 기준); `/clear`·압축으로 지워진 대화의 이미 집계된 토큰은 앱을 재시작하기 전까지는 계속 집계됨; 비용은 추정하지 않음 |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude 공식 5h/주간 % | 비공식 endpoint; Keychain 은 **갱신 버튼을 누를 때만** 읽음 — 자동 폴링은 읽지 않음 |
+| `session-key.json` → `claude.ai/api` | Claude 공식 5h/주간 % | 선택: 설정에 claude.ai `sessionKey` 쿠키를 붙여넣으면 **Keychain 프롬프트 없이** 자동 폴링까지 한도가 갱신됨 |
 | `codex app-server` | Codex 공식 5h/주간 % | 로컬 자식 프로세스; 계정 snapshot만, 모델 turn 없음 |
 | [PokéAPI](https://pokeapi.co/) — `pokeapi.co`, `graphql.pokeapi.co` | 포켓몬 종·진화 | 런타임 fetch; 로컬 캐시, 번들 안 함 |
 | `raw.githubusercontent.com/PokeAPI/sprites` | 포켓몬·아이템 스프라이트 | 런타임 fetch; Application Support 에 캐시, 번들 안 함 |
@@ -187,8 +188,9 @@ swift test                   # 단위 테스트
 ## 프라이버시 & 권한
 
 - **온디바이스.** 토큰 사용량은 로컬 Claude Code·Codex·Gemini CLI·Antigravity·OpenCode·Hermes Agent·Cursor·Grok CLI·Copilot CLI·Kiro CLI 데이터에서 직접 읽습니다. 사용량을 업로드하거나 모델 turn을 실행하지 않습니다.
-- **외부 요청.** 앱은 완전 오프라인이 아닙니다. 7개 호스트에 접속합니다 — `pokeapi.co`·`graphql.pokeapi.co`(종·진화), `raw.githubusercontent.com`(스프라이트), `api.anthropic.com`(Claude 공식 한도), `status.claude.com`·`status.openai.com`(장애 배너 — 설정에서 끌 수 있음), `api.github.com`(업데이트 확인). **어느 요청에도 사용량·토큰·프롬프트·프로젝트 경로는 담기지 않습니다** — 요청 자체만 나갑니다.
+- **외부 요청.** 앱은 완전 오프라인이 아닙니다. 8개 호스트에 접속합니다 — `pokeapi.co`·`graphql.pokeapi.co`(종·진화), `raw.githubusercontent.com`(스프라이트), `api.anthropic.com` 과 — 세션 키를 저장한 경우에만 — `claude.ai`(Claude 공식 한도), `status.claude.com`·`status.openai.com`(장애 배너 — 설정에서 끌 수 있음), `api.github.com`(업데이트 확인). **어느 요청에도 사용량·토큰·프롬프트·프로젝트 경로는 담기지 않습니다** — 요청 자체만 나갑니다.
 - **Keychain(선택).** Claude OAuth 자격증명은 **갱신 버튼을 누를 때만** 읽습니다(설정, 또는 팝오버의 한도 행). 자동 폴링은 Keychain 을 건드리지 않으므로 비밀번호 프롬프트가 뜨지 않고, `~/.claude/.credentials.json` 이 있으면 그쪽에서 가져옵니다. 토큰은 메모리에만 두며 **앱 자체 Keychain 항목은 만들지 않습니다.** 토큰이 만료되면 한도는 갱신 전까지 이전 값(stale)으로 표시됩니다. 설정에서 끄면 한도 섹션만 숨겨집니다.
+- **세션 키(선택).** 설정에 claude.ai `sessionKey` 를 붙여넣으면 Keychain 을 건드리지 않고 한도를 가져옵니다 — 자동 폴링이 계속 갱신되므로 stale 로 굳지 않습니다. 키는 `~/Library/Application Support/PikaTokenBar/session-key.json` 에 소유자만 읽을 수 있는(`0600`) **평문**으로 저장됩니다(앱 자체 Keychain 항목을 만들면 프롬프트가 다시 생기므로 일부러 파일을 씁니다). 이 키는 claude.ai 계정 접근 권한을 가지므로 그에 맞게 취급하세요 — 설정에서 삭제하거나, 브라우저에서 로그아웃하면 즉시 무효화됩니다.
 - **포켓몬 에셋**은 런타임에 PokéAPI에서 받아오며 `~/Library/Application Support/PikaTokenBar/`에만 캐시됩니다. 앱 바이너리와 릴리스 아티팩트에는 포켓몬 에셋이 포함되지 않습니다.
 
 ## 기여자
