@@ -73,10 +73,10 @@ The <b>Pokédex</b> folds every species you've owned into one cell — 24 per pa
 <td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="Pokédex — one cell per species"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="Catch log — one row per Pokémon raised"></td>
 </tr>
 <tr>
-<td width="45%" align="center"><img src="assets/settings.png" width="300" alt="Settings"></td>
+<td width="45%" align="center"><img src="assets/settings.png" width="300" alt="Settings"><br><br><img src="assets/settings-advanced.png" width="300" alt="Advanced — claude.ai session key for prompt-free official limits"></td>
 <td width="55%" valign="middle">
 <h3>Tune it your way</h3>
-Menu-bar items, refresh interval (1–15 min or manual), launch at login, a Keychain opt-out that just hides the limits section, limit alerts with warning/critical thresholds, and companion event notifications. Full <b>KO / EN / JA / ES</b> UI and Pokémon names.
+Menu-bar items, refresh interval (1–15 min or manual), launch at login, limit alerts with warning/critical thresholds, and companion event notifications. Under <b>Advanced</b>, paste a claude.ai <code>sessionKey</code> and official limits refresh with <b>no Keychain prompt at all</b> — auto-polling included, so they never go stale (there is still a Keychain opt-out that simply hides the limits section). Full <b>KO / EN / JA / ES</b> UI and Pokémon names.
 </td>
 </tr>
 <tr>

@@ -73,10 +73,10 @@ PikaTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 <td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="도감 — 종 하나가 한 칸"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="포획 로그 — 키운 개체 하나가 한 행"></td>
 </tr>
 <tr>
-<td width="45%" align="center"><img src="assets/settings-ko.png" width="300" alt="설정"></td>
+<td width="45%" align="center"><img src="assets/settings-ko.png" width="300" alt="설정"><br><br><img src="assets/settings-advanced-ko.png" width="300" alt="고급 — 프롬프트 없는 공식 한도 조회용 claude.ai 세션 키"></td>
 <td width="55%" valign="middle">
 <h3>설정에서 취향대로</h3>
-메뉴바 표시 항목, 새로고침 간격(1–15분/수동), 로그인 시 자동 시작, 한도 섹션만 숨기는 Keychain 끄기, 경고/임박 임계값 한도 알림, companion 이벤트 알림. <b>한국어/영어/일본어/스페인어</b> UI·포켓몬 이름 완비.
+메뉴바 표시 항목, 새로고침 간격(1–15분/수동), 로그인 시 자동 시작, 경고/임박 임계값 한도 알림, companion 이벤트 알림. <b>고급</b> 에서 claude.ai <code>sessionKey</code> 를 붙여넣으면 공식 한도를 <b>Keychain 프롬프트 없이</b> 조회합니다 — 자동 폴링까지 포함이라 stale 로 굳지 않습니다(한도 섹션만 숨기는 Keychain 끄기도 그대로 있습니다). <b>한국어/영어/일본어/스페인어</b> UI·포켓몬 이름 완비.
 </td>
 </tr>
 <tr>

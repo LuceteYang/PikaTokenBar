@@ -73,10 +73,10 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 <td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="図鑑 — 1種が1マス"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="捕獲ログ — 育てた個体が1行"></td>
 </tr>
 <tr>
-<td width="45%" align="center"><img src="assets/settings-ja.png" width="300" alt="設定"></td>
+<td width="45%" align="center"><img src="assets/settings-ja.png" width="300" alt="設定"><br><br><img src="assets/settings-advanced-ja.png" width="300" alt="詳細 — プロンプトなしで公式上限を取得する claude.ai セッションキー"></td>
 <td width="55%" valign="middle">
 <h3>設定はお好みで</h3>
-メニューバー表示項目、更新間隔（1–15分／手動）、ログイン時に起動、上限セクションだけを隠す Keychain オフ、警告／危険の閾値つき上限通知、パートナーのイベント通知。<b>韓国語／英語／日本語／スペイン語</b>の UI とポケモン名を完備。
+メニューバー表示項目、更新間隔（1–15分／手動）、ログイン時に起動、警告／危険の閾値つき上限通知、パートナーのイベント通知。<b>詳細</b>で claude.ai の <code>sessionKey</code> を貼り付けると、公式上限を<b>Keychain のプロンプトなし</b>で取得します — 自動更新も含まれるため stale のまま固まりません（上限セクションだけを隠す Keychain オフも従来どおり残っています）。<b>韓国語／英語／日本語／スペイン語</b>の UI とポケモン名を完備。
 </td>
 </tr>
 <tr>
