@@ -127,17 +127,28 @@ final class StoreTerminationTests: XCTestCase {
 /// 같은 규율(fps 하한 + 저전력 정적화)을 공유한다. 여기선 그 순수 판정만 고정한다.
 @MainActor
 final class FloatingPetEnergyTests: XCTestCase {
-    /// [회귀] 플로팅 펫 GIF 는 fps 하한(0.4s≈2.5fps)으로 캡 — 네이티브 fps 로 돌면 프레임마다
-    /// 재합성(CA 커밋→디스플레이 사이클 wakeup)이 늘어 메뉴바 회귀를 그대로 반복한다.
-    func testPetFrameDelayHonorsFloor() {
-        XCTAssertEqual(SpriteView.frameDelay(base: 0.1, floor: 0.4), 0.4, accuracy: 1e-9)   // 빠른 프레임 → 캡
-        XCTAssertEqual(SpriteView.frameDelay(base: 0.6, floor: 0.4), 0.6, accuracy: 1e-9)   // 이미 느리면 원본 유지
+    /// [회귀] 상시 표시 표면(메뉴바·펫)의 GIF 는 fps 하한으로 캡 — 네이티브 fps 로 돌면 프레임마다
+    /// 재합성(CA 커밋→디스플레이 사이클 wakeup)이 늘어 메뉴바 회귀를 그대로 반복한다. 두 표면을
+    /// **함께** 단정한다: 펫 캡만 상수로 잠겨 있고 메뉴바는 인라인 리터럴이던 동안, 메뉴바 캡이
+    /// 통째로 사라져도 이 스위트는 통과했다(가드 비대칭).
+    func testAlwaysVisibleSurfacesAreCapped() {
+        XCTAssertGreaterThan(AppDelegate.menuFrameFloor, 0, "메뉴바 캡이 풀리면 idle wakeup 회귀")
+        XCTAssertGreaterThan(FloatingPetView.frameFloor, 0, "펫 캡이 풀리면 idle wakeup 회귀")
+        for floor in [AppDelegate.menuFrameFloor, FloatingPetView.frameFloor] {
+            let capped = GIFDecoder.capFrameRate(Self.uniformFrames(count: 20, delay: 0.1), floor: floor)
+            XCTAssertTrue(capped.allSatisfy { $0.delay >= floor - 1e-9 },
+                          "floor=\(floor): 빠른 프레임은 캡 이상으로 묶여야 한다")
+            XCTAssertEqual(capped.reduce(0) { $0 + $1.delay }, 2.0, accuracy: 1e-6,
+                           "floor=\(floor): 속도는 원본 유지")
+        }
     }
 
-    /// 팝오버 등 일시적 표시(floor=0)는 네이티브 delay 그대로 — 캡은 항상 뜬 펫에만 적용.
+    /// 팝오버 등 일시적 표시(floor=0)는 네이티브 delay 그대로 — 캡은 항상 뜬 표면에만 적용.
     func testTransientSpriteKeepsNativeDelay() {
-        XCTAssertEqual(SpriteView.frameDelay(base: 0.1, floor: 0), 0.1, accuracy: 1e-9)
-        XCTAssertEqual(SpriteView.frameDelay(base: 0.03, floor: 0), 0.03, accuracy: 1e-9)
+        let native = Self.uniformFrames(count: 10, delay: 0.03)
+        let untouched = GIFDecoder.capFrameRate(native, floor: 0)
+        XCTAssertEqual(untouched.count, 10)
+        XCTAssertTrue(untouched.allSatisfy { abs($0.delay - 0.03) < 1e-9 })
     }
 
     /// 저전력 모드면 펫 애니메이션을 정지(정적)해 배터리를 아낀다. 정상 모드면 애니메이션.
@@ -146,11 +157,52 @@ final class FloatingPetEnergyTests: XCTestCase {
         XCTAssertTrue(FloatingPetController.shouldAnimate(lowPower: false))
     }
 
-    /// [회귀] 펫은 반드시 fps 캡이 걸려야 한다 — frameFloor 가 0 으로 돌아가면(네이티브 fps) 메뉴바에서
-    /// 고친 wakeup 회귀가 재발한다. 뷰가 실제로 넘기는 상수를 그대로 가드한다(리터럴 유실 방지).
-    func testPetFrameFloorIsCapped() {
-        XCTAssertGreaterThan(FloatingPetView.frameFloor, 0, "펫 fps 캡이 해제되면 idle wakeup 회귀")
-        XCTAssertEqual(FloatingPetView.frameFloor, 0.4, accuracy: 1e-9, "메뉴바와 동일한 0.4s≈2.5fps 캡")
+    /// [회귀] fps 캡은 **재생 속도를 보존**해야 한다 — `max(floor, delay)` 로 프레임을 늘려 붙이면
+    /// 프레임 수가 그대로라 애니메이션 전체가 느려진다(55프레임×0.05s=2.75s 스프라이트가 floor 0.4s
+    /// 에서 22s = 1/8 속도). 22px 에서 "끊김이 안 보인다"는 판단은 프레임 레이트에만 맞는 얘기였고
+    /// 재생 속도가 8배 늘어나는 건 놓쳤다(사용자 지적, 2026-08-20). 캡은 hold 가 아니라 decimate 다.
+    func testCapPreservesPlaybackSpeed() {
+        let native = Self.uniformFrames(count: 55, delay: 0.05)   // 2.75s, 20fps — Gen-V 실제 스프라이트
+        for floor in [0.2, 0.4] {
+            let capped = GIFDecoder.capFrameRate(native, floor: floor)
+            let total = capped.reduce(0) { $0 + $1.delay }
+            XCTAssertEqual(total, 2.75, accuracy: 1e-6,
+                           "floor=\(floor): 캡을 걸어도 루프 한 바퀴 길이(재생 속도)는 원본과 같아야 한다")
+            XCTAssertLessThan(Double(capped.count) / total, 1 / floor + 1e-6,
+                              "floor=\(floor): 유효 fps 가 캡을 넘으면 wakeup 회귀")
+            XCTAssertGreaterThan(capped.count, 1, "floor=\(floor): 애니메이션이 정적으로 붕괴하면 안 된다")
+        }
+    }
+
+    /// 이미 느린 GIF(프레임 delay ≥ floor)는 솎아낼 게 없으니 그대로 — 불필요한 변형 금지.
+    func testCapLeavesAlreadySlowFramesAlone() {
+        let slow = Self.uniformFrames(count: 4, delay: 0.6)
+        let capped = GIFDecoder.capFrameRate(slow, floor: 0.4)
+        XCTAssertEqual(capped.count, 4)
+        XCTAssertEqual(capped.reduce(0) { $0 + $1.delay }, 2.4, accuracy: 1e-6)
+    }
+
+    /// floor=0(팝오버 등 일시적 표시)은 네이티브 그대로 — 손대지 않는다.
+    func testCapIsIdentityAtZeroFloor() {
+        let native = Self.uniformFrames(count: 55, delay: 0.05)
+        XCTAssertEqual(GIFDecoder.capFrameRate(native, floor: 0).count, 55)
+    }
+
+    private static func uniformFrames(count: Int, delay: TimeInterval)
+        -> [(image: NSImage, delay: TimeInterval)] {
+        let img = NSImage(size: NSSize(width: 1, height: 1))
+        return (0..<count).map { _ in (img, delay) }
+    }
+
+    /// [회귀] 코얼레싱 tolerance 는 **늦게만** 발화시키므로 곧 재생 지연의 상한이다. 0.5 였을 때
+    /// 2.75s 루프가 최대 4.13s 로 늘어 팝오버(tolerance 0)와 나란히 보면 메뉴바만 느렸다.
+    /// 코얼레싱을 없애지 않으면서(>0) 늘어짐은 눈에 안 띄는 범위(≤15%)로 묶는다.
+    func testToleranceDoesNotVisiblyStretchPlayback() {
+        XCTAssertGreaterThan(AppDelegate.menuFrameTolerance, 0, "코얼레싱이 사라지면 wakeup 회귀")
+        let loop = 2.75                       // 41-a.gif 실측 루프 길이
+        let worstCase = loop * (1 + AppDelegate.menuFrameTolerance)
+        XCTAssertLessThanOrEqual(worstCase, loop * 1.15,
+                                 "최악의 경우 재생이 15% 이상 늘어지면 팝오버와 속도가 어긋나 보인다")
     }
 
     /// Bubble needs headroom + width beyond the square pet size — otherwise content is clipped.

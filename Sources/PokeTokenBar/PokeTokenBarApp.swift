@@ -192,9 +192,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: 메뉴바 애니메이션
 
+    /// 메뉴바 GIF 프레임 지속의 하한(초) = fps 상한. `GIFDecoder.capFrameRate` 가 프레임을 솎아내
+    /// 적용한다. **이름 있는 상수로 둔다** — 인라인 리터럴 `max(0.4, delay)` 였을 때는 캡이 통째로
+    /// 사라져도 테스트가 잡을 수 없었다(펫 쪽만 상수로 잠겨 있던 가드 비대칭). 값은 튜닝 가능하지만
+    /// **0 은 금지**다 — 근거는 defect-log '에너지' 절. 가드: `testAlwaysVisibleSurfacesAreCapped`.
+    static let menuFrameFloor: TimeInterval = 0.4   // ≈2.5fps
+
+    /// `Timer.tolerance` 배수 — wakeup 코얼레싱(다른 wakeup 과 합쳐 배터리 절약)의 강도.
+    ///
+    /// **늦게만 발화시킨다**(Apple: "fire the timer later than the scheduled time, up to the
+    /// tolerance"). 따라서 이 배수는 곧 애니메이션이 느려질 수 있는 상한이다 — 0.5 였을 때
+    /// 2.75s 루프가 최대 4.13s(1.5배)까지 늘어, 정확한 타이밍으로 도는 팝오버(`tolerance: .zero`)와
+    /// 나란히 보면 메뉴바만 느려 보였다(2026-08-20). 코얼레싱은 남기고 늘어짐만 눌러 0.1 로 낮춤.
+    static let menuFrameTolerance = 0.1
+
     /// 대표 포켓몬에 맞춰 메뉴바 프레임을 준비. 종이 바뀐 경우에만 재로딩.
     /// 정적 스프라이트로 먼저 보여주고, animated GIF 가 받아지면 교체한다(메뉴바도 GIF로 움직임).
-    /// 에너지 통제는 ① delay 하한 0.2s(≈5fps) ② 안 보이면 정지(menuShouldAnimate) ③ 저전력 모드
+    /// 에너지 통제는 ① delay 하한 `menuFrameFloor`(≈2.5fps) ② 안 보이면 정지(menuShouldAnimate) ③ 저전력 모드
     /// 에선 GIF 생략(가벼운 bob)로 처리한다 — 통제된 저프레임 + 비가시 시 정지로 저전력.
     private func ensureMenuAnimation() {
         let subject = companion.representativeSubject
@@ -223,7 +237,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             }
         }
 
-        // 풀 GIF 애니메이션(저전력 모드에서는 생략하고 bob 유지). delay 하한 0.1s(≤10fps)로 redraw 통제.
+        // 풀 GIF 애니메이션(저전력 모드에서는 생략하고 bob 유지). delay 하한 `menuFrameFloor` 로 redraw 통제.
         guard !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
         Task { @MainActor [weak self] in
             guard let self, gen == self.menuLoadGen else { return }
@@ -235,9 +249,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             guard let data else { return }
             let raw = GIFDecoder.frames(from: data)
             guard raw.count > 1, gen == self.menuLoadGen else { return }
-            // 메뉴바 GIF delay 하한 0.4s(≈2.5fps)로 캡 — 22px 스프라이트엔 5fps와 구분 안 되고, 프레임당
-            // 상태바 재합성(CA 커밋 → 디스플레이 사이클 wakeup)을 절반으로 줄여 배터리 절약. bob(0.5s/2fps)과 유사.
-            self.setMenuFrames(raw.map { (Self.menuBarImage(from: $0.image, up: false), max(0.4, $0.delay)) })
+            // fps 캡 = `menuFrameFloor`. 프레임마다 상태바 재합성(CA 커밋 → 디스플레이 사이클
+            // wakeup)이 붙으므로 네이티브 fps 로는 절대 돌리지 않는다(근거는 상수 주석).
+            // 솎아낸 **뒤** 22px 로 합성한다 — 버려질 프레임까지 합성하지 않게.
+            let capped = GIFDecoder.capFrameRate(raw, floor: Self.menuFrameFloor)
+            self.setMenuFrames(capped.map { (Self.menuBarImage(from: $0.image, up: false), $0.delay) })
         }
     }
 
@@ -280,7 +296,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 self.advanceMenu()
             }
         }
-        timer.tolerance = frame.delay * 0.5   // 웨이크업 코얼레싱 (배터리) — 넓힐수록 다른 wakeup 과 합쳐짐
+        // 웨이크업 코얼레싱 (배터리). 넓힐수록 다른 wakeup 과 합쳐지지만 그만큼 애니메이션이
+        // 늘어질 수 있다 — 배수 근거는 `menuFrameTolerance` 주석.
+        timer.tolerance = frame.delay * Self.menuFrameTolerance
         RunLoop.main.add(timer, forMode: .common)
         menuTimer = timer
     }
