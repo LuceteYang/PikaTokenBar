@@ -410,6 +410,7 @@ final class PetHostingView: NSHostingView<AnyView> {
     @objc func handleHide(_ sender: Any?) { onHide?() }
 }
 
+@MainActor
 struct FloatingPetView: View {
     var animated: Bool = true
     @Environment(UsageStore.self) private var store
@@ -448,6 +449,7 @@ struct FloatingPetView: View {
 }
 
 /// Transient limit-alert bubble. Width is capped so copy wraps instead of clipping the panel.
+@MainActor
 private struct SpeechBubbleView: View {
     let alert: UsageStore.LimitAlert
     let l: L
