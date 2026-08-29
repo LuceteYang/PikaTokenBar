@@ -37,6 +37,7 @@ struct OAuthLimitsProvider: ClaudeLimitsProviding, Sendable {
 
     func fetch(allowKeychainPrompt: Bool = false) async throws -> LimitStatus {
         let token = try await accessTokenCache.accessToken(allowKeychainPrompt: allowKeychainPrompt)
+        var activeToken = token
         var status: LimitStatus
         do {
             status = try await fetchStatus(accessToken: token)
@@ -49,11 +50,19 @@ struct OAuthLimitsProvider: ClaudeLimitsProviding, Sendable {
                 allowKeychainPrompt: allowKeychainPrompt, bypassCache: true)
             guard refreshed != token else { throw error }
             status = try await fetchStatus(accessToken: refreshed)
+            activeToken = refreshed
         }
         // 플랜은 usage 응답이 아니라 방금 읽은 자격증명(캐시)에 담겨 있다 — 추가 Keychain 접근 없음.
         let plan = await accessTokenCache.planInfo()
         status.subscriptionType = plan.subscriptionType
         status.rateLimitTier = plan.rateLimitTier
+        // 계정 식별(이메일·조직) — 같은 기기에서 두 계정이 하나의 Keychain 항목을 번갈아 덮어쓰면
+        // 한도 바가 어느 계정 것인지 소리 없이 뒤바뀐다. 토큰의 실제 주인을 profile endpoint 로
+        // 조회해 라벨링한다. best-effort: 실패해도 한도 표시는 그대로 (라벨만 생략).
+        if let identity = await OAuthProfileCache.shared.identity(accessToken: activeToken) {
+            status.accountEmail = identity.email
+            status.accountOrganizationName = identity.organizationName
+        }
         return status
     }
 
@@ -82,27 +91,92 @@ struct OAuthLimitsProvider: ClaudeLimitsProviding, Sendable {
     }
 }
 
-private actor OAuthAccessTokenCache {
+/// OAuth 토큰의 실제 주인(계정 이메일·조직명). usage 응답에는 계정 정보가 없어 profile endpoint 로 조회한다.
+struct AccountIdentity: Equatable, Sendable {
+    let email: String
+    let organizationName: String?
+}
+
+/// profile 조회 캐시 — 토큰이 바뀌지 않는 한 계정 주인도 바뀌지 않으므로 토큰당 1회만 네트워크를 탄다
+/// (한도 폴링마다 HTTP 요청이 2배가 되는 것을 방지). 실패는 캐시하지 않는다 — 토큰이 바뀐 직후 조회가
+/// 실패했을 때 이전 계정 라벨을 계속 보여주면 라벨링이 없느니만 못하다(잘못된 계정 표시).
+actor OAuthProfileCache {
+    static let shared = OAuthProfileCache()
+    private var cachedToken: String?
+    private var cachedIdentity: AccountIdentity?
+
+    func identity(accessToken: String) async -> AccountIdentity? {
+        if cachedToken == accessToken { return cachedIdentity }
+        guard let identity = await Self.fetchIdentity(accessToken: accessToken) else { return nil }
+        cachedToken = accessToken
+        cachedIdentity = identity
+        return identity
+    }
+
+    private static let profileURL = URL(string: "https://api.anthropic.com/api/oauth/profile")!
+
+    private static func fetchIdentity(accessToken: String) async -> AccountIdentity? {
+        var request = URLRequest(url: profileURL, timeoutInterval: 15)
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("oauth-2025-04-20", forHTTPHeaderField: "anthropic-beta")
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              (response as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return OAuthProfileData.identity(from: data)
+    }
+}
+
+/// profile 응답 파싱 — 순수 함수로 분리해 픽스처로 테스트한다.
+enum OAuthProfileData {
+    /// `{"account":{"email":...},"organization":{"name":...}}` → AccountIdentity.
+    /// email 이 없거나 비면 응답 전체를 버린다(부분 라벨은 오인 소지) — organization 은 선택.
+    static func identity(from data: Data) -> AccountIdentity? {
+        guard
+            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let account = json["account"] as? [String: Any],
+            let email = account["email"] as? String, !email.isEmpty
+        else {
+            return nil
+        }
+        let organization = json["organization"] as? [String: Any]
+        let orgName = (organization?["name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        return AccountIdentity(email: email, organizationName: orgName)
+    }
+}
+
+actor OAuthAccessTokenCache {
     static let shared = OAuthAccessTokenCache()
     private var cachedCredential: OAuthCredentialData.Credential?
+    private let credentialsFileURL: URL
+
+    init(credentialsFileURL: URL? = nil) {
+        self.credentialsFileURL = credentialsFileURL ?? Self.defaultCredentialsFileURL
+    }
+
+    static var defaultCredentialsFileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/.credentials.json")
+    }
 
     func accessToken(allowKeychainPrompt: Bool, bypassCache: Bool = false) throws -> String {
-        if !bypassCache, let cachedCredential, !cachedCredential.isExpired {
-            return cachedCredential.accessToken
-        }
-
         // 파일 크리덴셜(~/.claude/.credentials.json) — 키체인 무관, 프롬프트 없음.
-        if let credential = try Self.readClaudeCredentialsFile() {
+        // 캐시 히트보다 파일을 먼저 본다. `/login` 으로 같은 팀의 다른 메일로 갈아타면 파일이
+        // 새 *유효* 토큰으로 덮이는데, 만료만 보고 캐시를 돌려주면 공식 5h/주 바가 이전 계정에
+        // 붙고 컴패니언 EXP 만 로컬 jsonl 로 계속 오른다(#227).
+        if let credential = try Self.readClaudeCredentialsFile(url: credentialsFileURL) {
             cachedCredential = credential
             return credential.accessToken
+        }
+
+        if !bypassCache, let cachedCredential, !cachedCredential.isExpired {
+            return cachedCredential.accessToken
         }
 
         // 자동(타이머) 경로는 Claude Keychain 을 일절 읽지 않는다. no-UI 쿼리(kSecUseAuthenticationUIFail
         // /LAContext)로도 잠긴·미승인 login 키체인의 '암호 입력' 다이얼로그는 억제되지 않는다 —
         // 실측: 캐시 만료 폴 도중 SecItemCopyMatching 이 13초간 블록하며 팝업을 띄웠다(하루 몇 회).
         // → Keychain 읽기는 명시적 사용자 동작(설정/팝오버의 갱신 버튼, allowKeychainPrompt=true)에서만
-        // 수행한다. 캐시된 토큰이 살아있는 동안은 자동 폴링이 그 토큰으로 계속 한도를 갱신하고, 만료되면
-        // 한도는 마지막 값으로 stale 표시된 뒤 사용자가 갱신을 누를 때 재취득된다.
+        // 수행한다. 파일이 유효 토큰을 들고 있으면 매 폴이 그걸 쓴다. 파일이 없거나 oauth 가 빠진
+        // 뒤에만 캐시가 버티고, 그것도 만료되면 한도는 stale 표시 후 사용자가 갱신한다.
         // 자동 경로는 여기서 끝난다(키체인 미열람). 파일이 있는데 계정 OAuth 만 없으면 재로그인이
         // 답이므로 그때만 안내를 바꾼다 — 판정은 이 분기 안에서 해야 사용자 경로가 파일을 두 번 읽지 않는다.
         guard allowKeychainPrompt else {
@@ -170,9 +244,7 @@ private actor OAuthAccessTokenCache {
         return OAuthCredentialData.isAccountOAuthMissing(data)
     }
 
-    private nonisolated static func readClaudeCredentialsFile() throws -> OAuthCredentialData.Credential? {
-        let url = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/.credentials.json")
+    private nonisolated static func readClaudeCredentialsFile(url: URL) throws -> OAuthCredentialData.Credential? {
         guard let data = try? Data(contentsOf: url) else { return nil }
         guard let credential = OAuthCredentialData.credential(from: data), !credential.isExpired else {
             return nil
@@ -190,32 +262,67 @@ private actor OAuthAccessTokenCache {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: OAuthCredentialData.claudeKeychainService,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitAll,
         ]
         if !allowKeychainPrompt {
             KeychainNoUIQuery.apply(to: &query)
         }
 
         var item: CFTypeRef?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
+        let status = KeychainReader.copyMatching(query, &item)
         if status == errSecInteractionNotAllowed {
             throw LimitsError.keychainInteractionNotAllowed
         }
-        guard status == errSecSuccess, let data = item as? Data else {
+        guard status == errSecSuccess, let item else {
             throw LimitsError.keychainUnavailable(status)
         }
-        guard let credential = OAuthCredentialData.credential(from: data) else {
-            // 항목은 있는데 계정 OAuth 만 없는 상태(MCP OAuth 전용)는 재로그인 안내 대상이라 구분한다.
-            throw OAuthCredentialData.isAccountOAuthMissing(data)
-                ? LimitsError.credentialMissingAccountOAuth
-                : LimitsError.credentialFormat
+
+        let dataItems = OAuthCredentialData.extractDataItems(from: item)
+        guard !dataItems.isEmpty else {
+            throw LimitsError.keychainUnavailable(status)
         }
-        return credential
+
+        // 여러 키체인 항목(예: acct="unknown" MCP 전용 + acct="<user>" 계정 토큰) 중
+        // 유효한 claudeAiOauth 계정 토큰이 있는 자격증명을 먼저 찾는다.
+        for data in dataItems {
+            if let credential = OAuthCredentialData.credential(from: data) {
+                return credential
+            }
+        }
+
+        // 모든 항목에 유효한 계정 토큰이 없는 경우:
+        // 항목은 있는데 계정 OAuth 만 없는 상태(MCP OAuth 전용)는 재로그인 안내 대상이라 구분한다.
+        throw dataItems.contains(where: { OAuthCredentialData.isAccountOAuthMissing($0) })
+            ? LimitsError.credentialMissingAccountOAuth
+            : LimitsError.credentialFormat
     }
 }
 
 enum OAuthCredentialData {
     static let claudeKeychainService = "Claude Code-credentials"
+
+    /// SecItemCopyMatching 결과(단일 Data 또는 [Data] 등)에서 [Data] 목록을 추출한다.
+    static func extractDataItems(from item: Any?) -> [Data] {
+        guard let item else { return [] }
+        if let data = item as? Data {
+            return [data]
+        }
+        if let array = item as? [Data] {
+            return array
+        }
+        if let array = item as? [Any] {
+            var result: [Data] = []
+            for element in array {
+                if let data = element as? Data {
+                    result.append(data)
+                } else if let dict = element as? [String: Any], let data = dict[kSecValueData as String] as? Data {
+                    result.append(data)
+                }
+            }
+            return result
+        }
+        return []
+    }
 
     struct Credential {
         let accessToken: String

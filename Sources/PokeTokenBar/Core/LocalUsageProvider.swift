@@ -169,3 +169,76 @@ struct LocalCodexProvider: UsageProvider {
         return r
     }
 }
+
+/// Local pi agent session usage. (Token-only; reasoning is folded into output.)
+struct LocalPiProvider: UsageProvider {
+    let id = "pi"
+    let displayName = "Pi"
+    let reportsCost = false
+
+    func fetchDaily() async throws -> DailyUsage? {
+        let now = Date()
+        let entries = await LocalUsageCache.shared.piEntries(
+            modifiedSince: Calendar.current.startOfDay(for: now))
+        guard let d = LocalUsageReader.daily(entries: entries, localDay: LocalUsageReader.todayKey()) else {
+            return nil
+        }
+        return DailyUsage(date: d.date, inputTokens: d.inputTokens, outputTokens: d.outputTokens,
+                          cacheCreationTokens: d.cacheCreationTokens, cacheReadTokens: d.cacheReadTokens,
+                          totalTokens: d.totalTokens, totalCost: 0)
+    }
+
+    func fetchEnrichment() async -> ProviderEnrichment {
+        let now = Date()
+        let monthStart = LocalUsageReader.startOfMonth(now)
+        let entries = await LocalUsageCache.shared.piEntries(
+            modifiedSince: LocalUsageReader.enrichmentScanStart(now: now))
+        let fmt = LocalUsageReader.localDayFormatter()
+        var result = ProviderEnrichment()
+        result.activeBlock = LocalUsageReader.activeBlock(entries: entries, now: now)
+        result.blocksOK = true
+        let weekStart = LocalUsageReader.startOfWeek(now)
+        let week = LocalUsageReader.period(
+            entries: entries, periodKey: fmt.string(from: weekStart),
+            fromDay: fmt.string(from: weekStart), toDay: fmt.string(from: now))
+        let month = LocalUsageReader.period(
+            entries: entries, periodKey: LocalUsageReader.monthKey(now),
+            fromDay: fmt.string(from: monthStart), toDay: fmt.string(from: now))
+        result.weekTotal = PeriodUsage(period: week.period, totalTokens: week.totalTokens, totalCost: 0)
+        result.monthTotal = PeriodUsage(period: month.period, totalTokens: month.totalTokens, totalCost: 0)
+        result.periodsOK = true
+        return result
+    }
+}
+
+/// Local-log parsing based omp (oh-my-pi) provider.
+/// Data appears only when sessions exist under ~/.omp/agent/sessions/<cwd>/<ts>_<uuid>.jsonl (otherwise no snapshot → hidden in the UI).
+struct LocalOmpProvider: UsageProvider {
+    let id = "omp"
+    let displayName = "omp"
+
+    func fetchDaily() async throws -> DailyUsage? {
+        let now = Date()
+        let entries = await LocalUsageCache.shared.ompEntries(modifiedSince: Calendar.current.startOfDay(for: now))
+        return LocalUsageReader.daily(entries: entries, localDay: LocalUsageReader.todayKey())
+    }
+
+    func fetchEnrichment() async -> ProviderEnrichment {
+        let now = Date()
+        let monthStart = LocalUsageReader.startOfMonth(now)
+        let entries = await LocalUsageCache.shared.ompEntries(
+            modifiedSince: LocalUsageReader.enrichmentScanStart(now: now))
+        let fmt = LocalUsageReader.localDayFormatter()
+        var r = ProviderEnrichment()
+        // Block (burn rate) computation is provider-generic — the companion rhythm follows all providers.
+        r.activeBlock = LocalUsageReader.activeBlock(entries: entries, now: now)
+        r.blocksOK = true
+        let weekStart = LocalUsageReader.startOfWeek(now)
+        r.weekTotal = LocalUsageReader.period(entries: entries, periodKey: fmt.string(from: weekStart),
+                                              fromDay: fmt.string(from: weekStart), toDay: fmt.string(from: now))
+        r.monthTotal = LocalUsageReader.period(entries: entries, periodKey: LocalUsageReader.monthKey(now),
+                                               fromDay: fmt.string(from: monthStart), toDay: fmt.string(from: now))
+        r.periodsOK = true
+        return r
+    }
+}

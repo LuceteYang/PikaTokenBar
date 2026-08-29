@@ -3,6 +3,7 @@ import QuartzCore
 import SwiftUI
 
 @main
+@MainActor
 struct PokeTokenBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
@@ -98,9 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
     }
 
-    /// 메뉴바 프레임 정체성(대표 종/shiny/fps 하한) 관찰 — 대표 선택·해제뿐 아니라 사탕 진화·졸업
-    /// (BagView), 세이브 가져오기, 부화·메타몽 리빌 async 완료처럼 store 갱신 틱 없이 companion 만
-    /// 바뀌는 경로에서도 메뉴바를 즉시 갱신한다. observeStore(menuTitle)만으론 다음 사용량 폴링(기본 120s)까지
+    /// 대표 스프라이트 정체성(종/shiny/fps 하한) 관찰 — 대표 선택·해제와 애니메이션 품질 변경뿐 아니라
+    /// 사탕 진화·졸업(BagView), 세이브 가져오기, 부화·메타몽 리빌 async 완료처럼 store 갱신 틱 없이
+    /// companion 만 바뀌는 경로에서도 메뉴바를 즉시 갱신한다. observeStore(menuTitle)만으론 다음 사용량 폴링(기본 120s)까지
     /// 이전 포켓몬이 남는다(사탕 졸업 후 메뉴바 잔상 리포트 — UsageStore.onRefresh 주석과 같은 부류).
     ///
     /// **fps 설정도 여기서 관찰한다**: 프레임은 하한에 맞춰 솎아낸 결과물이라 하한이 곧 정체성의
@@ -199,8 +200,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// 메뉴바 GIF 프레임 지속의 하한(초) = fps 상한. 사용자 설정
     /// (`UsageStore.AnimationQuality`)이 값을 정하고, `GIFDecoder.capFrameRate` 가 프레임을
     /// 솎아내 적용한다. 하한 자체는 없어질 수 없다 — 근거는 그 enum 과 defect-log '에너지' 절.
-    /// 히스토리: 0.4s 고정 → 0.2s → 0.1s → 사용자 선택(2026-08-21). 기기·스프라이트마다 체감과
-    /// 배터리 영향이 갈려 하나의 값으로 수렴하지 못했다.
+    /// 히스토리: 0.4s 고정 → 프리셋(0.4/0.2/0.1) 중 사용자 선택. 기기·스프라이트마다 체감과
+    /// 배터리 영향이 갈려 하나의 값으로 수렴하지 못했다 — 기본값은 고정 캡과 같은 0.4s 다.
     private var menuFrameFloor: TimeInterval { store.animationQuality.frameFloor }
 
     /// `Timer.tolerance` 배수 — wakeup 코얼레싱(다른 wakeup 과 합쳐 배터리 절약)의 강도.

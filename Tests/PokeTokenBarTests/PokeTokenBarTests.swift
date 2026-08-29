@@ -214,6 +214,50 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(status.scopedLimitEntries.count, 2)
     }
 
+    /// /api/oauth/profile 응답 → AccountIdentity 파싱. email 필수, organization 선택.
+    func testOAuthProfileIdentityParsing() {
+        let full = """
+        {"account":{"uuid":"a-1","email":"dev@example.com","display_name":"Dev"},
+        "organization":{"uuid":"o-1","name":"Acme Corp","organization_type":"claude_team"}}
+        """.data(using: .utf8)!
+        XCTAssertEqual(OAuthProfileData.identity(from: full),
+                       AccountIdentity(email: "dev@example.com", organizationName: "Acme Corp"))
+
+        // organization 이 null(개인 플랜에서 관측 가능) → 이메일만
+        let noOrg = """
+        {"account":{"email":"dev@example.com"},"organization":null}
+        """.data(using: .utf8)!
+        XCTAssertEqual(OAuthProfileData.identity(from: noOrg),
+                       AccountIdentity(email: "dev@example.com", organizationName: nil))
+
+        // email 누락/빈 문자열 → 부분 라벨 대신 전체 무시
+        let noEmail = """
+        {"account":{"uuid":"a-1"},"organization":{"name":"Acme Corp"}}
+        """.data(using: .utf8)!
+        XCTAssertNil(OAuthProfileData.identity(from: noEmail))
+        let emptyEmail = """
+        {"account":{"email":""},"organization":{"name":"Acme Corp"}}
+        """.data(using: .utf8)!
+        XCTAssertNil(OAuthProfileData.identity(from: emptyEmail))
+    }
+
+    /// 계정 라벨 — 팀/기업 조직명은 붙이고, 개인 플랜의 자동 생성 조직명("<email>'s Organization")은
+    /// 이메일과 중복이라 생략한다.
+    func testLimitStatusAccountDisplay() throws {
+        var status = try JSONDecoder().decode(LimitStatus.self, from: Data("{}".utf8))
+        XCTAssertNil(status.accountDisplay)
+
+        status.accountEmail = "dev@example.com"
+        status.accountOrganizationName = "Acme Corp"
+        XCTAssertEqual(status.accountDisplay, "dev@example.com · Acme Corp")
+
+        status.accountOrganizationName = "dev@example.com's Organization"
+        XCTAssertEqual(status.accountDisplay, "dev@example.com")
+
+        status.accountOrganizationName = nil
+        XCTAssertEqual(status.accountDisplay, "dev@example.com")
+    }
+
     /// 플랜 표시 문자열 — subscriptionType + rateLimitTier 조립. Max 는 배수까지 세분화.
     /// 조합표 전수: {max×20x, max×5x, pro×배수없음, free×nil, 구독없음}.
     func testPlanDisplay() throws {
@@ -469,4 +513,46 @@ final class OAuthCredentialDataTests: XCTestCase {
 
         XCTAssertEqual(OAuthCredentialData.credential(from: data)?.accessToken, "token-1")
     }
+
+    func testExtractDataItemsHandlesSingleAndMultipleFormats() {
+        let data1 = "data1".data(using: .utf8)!
+        let data2 = "data2".data(using: .utf8)!
+
+        // 단일 Data
+        XCTAssertEqual(OAuthCredentialData.extractDataItems(from: data1), [data1])
+
+        // [Data] 배열
+        XCTAssertEqual(OAuthCredentialData.extractDataItems(from: [data1, data2]), [data1, data2])
+
+        // [[String: Any]] (kSecValueData 포함)
+        let dictArray: [[String: Any]] = [
+            [kSecValueData as String: data1],
+            [kSecValueData as String: data2],
+        ]
+        XCTAssertEqual(OAuthCredentialData.extractDataItems(from: dictArray), [data1, data2])
+
+        // nil / 빈 값
+        XCTAssertEqual(OAuthCredentialData.extractDataItems(from: nil), [])
+    }
+
+    func testMultipleKeychainItemsPicksValidAccountOAuthOverMCPOAuth() {
+        let mcpOnlyData = """
+        {"mcpOAuth":{"linear":{"accessToken":"linear-tok"}}}
+        """.data(using: .utf8)!
+
+        let accountData = """
+        {"claudeAiOauth":{"accessToken":"account-tok","subscriptionType":"max","rateLimitTier":"default_claude_max_20x"}}
+        """.data(using: .utf8)!
+
+        let items = OAuthCredentialData.extractDataItems(from: [mcpOnlyData, accountData])
+        XCTAssertEqual(items.count, 2)
+
+        // 첫 번째 항목(MCP 전용)은 credential nil이지만, 두 번째 항목에서 정상 파싱
+        let validCredential = items.compactMap { OAuthCredentialData.credential(from: $0) }.first
+        XCTAssertNotNil(validCredential)
+        XCTAssertEqual(validCredential?.accessToken, "account-tok")
+        XCTAssertEqual(validCredential?.subscriptionType, "max")
+        XCTAssertEqual(validCredential?.rateLimitTier, "default_claude_max_20x")
+    }
 }
+

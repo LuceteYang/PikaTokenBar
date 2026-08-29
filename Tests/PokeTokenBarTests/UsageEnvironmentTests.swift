@@ -159,12 +159,44 @@ final class UsageEnvironmentTests: XCTestCase {
 
     /// 실제로 조회되는 이름 집합이 프로바이더 override 와 어긋나지 않게 고정한다.
     func testRegisteredNamesCoverEveryProviderOverride() {
-        for name in ["CLAUDE_CONFIG_DIR", "OPENCODE_DATA_DIR", "HERMES_HOME", "COPILOT_HOME", "GROK_HOME"] {
+        for name in [
+            "CLAUDE_CONFIG_DIR", "OPENCODE_DATA_DIR", "HERMES_HOME", "COPILOT_HOME", "GROK_HOME",
+            "CLOUD_CODE_URL", "PI_CODING_AGENT_DIR", "PI_CODING_AGENT_SESSION_DIR",
+            "CURSOR_SESSION_TOKEN", "CURSOR_USAGE_API",
+            "KIRO_CLI_HOME", "KIRO_HOME", "CURSOR_DATA_DIR",
+            "OMP_CODING_AGENT_DIR",
+        ] {
             XCTAssertTrue(UsageEnvironment.names.contains(name), "\(name) 이 조회 대상에서 빠졌다")
         }
         XCTAssertEqual(Set(UsageEnvironment.names).count, UsageEnvironment.names.count, "이름 중복")
         for name in UsageEnvironment.names {
             XCTAssertTrue(BinaryLocator.isShellSafeEnvironmentName(name), "\(name) 은 셸 조회가 거부한다")
         }
+    }
+
+    /// `environmentPaths("X")` / `UsageEnvironment.value("X")` 가 `names` 밖에 있으면
+    /// `value` 는 영원히 nil 이다 — KIRO_CLI_HOME 이 그 상태로 출고됐다(#236).
+    func testSourceLiteralEnvKeysAreAllRegistered() throws {
+        let sources = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("Sources/PokeTokenBar")
+        let pattern = try NSRegularExpression(
+            pattern: #"(?:environmentPaths|UsageEnvironment\.value)\("([A-Z][A-Z0-9_]+)"\)"#)
+        var missing: [String] = []
+        let enumerator = try XCTUnwrap(FileManager.default.enumerator(
+            at: sources, includingPropertiesForKeys: nil))
+        for case let url as URL in enumerator where url.pathExtension == "swift" {
+            let text = try String(contentsOf: url, encoding: .utf8)
+            let ns = text as NSString
+            for match in pattern.matches(in: text, range: NSRange(location: 0, length: ns.length)) {
+                let name = ns.substring(with: match.range(at: 1))
+                if !UsageEnvironment.names.contains(name) {
+                    missing.append("\(url.lastPathComponent): \(name)")
+                }
+            }
+        }
+        XCTAssertTrue(missing.isEmpty, "names 에 없는 조회: \(missing.joined(separator: ", "))")
     }
 }
