@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -39,7 +39,7 @@ S = {
  "animLabel":     ("애니메이션", "Animation", "アニメーション"),
  "animHint":      ("부드러울수록 배터리를 더 씁니다", "Smoother uses more battery",
                    "滑らかにするとバッテリー消費が増えます"),
- "animValue":     ("기본", "Balanced", "標準"),
+ "animValue":     ("배터리 절약", "Power saver", "バッテリー優先"),
  "limitDisplay":  ("한도 표시 방식", "Limit display", "上限の表示"),
  "limitUsed":     ("사용량", "Used", "使用量"),
  "limitRemain":   ("남은 양", "Remaining", "残量"),
@@ -113,6 +113,16 @@ S = {
  "aggNote":       ("토큰 집계 기준: totalTokens (input + output + cache, 로컬 날짜)",
                    "Token basis: totalTokens (input + output + cache, local date)",
                    "集計基準: totalTokens (input + output + cache, ローカル日付)"),
+ "scanProvider":  ("프로바이더", "Provider", "プロバイダー"),
+ "scanProviderValue": ("Codex", "Codex", "Codex"),
+ "scanLabel":     ("추가 스캔 폴더", "Additional scan folders", "追加スキャンフォルダ"),
+ "scanHint":      ("선택한 프로바이더의 로그가 기본 위치 밖에 있을 때만. 콤마·줄바꿈 구분, * 와일드카드. 다른 프로바이더 폴더를 넣지 마세요.",
+                   "Only for this provider's logs outside the built-in locations. Comma/newline separated, * wildcards. Do not point at another provider's folder.",
+                   "選択したプロバイダーのログが既定の場所にないときだけ。カンマ・改行区切り、*ワイルドカード。別プロバイダーのフォルダは指定しないでください。"),
+ "scanValue":     ("~/work/codex-archive,\n~/Dropbox/*/codex/sessions",
+                   "~/work/codex-archive,\n~/Dropbox/*/codex/sessions",
+                   "~/work/codex-archive,\n~/Dropbox/*/codex/sessions"),
+ "scanMatches":   ("지금 2개 추가 폴더를 스캔함", "Scans 2 extra folder(s) now", "現在2個の追加フォルダをスキャン"),
  "finder":        ("Finder", "Finder", "Finder"),
 }
 IDX = {"ko": 0, "en": 1, "ja": 2}
@@ -161,6 +171,8 @@ body{width:360px;background:#1c1c1e;color:#fff;
 .field{flex:1;background:#1c1c1e;border:1px solid #48484a;border-radius:5px;padding:4px 7px;
  font-size:11.5px;color:#6e6e73;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ttl{display:flex;align-items:center;gap:6px}
+.area{background:#1c1c1e;border:1px solid #48484a;border-radius:5px;padding:5px 7px;
+ font-size:11px;color:#c9c9cd;white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 """
 
 
@@ -200,6 +212,16 @@ def html(lang, advanced=False):
         f'<div class="note" style="padding:6px 14px 8px">{s("sessionKeyNote")}</div>',
         row(s("keychainOff"), tog(False), s("keychainOffHint")),
         row(s("refreshToken"), f'<div class="btn">{s("refreshToken")}</div>', s("refreshTokenHint")),
+        # 추가 스캔 폴더 — 프로바이더를 먼저 고르고, 그 프로바이더에만 붙는 경로를 넣는다.
+        f'<div class="row" style="display:block">'
+        f'<div style="margin-bottom:4px">{s("scanLabel")}</div>'
+        f'<div class="h" style="font-size:10.5px;color:#8b8b90;margin-bottom:7px">{s("scanHint")}</div>'
+        f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px">'
+        f'<span style="font-size:11.5px">{s("scanProvider")}</span>'
+        f'<span style="flex:1"></span>{pill(s("scanProviderValue"))}</div>'
+        f'<div class="area">{s("scanValue")}</div>'
+        f'<div class="h" style="font-size:10.5px;color:#8b8b90;margin-top:6px">{s("scanMatches")}</div>'
+        f'</div>',
         f'<div class="note" style="padding:8px 14px">{s("aggNote")}</div>',
     )
 
