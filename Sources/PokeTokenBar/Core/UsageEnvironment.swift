@@ -26,6 +26,9 @@ enum UsageEnvironment {
         "PI_CODING_AGENT_SESSION_DIR", // pi session directory override
         "CURSOR_SESSION_TOKEN", // Cursor dashboard API session override
         "CURSOR_USAGE_API",    // Cursor dashboard API disable switch (`0` = off)
+        "KIRO_CLI_HOME",       // pre-2.20 Kiro SQLite home (kiro-cli)
+        "KIRO_HOME",           // ~/.kiro — JSONL sessions live under <this>/sessions
+        "CURSOR_DATA_DIR",     // Cursor user-data dir override
     ]
 
     /// `name` 의 값. 프로세스 환경이 우선이고, 없으면 로그인 셸에서 읽은 값을 쓴다.
