@@ -938,6 +938,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul>
         <li data-i18n-html="info.limitsLi1">설정 → 고급에 claude.ai <code>sessionKey</code> 를 붙여넣으면 Keychain 접근 팝업 없이 공식 5시간·주간 한도를 가져옵니다.</li>
         <li data-i18n="info.limitsLi2">자동 갱신에도 적용되므로 한도가 옛 값으로 멈추지 않습니다. 키를 넣지 않으면 기존 방식 그대로 동작합니다.</li>
+        <li data-i18n="info.limitsLi3">Claude·Codex 에 더해 Antigravity 2.0·IDE 의 공식 한도도 모델군별 5시간·주간으로 함께 표시합니다.</li>
       </ul>
     </div>
 
@@ -963,9 +964,10 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul class="chips">
         <li>Claude Code</li><li>Codex</li><li>Gemini CLI</li><li>Antigravity</li>
         <li>OpenCode</li><li>Hermes Agent</li><li>Cursor</li><li>Grok CLI</li>
-        <li>Copilot CLI</li><li>Kiro CLI</li>
+        <li>Copilot CLI</li><li>Kiro CLI</li><li>Pi Agent</li><li>omp</li>
       </ul>
       <p data-i18n="info.toolsNote">전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.</p>
+      <p data-i18n="info.toolsScan">로그가 기본 위치 밖에 있다면 설정 → 고급에서 프로바이더별로 스캔 폴더를 추가할 수 있습니다.</p>
     </div>
   </div>
 </section>
@@ -1085,6 +1087,7 @@ var I18N = {
     "info.limitsH3": "공식 한도, 팝업 없이",
     "info.limitsLi1": "설정 → 고급에 claude.ai <code>sessionKey</code> 를 붙여넣으면 Keychain 접근 팝업 없이 공식 5시간·주간 한도를 가져옵니다.",
     "info.limitsLi2": "자동 갱신에도 적용되므로 한도가 옛 값으로 멈추지 않습니다. 키를 넣지 않으면 기존 방식 그대로 동작합니다.",
+    "info.limitsLi3": "Claude·Codex 에 더해 Antigravity 2.0·IDE 의 공식 한도도 모델군별 5시간·주간으로 함께 표시합니다.",
     "info.coexistH3": "원본과 함께 쓸 수 있습니다",
     "info.coexistLi1": "별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.",
     "info.coexistLi2": "데이터도 분리되어 있어 서로 영향을 주지 않습니다.",
@@ -1094,6 +1097,7 @@ var I18N = {
     "info.signLi2": "위 설치 스크립트가 Gatekeeper 격리 속성(quarantine attribute)을 자동으로 해제합니다.",
     "info.toolsH3": "지원 도구",
     "info.toolsNote": "전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.",
+    "info.toolsScan": "로그가 기본 위치 밖에 있다면 설정 → 고급에서 프로바이더별로 스캔 폴더를 추가할 수 있습니다.",
     "foot.credit": "<a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a>(by chattymin, MIT License)를 기반으로 만들었습니다.",
     "foot.releases": "릴리스",
     "foot.issues": "이슈",
@@ -1149,6 +1153,7 @@ var I18N = {
     "info.limitsH3": "Official limits, no pop-ups",
     "info.limitsLi1": "Paste a claude.ai <code>sessionKey</code> under Settings → Advanced and the official 5-hour and weekly limits load with no Keychain permission dialog.",
     "info.limitsLi2": "It applies to automatic refreshes too, so limits never freeze at an old value. Save no key and everything works exactly as before.",
+    "info.limitsLi3": "Alongside Claude and Codex, Antigravity 2.0 and the IDE now report their own official 5-hour and weekly limits, per model group.",
     "info.coexistH3": "Runs alongside the original",
     "info.coexistLi1": "Installs as a separate app — runs side-by-side with the original PokeTokenBar.",
     "info.coexistLi2": "Its data is separate too, so neither one affects the other.",
@@ -1158,6 +1163,7 @@ var I18N = {
     "info.signLi2": "The install script above automatically clears the Gatekeeper quarantine attribute.",
     "info.toolsH3": "Supported tools",
     "info.toolsNote": "All read locally — no external CLI required.",
+    "info.toolsScan": "If a tool keeps its logs outside the built-in paths, add extra scan folders per provider under Settings → Advanced.",
     "foot.credit": "Built on <a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a> (by chattymin, MIT License).",
     "foot.releases": "Releases",
     "foot.issues": "Issues",
@@ -1213,6 +1219,7 @@ var I18N = {
     "info.limitsH3": "公式上限をポップアップなしで",
     "info.limitsLi1": "設定 → 詳細に claude.ai の <code>sessionKey</code> を貼り付けると、Keychain の許可ダイアログなしで公式の5時間・週間上限を取得します。",
     "info.limitsLi2": "自動更新にも適用されるため、上限が古い値のまま止まりません。キーを入れなければ従来どおり動作します。",
+    "info.limitsLi3": "Claude・Codex に加えて、Antigravity 2.0・IDE の公式上限もモデル群ごとの5時間・週間で表示します。",
     "info.coexistH3": "オリジナルと併用できます",
     "info.coexistLi1": "別のアプリとしてインストールされます — オリジナルのPokeTokenBarと並行して起動できます。",
     "info.coexistLi2": "データも分離されているため、互いに影響しません。",
@@ -1222,6 +1229,7 @@ var I18N = {
     "info.signLi2": "上記のインストールスクリプトが Gatekeeper の隔離属性（quarantine attribute）を自動で解除します。",
     "info.toolsH3": "対応ツール",
     "info.toolsNote": "すべてローカルで読み取り、外部CLIは不要です。",
+    "info.toolsScan": "ログが既定の場所にない場合は、設定 → 詳細でプロバイダーごとにスキャンフォルダを追加できます。",
     "foot.credit": "<a href=\"https://github.com/chattymin/PokeTokenBar\">PokeTokenBar</a>（by chattymin, MIT License）をベースに作成しました。",
     "foot.releases": "リリース",
     "foot.issues": "Issues",
