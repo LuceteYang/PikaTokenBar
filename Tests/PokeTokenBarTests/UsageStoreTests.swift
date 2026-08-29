@@ -1065,6 +1065,75 @@ final class UsageStoreTests: XCTestCase {
         XCTAssertFalse(store.limitsAuthExpired, "성공 시 해제")
     }
 
+    /// [회귀] 세션 키 만료와 OAuth 만료는 **처방이 다르다** — 전자는 브라우저에서 sessionKey 를
+    /// 다시 복사해 설정에 붙여넣어야 하고, 후자는 Keychain 재조회면 된다. 둘을 불리언 하나로
+    /// 합치면 팝오버가 세션 키 사용자에게 "Claude Code 를 한 번 실행하면 자동 갱신됩니다"라는
+    /// 듣지 않는 처방을 보여주고, 재시도 버튼이 하필 Keychain 을 읽어 — 세션 키로 피하려던 바로
+    /// 그 팝업을 띄운다. 그래서 만료의 **출처**를 남긴다.
+    func testSessionKeyExpiryIsDistinguishedFromOAuthExpiry() async {
+        let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
+        let store = UsageStore(providers: [claude],
+                               claudeLimitsProvider: SequenceClaudeLimits(errors: [LimitsError.sessionKeyInvalid]),
+                               codexLimitsProvider: FakeCodexLimits(status: nil),
+                               autoRefresh: false, defaults: testDefaults)
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertEqual(store.limitsAuthExpiry, .sessionKey, "세션 키 401 → 세션 키 만료로 식별돼야 한다")
+        XCTAssertTrue(store.limitsAuthExpired, "기존 불리언 계약은 그대로 유지")
+    }
+
+    /// OAuth 401 은 세션 키 만료로 오인되면 안 된다 — 반대 방향 오분류 가드.
+    func testOAuthExpiryIsNotReportedAsSessionKeyExpiry() async {
+        let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
+        let store = UsageStore(providers: [claude],
+                               claudeLimitsProvider: SequenceClaudeLimits(errors: [LimitsError.httpStatus(401)]),
+                               codexLimitsProvider: FakeCodexLimits(status: nil),
+                               autoRefresh: false, defaults: testDefaults)
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertEqual(store.limitsAuthExpiry, .oauth, "OAuth 401 → OAuth 만료")
+    }
+
+    /// 만료 출처는 성공하면 사라져야 한다 — 남으면 한도가 정상인데 만료 배너가 계속 뜬다.
+    func testSessionKeyExpiryClearsOnSuccess() async {
+        let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
+        let seq = SequenceClaudeLimits(errors: [LimitsError.sessionKeyInvalid],
+                                       success: claudeLimits(fiveHourUtil: 12, resetsAt: "2099-01-01T00:00:00Z"))
+        let store = UsageStore(providers: [claude], claudeLimitsProvider: seq,
+                               codexLimitsProvider: FakeCodexLimits(status: nil),
+                               autoRefresh: false, defaults: testDefaults)
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertEqual(store.limitsAuthExpiry, .sessionKey)
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertNil(store.limitsAuthExpiry, "성공 시 해제")
+    }
+
+    /// [회귀] 설정 화면의 세션 키 배지는 `sessionKeyConfigured` 만 보고 그려졌다 — 그 값은 키가
+    /// 만료돼도 true 라, 팝오버에서 "만료"를 보고 설정에 들어가면 여전히 "설정됨"이라 적혀 있었다.
+    /// 사용자가 "뭘 해야 하지"에서 막히던 지점이라 만료를 배지가 읽을 수 있는 상태로 노출한다.
+    func testSessionKeyExpiredIsVisibleWhileKeyIsStillStored() async {
+        let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
+        let store = UsageStore(providers: [claude],
+                               claudeLimitsProvider: SequenceClaudeLimits(errors: [LimitsError.sessionKeyInvalid]),
+                               codexLimitsProvider: FakeCodexLimits(status: nil),
+                               sessionKeys: StubSessionKeys(credential: .init(key: "sk", organizationID: "org")),
+                               autoRefresh: false, defaults: testDefaults)
+        XCTAssertFalse(store.sessionKeyExpired, "만료 전에는 평상시 배지")
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertTrue(store.sessionKeyConfigured, "키는 여전히 저장돼 있다 — 지우는 건 사용자 몫")
+        XCTAssertTrue(store.sessionKeyExpired, "그래도 배지는 '만료됨' 이어야 한다")
+    }
+
+    /// 키를 넣은 적 없는 사용자의 OAuth 만료가 세션 키 배지를 건드리면 안 된다.
+    func testOAuthExpiryDoesNotMarkSessionKeyExpired() async {
+        let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
+        let store = UsageStore(providers: [claude],
+                               claudeLimitsProvider: SequenceClaudeLimits(errors: [LimitsError.httpStatus(401)]),
+                               codexLimitsProvider: FakeCodexLimits(status: nil),
+                               sessionKeys: StubSessionKeys(credential: nil),
+                               autoRefresh: false, defaults: testDefaults)
+        await store.refresh(scheduleEmptyRetry: false)
+        XCTAssertFalse(store.sessionKeyExpired)
+    }
+
     func testLimitsAuthExpiredNotSetOnNon401() async {
         let claude = FakeUsageProvider(id: "claude_code", displayName: "Claude Code", daily: todayDaily(10_000_000))
         let store = UsageStore(providers: [claude],

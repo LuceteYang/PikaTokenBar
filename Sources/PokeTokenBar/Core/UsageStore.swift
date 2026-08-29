@@ -22,9 +22,14 @@ final class UsageStore {
     private(set) var antigravityLimitsAuthExpired = false
     private(set) var limitsUpdatedAt: Date?
     private(set) var limitsAvailable = true
-    /// Claude 한도 조회가 401/403(세션 만료)로 실패한 상태 — UI 에서 명확한 안내+재시도 노출용.
+    /// Claude 한도 인증이 만료된 **출처**. nil = 만료 아님. 성공 시 해제.
+    /// 출처를 남기는 이유는 처방이 다르기 때문이다 — 자세한 근거는 `updateAuthExpired` 주석.
+    enum LimitsAuthExpiry: Equatable { case oauth, sessionKey }
+    private(set) var limitsAuthExpiry: LimitsAuthExpiry?
+    /// Claude 한도 조회가 만료로 실패한 상태 — UI 에서 명확한 안내+재시도 노출용.
     /// 성공 시 해제. 자동 폴링은 무프롬프트라 만료 토큰을 스스로 못 고치므로 사용자 액션 유도가 필요.
-    private(set) var limitsAuthExpired = false
+    /// **출처와 따로 저장하지 않는다** — 두 필드를 각자 갱신하면 한쪽만 지워져 배너가 남는다.
+    var limitsAuthExpired: Bool { limitsAuthExpiry != nil }
     /// providerID → 프로바이더 상태 페이지 인시던트 지표(표시 전용). 조회 실패 시 이전 값 유지.
     private(set) var statuses: [String: ProviderStatus] = [:]
     private(set) var lastUpdated: Date?
@@ -731,7 +736,7 @@ final class UsageStore {
         if disableKeychainAccess && !sessionKeyConfigured {
             limits = nil
             limitsAvailable = false
-            limitsAuthExpired = false   // 조회 자체를 안 하므로 "세션 만료" 안내는 무의미 → 해제
+            limitsAuthExpiry = nil   // 조회 자체를 안 하므로 "세션 만료" 안내는 무의미 → 해제
             AppLog.write("claude limits skipped: keychain access disabled")
         } else if let until = claudeLimitsBackoffUntil, Date() < until {
             // 429 백오프 중 — 폴링을 쉬어 rate limit 악화 방지 (버그 리포트 실측: 매분 429 재시도)
@@ -741,7 +746,7 @@ final class UsageStore {
                 limits = try await limitsProvider.fetch(allowKeychainPrompt: false)
                 limitsAvailable = true
                 limitsUpdatedAt = Date()
-                limitsAuthExpired = false
+                limitsAuthExpiry = nil
                 resetLimitsBackoff()
                 AppLog.write("limits refreshed fiveHour=\(limits?.fiveHour?.utilization?.description ?? "nil") sevenDay=\(limits?.sevenDay?.utilization?.description ?? "nil")")
             } catch {
@@ -788,7 +793,7 @@ final class UsageStore {
             limits = try await limitsProvider.fetch(allowKeychainPrompt: true)
             limitsAvailable = true
             limitsUpdatedAt = Date()
-            limitsAuthExpired = false
+            limitsAuthExpiry = nil
             limitTokenRefreshError = nil
             resetLimitsBackoff()
             AppLog.write("limits refreshed by user action fiveHour=\(limits?.fiveHour?.utilization?.description ?? "nil") sevenDay=\(limits?.sevenDay?.utilization?.description ?? "nil")")
@@ -806,6 +811,10 @@ final class UsageStore {
 
     /// 키가 저장돼 있는지. 저장 여부만 노출하고 값은 UI 로 되돌리지 않는다.
     var sessionKeyConfigured = false
+    /// 저장된 키가 만료로 거부된 상태. `sessionKeyConfigured` 는 키가 죽어도 true 라(지우는 건
+    /// 사용자 몫) 그것만으로 배지를 그리면 만료 후에도 "설정됨"이 남는다 — 설정에 들어온 사용자가
+    /// 무엇을 해야 하는지 알 수 없던 지점이다.
+    var sessionKeyExpired: Bool { sessionKeyConfigured && limitsAuthExpiry == .sessionKey }
     /// 마지막 검증에서 확인된 후보 조직 — 2개 이상일 때만 설정에 선택 UI 를 띄운다.
     var sessionKeyOrganizations: [SessionKeyOrganization] = []
     var sessionKeySelectedOrgID: String?
@@ -908,11 +917,17 @@ final class UsageStore {
     /// 401/403(세션 만료)면 auth-expired 플래그를 세운다. 다른 오류(네트워크·키체인 잠금 등)는
     /// 만료가 아니므로 건드리지 않는다 — 오탐으로 "세션 만료" 안내를 띄우지 않기 위함.
     private func updateAuthExpired(from error: any Error) {
+        // 세션 키 만료를 먼저 본다. 둘 다 "다시 인증하라" 지만 **처방이 반대**다 — 세션 키는
+        // 브라우저에서 쿠키를 다시 복사해 설정에 붙여넣어야 하고, OAuth 는 Keychain 재조회면 된다.
+        // 하나로 합쳐 두면 세션 키 사용자에게 "Claude Code 를 실행하세요"라는 듣지 않는 안내가 뜨고,
+        // 재시도 버튼이 Keychain 을 읽어 — 세션 키로 피하려던 그 팝업을 도로 띄운다.
+        //
+        // ChainedLimitsProvider 는 키를 넣어둔 사용자에게 fallback 오류가 아니라 **세션 키 오류를**
+        // 다시 던지므로(그쪽 주석 참조) 여기까지 출처가 보존된 채 온다.
+        if case LimitsError.sessionKeyInvalid = error { limitsAuthExpiry = .sessionKey; return }
         if case LimitsError.httpStatus(let status) = error, status == 401 || status == 403 {
-            limitsAuthExpired = true
+            limitsAuthExpiry = .oauth
         }
-        // 세션 키 401 도 같은 "다시 인증하라" 상태다 — 안내 문구만 다르고 UI 취급은 같아야 한다.
-        if case LimitsError.sessionKeyInvalid = error { limitsAuthExpired = true }
     }
 
     // MARK: Claude 한도 429 백오프

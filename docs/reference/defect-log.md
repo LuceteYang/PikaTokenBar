@@ -258,6 +258,32 @@ read_when:
 
 ## 자격증명·Keychain
 
+- **인증 경로가 둘이면 만료 플래그도 둘이어야 한다 — 불리언 하나로 합치면 UI 가 한쪽에만 맞는
+  처방을 안내한다.** `limitsAuthExpired: Bool` 이 OAuth 401/403 과 세션 키 401(`sessionKeyInvalid`)
+  **양쪽에서** 세워졌다. 팝오버는 그 불리언 하나만 보고 OAuth 용 배너를 띄웠으므로, 세션 키 사용자는
+  ① "Claude Code 를 한 번 실행하면 자동 갱신됩니다"라는 **듣지 않는 처방**을 보고, ② 재시도 버튼이
+  `refreshLimitTokenFromKeychain()` 이라 **세션 키로 피하려던 바로 그 Keychain 팝업**을 도로 맞았다.
+  설정 화면은 더 조용했다 — 배지가 `sessionKeyConfigured` 만 보는데 그 값은 키가 죽어도 true 라
+  (지우는 건 사용자 몫), 만료 안내를 보고 들어와도 여전히 "설정됨"이라 적혀 있었다.
+  **5-whys(왜 안 걸렸나):** `friendlyLimitError` 에 `.sessionKeyInvalid` 케이스가 **있었고 문구도
+  정확했다**("브라우저에서 다시 복사해 붙여넣으세요"). 그래서 *에러 문구 매핑* 테스트는 통과했는데,
+  정작 UI 가 그 문구를 안 쓰고 불리언으로 분기해 OAuth 배너를 골랐다 — 결함 트리거와 **다른 경로**로
+  통과해 false confidence 를 준 전형이다. 화면에 실제로 뜨는 것을 단정하지 않으면 못 잡는다.
+  **영구 캡처:** 만료를 불리언이 아니라 **출처를 담은 옵셔널**(`limitsAuthExpiry: .oauth | .sessionKey?`)로
+  바꾸고 `limitsAuthExpired` 를 그 파생값으로 만들었다 — 두 필드를 각자 갱신하다 한쪽만 지워지는
+  drift 가 구조적으로 불가능하다. 가드: `testSessionKeyExpiryIsDistinguishedFromOAuthExpiry`,
+  `testOAuthExpiryIsNotReportedAsSessionKeyExpiry`(반대 방향 오분류), `testSessionKeyExpiryClearsOnSuccess`,
+  `testSessionKeyExpiredIsVisibleWhileKeyIsStillStored`(배지), `testOAuthExpiryDoesNotMarkSessionKeyExpired`.
+  **부류 스윕:** `antigravityLimitsAuthExpired` 는 원인이 401/403 하나뿐이고 Antigravity 엔 세션 키
+  경로가 없어 같은 혼동이 성립하지 않는다(안내 문구가 단일 원인과 일치) — 현재 이 부류는 여기 하나뿐.
+  **남은 구멍(별건):** `ChainedLimitsProvider` 는 fallback 이 **성공하면** primary 실패를 삼킨다.
+  세션 키가 죽었는데 OAuth 가 살아 있으면 한도는 계속 보이고 사용자는 키가 죽은 줄 **전혀 모른다** —
+  알리려면 primary 실패를 호출부까지 올리는 배선이 필요해 이번 수정 범위에 넣지 않았다.
+  (자체발견, 2026-08-30 — v1.4.0 머지 후 로그 점검 중.)
+- **세션 키 행은 접힌 disclosure 안에 산다 — "설정에서 고치세요" 안내는 펼친 채로 열어야 길이 된다.**
+  `advancedExpanded` 기본값이 false 라, 만료 배너에서 설정을 그냥 열면 사용자가 고칠 입력란을 못 본다.
+  안내가 목적지를 지정할 땐 그 목적지가 **첫 화면에서 보이는지** 확인하라. (같은 건, 2026-08-30.)
+
 - **앱 소유 keychain 항목 금지.** 앱이 만든 keychain 항목은 코드서명(cdhash)이 바뀔 때마다(로컬 재빌드·
   실사용자 매 업그레이드) 항목 ACL 이 안 맞아 접근 허용 프롬프트를 유발한다 — **no-UI 쿼리로도 이 ACL
   프롬프트는 억제 안 됨**(#58). 토큰류는 인메모리 캐시 + 파일(`~/.claude/.credentials.json`) 재취득으로

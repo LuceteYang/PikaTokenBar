@@ -10,10 +10,16 @@ struct SettingsView: View {
     var onClose: () -> Void
     /// 기존 컬렉션의 도감으로 돌아가 대표 포켓몬을 고르게 한다.
     var onChooseRepresentative: () -> Void
+    /// 고급 섹션을 펼친 채로 열지. 세션 키 만료 안내에서 들어온 경우에만 true —
+    /// 접힌 채로 열면 고칠 입력란이 안 보여 안내가 막다른 길이 된다.
+    var startExpanded = false
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var launchAtLoginError: String?
     @State private var reportError: String?
     @State private var advancedExpanded = false
+    /// startExpanded 를 @State 초기값으로 못 쓴다 — 뷰가 재사용되면 초기화가 다시 안 돌아
+    /// 두 번째 진입부터 접힌 채로 열린다. onAppear 에서 1회 반영한다.
+    @State private var didApplyStartExpanded = false
     /// 붙여넣은 세션 키 — 저장 성공 시 즉시 비운다(화면에 남기지 않는다).
     @State private var sessionKeyInput = ""
     @State private var isCheckingUpdate = false
@@ -75,6 +81,11 @@ struct SettingsView: View {
             footer
         }
         .frame(height: 460)
+        .onAppear {
+            guard !didApplyStartExpanded else { return }
+            didApplyStartExpanded = true
+            if startExpanded { advancedExpanded = true }
+        }
     }
 
     private var header: some View {
@@ -375,7 +386,12 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(l.sessionKeyLabel)
-                    if store.sessionKeyConfigured {
+                    if store.sessionKeyExpired {
+                        // 키는 아직 저장돼 있지만 서버가 거부한 상태 — 여기서 '설정됨' 을 그대로
+                        // 두면 만료 안내를 보고 들어온 사용자가 할 일을 못 찾는다.
+                        Text(l.sessionKeyExpiredBadge)
+                            .font(.caption2).foregroundStyle(.orange)
+                    } else if store.sessionKeyConfigured {
                         Text(l.sessionKeySaved)
                             .font(.caption2).foregroundStyle(.green)
                     }

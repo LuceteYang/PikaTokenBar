@@ -265,6 +265,29 @@ struct L {
           "Nenhuma organização desta chave pode mostrar limites.")
     }
 
+    // MARK: 세션 키 만료 안내 — OAuth 만료와 처방이 다르므로 문구·행동을 따로 둔다
+    var sessionKeyExpiredTitle: String {
+        t("claude.ai 세션 키 만료 — 한도가 갱신 안 돼요",
+          "claude.ai session key expired — limits aren't refreshing",
+          "claude.ai セッションキーの期限切れ — 上限が更新されません",
+          "La clave de sesión de claude.ai caducó: los límites no se actualizan",
+          "Clé de session claude.ai expirée — les limites ne s'actualisent plus",
+          "A chave de sessão do claude.ai expirou — os limites não estão atualizando")
+    }
+    /// Keychain 재조회를 권하지 않는다 — 세션 키가 죽은 상태에서 그건 아무것도 고치지 못하고,
+    /// 하필 세션 키로 피하려던 그 팝업을 띄운다.
+    var sessionKeyExpiredNoticeHint: String {
+        t("표시된 값은 만료 전 기준이에요. 브라우저에서 sessionKey 를 다시 복사해 설정 → 고급에 붙여넣으세요.",
+          "The numbers shown are from before it expired. Copy a fresh sessionKey from your browser and paste it under Settings → Advanced.",
+          "表示中の値は期限切れ前のものです。ブラウザから sessionKey を再度コピーし、設定 → 詳細に貼り付けてください。",
+          "Los valores mostrados son anteriores a la caducidad. Copia una nueva sessionKey del navegador y pégala en Ajustes → Avanzado.",
+          "Les valeurs affichées datent d'avant l'expiration. Copie une nouvelle sessionKey depuis ton navigateur et colle-la dans Réglages → Avancé.",
+          "Os valores exibidos são de antes de expirar. Copie uma nova sessionKey do navegador e cole em Ajustes → Avançado.")
+    }
+    var sessionKeyExpiredBadge: String {
+        t("만료됨", "Expired", "期限切れ", "Caducada", "Expirée", "Expirada")
+    }
+
     // MARK: 세이브 이전 (설정 → 백업 & 이전)
     var transferSectionTitle: String { t("백업 & 이전", "Backup & Transfer", "バックアップと移行", "Copia de seguridad y transferencia", "Sauvegarde et transfert", "Backup e transferência") }
     var exportSaveLabel: String { t("세이브 내보내기", "Export save", "セーブを書き出す", "Exportar partida", "Exporter la sauvegarde", "Exportar save") }
