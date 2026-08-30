@@ -297,7 +297,13 @@ struct ChainedLimitsProvider: ClaudeLimitsProviding {
             let configured = (error as? LimitsError) != .sessionKeyMissing
             if configured { AppLog.write("session key limits failed: \(error)") }
             do {
-                return try await fallback.fetch(allowKeychainPrompt: allowKeychainPrompt)
+                // 키를 넣어 둔 사용자에겐 폴백이 Keychain 을 열지 못하게 막는다. 이 기능의 존재
+                // 이유가 그 프롬프트를 없애는 것이라, 키가 죽었다고 수동 갱신에서 다시 띄우면
+                // 기능이 스스로를 무효화한다 — 죽은 키의 답은 Keychain 이 아니라 키 재입력이고,
+                // 만료 배너도 갱신 버튼이 아니라 설정 화면으로 보낸다. 키가 없을 때만 기존 동작
+                // (수동 갱신 = Keychain 읽기)을 그대로 통과시킨다.
+                return try await fallback.fetch(
+                    allowKeychainPrompt: configured ? false : allowKeychainPrompt)
             } catch let fallbackError {
                 // 키를 넣어놨는데 죽은 경우엔 그 사실이 사용자에게 더 쓸모 있다 — 재입력하면 되니까.
                 // 키가 없으면 기존 안내(자격증명 없음/재로그인)를 그대로 보여준다.
