@@ -170,7 +170,22 @@ struct SessionKeyLimitsProvider: ClaudeLimitsProviding, SessionKeyManaging {
             }
         }
 
-        let candidates = try await organizations(sessionKey: credential.key)
+        let candidates: [SessionKeyOrganization]
+        do {
+            candidates = try await organizations(sessionKey: credential.key)
+        } catch LimitsError.httpStatus(403) {
+            // `/api/organizations` 는 조직 스코프가 아니다 — 여기서의 403 은 "그 조직에 권한 없음"이
+            // 아니라 **이 키로는 아무것도 못 본다**, 즉 키가 죽었다는 뜻이다(만료·브라우저 로그아웃).
+            // 조직 권한 문제라면 그 조직의 usage 만 403 이고 목록 조회는 통과한다 — 그 경우는 위의
+            // 재탐색 분기가 처리하므로 여기까지 오지 않는다.
+            //
+            // 실측(2026-08-30): 실제 앱에서 저장된 세션 키의 한 글자를 바꾸자 usage 와 organizations 가
+            // 함께 403 을 냈다(`session key limits failed: httpStatus(403)`). 죽은 키는 401 이 아니라
+            // 403 이다 — mapFailure 가 401 만 sessionKeyInvalid 로 접는 탓에, 세션 키 만료가 UsageStore
+            // 에서 OAuth 만료로 분류돼 "Claude Code 를 실행하세요"라는 엉뚱한 안내가 나갔다.
+            // (curl 로는 확인 못 한다 — 파일 상단 '검증 함정' 주석 참조.)
+            throw LimitsError.sessionKeyInvalid
+        }
         // 값이 있는 조직 우선. 참조 구현이 쓰는 "첫 번째"는 로그인만 해둔 조직을 골라 영구히 0% 를 낸다.
         guard let picked = candidates.first(where: \.hasUsageData) ?? candidates.first else {
             throw LimitsError.sessionKeyNoOrganization

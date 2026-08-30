@@ -306,6 +306,29 @@ final class SessionKeyLimitsTests: XCTestCase {
         XCTAssertTrue(paths.isEmpty, "키가 없으면 네트워크를 치지 않는다")
     }
 
+    /// [회귀·실측] 키가 죽으면 claude.ai 는 401 이 아니라 **403** 을 준다 — 실제 앱에서 세션 키
+    /// 한 글자를 바꿔 확인했다(usage 와 organizations 가 함께 403, 로그 `session key limits failed:
+    /// httpStatus(403)`). `/api/organizations` 는 조직 스코프가 아니므로 여기서의 403 은 "그 조직에
+    /// 권한 없음"이 아니라 **이 키로는 아무것도 못 본다**는 뜻이다.
+    ///
+    /// 이게 `httpStatus(403)` 으로 새 나가면 `UsageStore.updateAuthExpired` 가 401/403 을 OAuth
+    /// 만료로 분류해, 세션 키 사용자에게 "Claude Code 를 한 번 실행하면 자동 갱신됩니다"라는 듣지
+    /// 않는 안내와 Keychain 을 읽는 재시도 버튼이 나간다 — 세션 키 만료 안내를 따로 만든 의미가 없어진다.
+    ///
+    /// **조직 단위 403 은 건드리지 않는다**: 캐시된 조직의 usage 가 403 이면 그건 진짜로 그 조직
+    /// 권한 문제이고, `fetch` 가 이미 재탐색으로 처리한다(그 경로는 이 매핑을 타지 않는다).
+    func testForbiddenOrganizationListMapsToInvalidKey() async throws {
+        try seed()
+        let http = StubSessionKeyHTTP([orgsPath: fail(403)])
+        let provider = SessionKeyLimitsProvider(store: store, http: http)
+        do {
+            _ = try await provider.fetch(allowKeychainPrompt: false)
+            XCTFail("403 은 키 무효로 매핑돼야 한다 — 실측상 죽은 키의 실제 응답이다")
+        } catch {
+            XCTAssertEqual(error as? LimitsError, LimitsError.sessionKeyInvalid)
+        }
+    }
+
     func testUnauthorizedOrganizationListMapsToInvalidKey() async throws {
         try seed()
         let http = StubSessionKeyHTTP([orgsPath: fail(401)])

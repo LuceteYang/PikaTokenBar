@@ -258,6 +258,27 @@ read_when:
 
 ## 자격증명·Keychain
 
+- **죽은 claude.ai 세션 키는 401 이 아니라 403 을 낸다 — 그리고 이건 curl 로 확인할 수 없다.**
+  `SessionKeyLimitsProvider.mapFailure` 가 401 만 `sessionKeyInvalid` 로 접고 403 은
+  `httpStatus(403)` 으로 흘려보냈다. 그래서 세션 키 만료가 `UsageStore.updateAuthExpired` 의
+  401/403 분기에서 **OAuth 만료로 분류**돼, 바로 앞 항목에서 만든 세션 키 전용 안내가 **실제로는
+  한 번도 안 뜨고** 옛 OAuth 배너("Claude Code 를 한 번 실행하면 자동 갱신됩니다" + Keychain 을
+  읽는 재시도 버튼)가 그대로 나갔다. 즉 수정을 하고도 증상이 그대로였다.
+  **5-whys(왜 안 걸렸나):** ① 테스트를 **코드가 모델링한 분기**(`sessionKeyInvalid`=401)로 짰고
+  **현실이 타는 분기**(403)를 확인하지 않았다 — 이 문서가 이미 경고하는 바로 그 실수다.
+  ② 검증하려고 `curl` 을 썼다가 Cloudflare 챌린지 403 을 받고 "403 이 맞다"는 **옳은 결론을 틀린
+  근거로** 얻어 한 번 철회했다(파일 상단 '검증 함정' 주석이 정확히 이걸 경고하고 있었는데 안 읽었다).
+  ③ 사용자 로그에 `session key limits failed: httpStatus(403)` 이 **이미 찍혀 있었고 눈으로 보고도**
+  "설정 중이라 조직 권한 문제겠지"로 넘겼다.
+  **무엇이 답을 줬나:** 실제 앱에서 저장된 세션 키의 **한 글자만 바꾸고** 폴링을 지켜본 것.
+  usage 와 organizations 가 함께 403 을 냈다. 이 엔드포인트는 **앱의 URLSession 으로만** 검증된다.
+  **영구 캡처:** `/api/organizations` 는 조직 스코프가 아니므로 거기서의 403 을 `sessionKeyInvalid`
+  로 접는다(조직 단위 403 은 기존 재탐색 분기가 그대로 처리 — 그 경로는 이 매핑을 타지 않는다).
+  가드: `testForbiddenOrganizationListMapsToInvalidKey`.
+  **교훈:** 외부 API 의 실패 코드는 **문서·주석·추측이 아니라 그 API 를 실제로 부르는 클라이언트로**
+  확인한다. 자격증명을 지우지 말고 **한 글자만 망가뜨리면** 되돌리기 쉬운 실측이 된다.
+  (자체발견, 2026-08-30 — v1.4.1 를 낸 직후 사용자가 "체감하고 싶다"고 해서 실물로 재현하다 드러남.)
+
 - **인증 경로가 둘이면 만료 플래그도 둘이어야 한다 — 불리언 하나로 합치면 UI 가 한쪽에만 맞는
   처방을 안내한다.** `limitsAuthExpired: Bool` 이 OAuth 401/403 과 세션 키 401(`sessionKeyInvalid`)
   **양쪽에서** 세워졌다. 팝오버는 그 불리언 하나만 보고 OAuth 용 배너를 띄웠으므로, 세션 키 사용자는
