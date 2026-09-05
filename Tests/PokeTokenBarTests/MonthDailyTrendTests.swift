@@ -343,6 +343,95 @@ final class MonthDailyTrendTests: XCTestCase {
                              "하루라도 썼으면 캡션+막대 행이 그려져야 한다")
     }
 
+    // MARK: 날짜 축·요일 표기 (v1.5.1 — 호버 없이 날짜를 알 수 있게)
+
+    /// 축은 1일·7일 간격·**오늘**에만 숫자를 붙인다. 오늘을 항상 붙이는 게 핵심이다 —
+    /// 오늘 사용량이 적으면 막대가 바닥 눈금 한 줄이라 강조색만으로는 위치를 못 찾는다
+    /// (8월 31일치 렌더에서 실제로 안 보였다).
+    func testAxisLabelsCoverTheFirstDayEverySeventhAndAlwaysToday() {
+        let today = "2026-08-24"
+        func label(_ day: Int) -> String? {
+            DailyTrendMetrics.axisLabel(for: String(format: "2026-08-%02d", day), today: today)
+        }
+        XCTAssertEqual(label(1), "1")
+        XCTAssertEqual(label(7), "7")
+        XCTAssertEqual(label(14), "14")
+        XCTAssertEqual(label(21), "21")
+        XCTAssertEqual(label(28), "28")
+        XCTAssertEqual(label(24), "24", "오늘은 7의 배수가 아니어도 반드시 붙는다")
+        for day in [2, 3, 9, 15, 20, 23, 25, 31] {
+            XCTAssertNil(label(day), "\(day)일엔 라벨이 없어야 한다 — 전부 붙이면 9pt 폭에서 겹친다")
+        }
+    }
+
+    /// 한 달 전체(31일)에서 라벨은 6개다 — 1·7·14·21·28 + 오늘. 라벨이 늘어나면 서로 겹치므로
+    /// 개수 자체를 고정한다.
+    func testAxisLabelCountForAFullMonthStaysSmallEnoughToFit() {
+        let today = "2026-08-24"
+        let labels = (1...31).compactMap {
+            DailyTrendMetrics.axisLabel(for: String(format: "2026-08-%02d", $0), today: today)
+        }
+        XCTAssertEqual(labels, ["1", "7", "14", "21", "24", "28"])
+    }
+
+    /// 주말이 어느 요일인지는 **로케일이 정한다**(금·토인 지역도 있다). 달력을 주입해 그 축이
+    /// 실제로 반영되는지 본다 — `.current` 를 하드코딩하면 이 테스트가 빨개진다.
+    func testWeekendMarkingFollowsTheInjectedCalendarLocale() throws {
+        func calendar(_ identifier: String) -> Calendar {
+            var c = Calendar(identifier: .gregorian)
+            c.locale = Locale(identifier: identifier)
+            return c
+        }
+        // 2026-08-01 토, 08-02 일, 08-03 월, 08-07 금
+        let seoul = calendar("ko_KR")
+        XCTAssertTrue(DailyTrendMetrics.isWeekend("2026-08-01", calendar: seoul))
+        XCTAssertTrue(DailyTrendMetrics.isWeekend("2026-08-02", calendar: seoul))
+        XCTAssertFalse(DailyTrendMetrics.isWeekend("2026-08-03", calendar: seoul))
+        XCTAssertFalse(DailyTrendMetrics.isWeekend("2026-08-07", calendar: seoul))
+
+        // 금·토가 주말인 로케일 — 같은 날짜가 다르게 판정돼야 한다.
+        let telAviv = calendar("he_IL")
+        XCTAssertTrue(DailyTrendMetrics.isWeekend("2026-08-07", calendar: telAviv), "금요일")
+        XCTAssertFalse(DailyTrendMetrics.isWeekend("2026-08-02", calendar: telAviv), "일요일")
+
+        XCTAssertFalse(DailyTrendMetrics.isWeekend("not-a-date"), "파싱 실패는 주말이 아니다")
+    }
+
+    /// 리드아웃의 요일은 **앱 언어**를 따라야 한다. `DateFormatter` 를 기본값으로 만들면 시스템
+    /// 로케일(이 기기는 ko_KR)을 따라, 앱을 영어/일본어로 쓰는 사용자에게 한 화면 두 언어가 된다
+    /// — defect-log §표시·UI 의 `Text(_, style: .relative)` 와 같은 부류.
+    func testDayStampWeekdayFollowsTheAppLanguageNotTheSystemLocale() {
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.locale = Locale(identifier: "en_US_POSIX")
+        func stamp(_ language: AppLanguage) -> String {
+            DailyTrendMetrics.dayStamp("2026-08-24", language: language, calendar: gregorian)
+        }
+        XCTAssertEqual(stamp(.ko), "8/24 (월)")
+        XCTAssertEqual(stamp(.en), "8/24 (Mon)")
+        XCTAssertEqual(stamp(.ja), "8/24 (月)")
+        // 세 언어가 서로 달라야 한다 — 전부 같으면 로케일이 무시되고 있다는 뜻이다.
+        XCTAssertEqual(Set([stamp(.ko), stamp(.en), stamp(.ja)]).count, 3)
+        XCTAssertEqual(DailyTrendMetrics.dayStamp("nope", language: .ko), "")
+    }
+
+    /// 축·주말 틱이 붙어 행이 실제로 더 커졌는가 — 캡션+막대만이던 v1.5.0 대비.
+    /// (숫자를 고정하지 않고 "막대 트랙보다 유의미하게 크다"로 계약한다 — 폰트 메트릭은 OS 버전에
+    /// 따라 흔들리므로 픽셀을 박으면 가짜로 빨개진다.)
+    @MainActor
+    func testTrendRowIncludesTheAxisAndTickRowsBelowTheBars() {
+        let series = (1...31).map { day in
+            DailyUsage(date: String(format: "2026-08-%02d", day), inputTokens: 0,
+                       outputTokens: day * 1_000, cacheCreationTokens: 0, cacheReadTokens: 0,
+                       totalTokens: day * 1_000, totalCost: 0)
+        }
+        let view = MonthDailyTrend(series: series, showsCost: false, today: "2026-08-24", l: L(.ko))
+        let height = NSHostingController(rootView: view)
+            .sizeThatFits(in: CGSize(width: PopoverMetrics.contentWidth, height: 600)).height
+        // 캡션(≈13) + 막대(26) + 틱(1.5) + 축(≈13) + 간격 — 막대 트랙만으로는 절대 안 되는 높이.
+        XCTAssertGreaterThan(height, DailyTrendMetrics.track + 24,
+                             "축·틱 행이 빠지면 이 높이가 안 나온다 (실측 \(height))")
+    }
+
     /// 빈 시리즈(아직 enrichment 가 안 돌아온 첫 폴링 전)에서도 그리지 않고 크래시하지 않는다.
     @MainActor
     func testEmptySeriesRendersNothing() {
