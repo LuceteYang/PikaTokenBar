@@ -110,7 +110,7 @@ If a tool keeps its sessions outside the built-in paths, add your own roots unde
 <tr>
 <td width="55%" valign="middle">
 <h3>📈 This month, day by day</h3>
-Week and month totals tell you how much. They cannot tell you <b>when</b>. A compact bar per day of the current month sits right under those totals — today highlighted, quiet days visibly faint, the peak labelled so the bars have a scale. It reads straight off the logs your tools already wrote, so it is filled in on the first refresh after updating rather than starting from today.
+Week and month totals tell you how much. They cannot tell you <b>when</b>. A compact bar per day of the current month sits right under those totals, with a date axis beneath it and a short tick under weekends. The caption names the day you are pointing at — <b>Mon, 8/24 5.4M $17.28</b> — and falls back to today when you are not pointing at anything, so you never have to hover to know which bar is which. It reads straight off the logs your tools already wrote, so it is filled in on the first refresh after updating rather than starting from today.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Daily usage for the current month, one bar per day, today highlighted"></td>
 </tr>
@@ -123,7 +123,7 @@ Week and month totals tell you how much. They cannot tell you <b>when</b>. A com
 - **Interactive floating pet** — hover for today's usage, click to open the main window, right-click for a menu, and show limit alerts as speech bubbles.
 - **Per-service tabs** — when two or more of Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp are detected, compact tabs switch between them; today's total stays combined.
 - **Official limits** — Claude, Codex & Antigravity 5-hour / weekly utilization with reset countdowns, right under today's numbers.
-- **This month, day by day** — one bar per day of the current month under the week/month totals, today highlighted and the peak labelled. Derived from the logs already on disk, so it is complete on the first refresh after updating.
+- **This month, day by day** — one bar per day of the current month under the week/month totals, with a date axis, weekend ticks, and the day you point at named in the caption (today by default). Derived from the logs already on disk, so it is complete on the first refresh after updating.
 - **Additional scan folders** — per-provider extra scan roots for logs kept outside the built-in paths (Settings → Advanced).
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
 - **In-app updates** — one-click update check; current version shown in Settings.
