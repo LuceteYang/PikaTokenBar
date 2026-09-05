@@ -1584,12 +1584,17 @@ enum LocalUsageReader {
         while cursor <= lastDay {
             days.append(fmt.string(from: cursor))
             // `date(byAdding:)` rather than +86400 — a DST day is 23 or 25 hours long and a fixed
-            // stride would drift the axis off the calendar for the rest of the month.
+            // stride would drift the axis off the calendar for the rest of the month
+            // (`testAxisLengthMatchesTheDayOfMonthInEveryMonthAndAcrossDSTTimeZones`).
+            // The `else` is an API-forced unwrap with no reachable trigger on a Gregorian date,
+            // like the `?? date` in `startOfMonth`/`startOfWeek` — not a guard worth a test.
             guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
             cursor = next
         }
-        guard !days.isEmpty else { return [] }
 
+        // `days` 는 여기서 항상 비어 있지 않다 — `startOfMonth(now) <= now` 라 위 루프가 최소 한 번
+        // 돈다. 그래서 empty 가드를 두지 않는다(도달 불가한 분기는 커버리지에 ^0 으로 남고, 읽는 사람
+        // 에게 "빌 수 있다"는 잘못된 신호를 준다). 아래 `Set`·`map` 은 빈 배열에서도 안전하다.
         let inMonth = Set(days)
         var buckets: [String: Bucket] = [:]
         for e in entries where inMonth.contains(e.localDay) {

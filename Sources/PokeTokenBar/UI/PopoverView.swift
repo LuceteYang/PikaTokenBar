@@ -807,8 +807,12 @@ struct MonthDailyTrend: View {
                 HStack(alignment: .bottom, spacing: DailyTrendMetrics.spacing) {
                     ForEach(series, id: \.date) { day in
                         let isToday = day.date == today
+                        // 사용 0 인 날은 바닥 눈금만 남으므로, 아주 조금 쓴 날과 높이로는 구분되지
+                        // 않는다 — 색을 한 단계 흐리게 해 "안 쓴 날"과 "조금 쓴 날"을 갈라준다.
+                        let isEmptyDay = day.totalTokens == 0
                         RoundedRectangle(cornerRadius: 1, style: .continuous)
-                            .fill(isToday ? Color.accentColor : Color.secondary.opacity(0.45))
+                            .fill(isToday ? Color.accentColor
+                                          : Color.secondary.opacity(isEmptyDay ? 0.18 : 0.45))
                             .frame(height: DailyTrendMetrics.barHeight(tokens: day.totalTokens, peak: peak))
                             .frame(maxWidth: .infinity)
                             .help(tooltip(day))

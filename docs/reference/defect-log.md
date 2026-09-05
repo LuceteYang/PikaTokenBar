@@ -43,9 +43,36 @@ read_when:
   클램프 자체는 통과해도 `output + thoughts` 처럼 파싱 직후 더하는 곳에서 다시 트랩난다. 합산 여유가 있는
   상한(`maxParsedTokenValue`)을 쓴다. 회귀 가드는 프로바이더별로 **테스트를 쪼개라** — 트랩은 프로세스를
   끝내므로 한 테스트에 몰면 뒤 케이스가 아예 실행되지 않는다.
+- **가드가 기여자의 로케일에 의존하면 그 결함은 통과한다.** 날짜 축을 만드는 코드에서 하루 전진을
+  고정 86400 초로 하면 DST 전환이 있는 달에 현지 자정이 23/25시간이 되어 축이 하루 밀리거나 날짜가
+  중복된다. 그런데 그 결함을 주입한 뒤 테스트를 돌렸을 때 **Asia/Seoul 기기에서는 초록**이었다 —
+  `TZ=America/Los_Angeles` 로 돌렸을 때만 빨개졌다. 즉 "테스트가 있다"와 "테스트가 이 결함을 잡는다"
+  사이에 **기여자의 시간대**가 끼어 있었다. 시간대·로케일·달력이 계약의 일부인 코드는 그 축을
+  **주입 가능하게** 만들고(`monthDailySeries(entries:now:timeZone:)`, 기본값 `.current`) 테스트가
+  DST 있는 지역을 직접 돈다(Los Angeles·Lord Howe(30분 DST)·Chatham). 같은 부류: `Locale`·
+  `firstWeekday`·`Calendar.identifier` 에 의존하는 판정. **주입 전에 결함을 주입해 초록을 한 번
+  확인하는 것**이 이 부류를 발견하는 유일한 방법이다 — 통과만 보면 구분할 수 없다.
+  (`testAxisLengthMatchesTheDayOfMonthInEveryMonthAndAcrossDSTTimeZones`)
+- **도달 불가한 가드는 커버리지에 `^0` 으로 남고, 읽는 사람에게 거짓 신호를 준다.** 월 일별 축에
+  `guard !days.isEmpty` 를 달았으나 `startOfMonth(now) <= now` 라 루프가 항상 최소 한 번 돌아
+  `days` 는 빌 수 없었다 — `--show-regions` 가 `^0` 으로 잡아줬다. 지우는 게 맞다(`CLAUDE.md`
+  §결함 대응 3의 "트리거 입력이 존재할 수 없으면 가드도 테스트도 만들지 않는다"). 반대로 `Calendar
+  .date(byAdding:)` 처럼 **API 가 강제하는 옵셔널**의 `else` 는 도달 불가여도 남긴다 — 대신 주석에
+  "테스트할 분기가 아니다"를 적어 다음 리뷰가 테스트를 요구하지 않게 한다.
 
 ## 외부 로그·사용량 소스
 
+- **mtime 스캔 창은 "엔트리 범위"가 아니다 — 파일 범위다.** `enrichmentScanStart` 는 파일의
+  `contentModificationDate` 로 거르므로, 지난달에 시작해 이번 달까지 이어진 세션 파일은 이번 달
+  mtime 으로 읽히고 **지난달 엔트리까지 함께** 메모리에 올라온다. 합계만 쓸 때는 `period()` 의
+  `localDay` 필터가 가려줬지만, **일별처럼 축을 가진 표시를 새로 만들면 그 엔트리가 새어 나온다**:
+  엔트리를 `localDay` 로 그룹핑해 그대로 내보내면 지난달이 *일부 날만* 채워진 채 섞인다(다른 지난달
+  파일은 스캔조차 안 됐으니 사실이 아닌 그림). 규칙: 축을 **표시 범위에서 만들고** 거기에 합계를
+  얹는다 — 범위 밖 엔트리는 구조적으로 앉을 자리가 없다. 그리고 빈 칸은 **명시적 0** 으로 채운다
+  (막대 위치가 곧 날짜라, 빠뜨리면 이후 전부 밀린다). 회귀는 순수 픽스처가 아니라 **실제 mtime
+  스캔을 통과한 엔트리**로 잡는다 — 배열을 손으로 만들면 "그 상황이 일어나는가"에 답하지 못하므로,
+  지난달 엔트리가 *실제로 로드된다*는 전제를 먼저 어서션한다
+  (`testCrossMonthSessionDoesNotLeakLastMonthIntoTheSeries`).
 - **append-only SQLite watermark 루프를 프로바이더마다 복사하지 마라.** Cursor 와 Copilot 이
   같은 `didReset` / `highWater == 0` 규칙을 두 벌로 들고 있으면 한쪽만 고친 수정이 다른 쪽에 남는다
   (#157). 루프는 `scanIncrementalStores` 한 곳, 포맷만 콜백. 회귀는 공유 헬퍼 테스트 **그리고**
