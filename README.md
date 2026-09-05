@@ -107,6 +107,13 @@ Antigravity 2.0 and the IDE report real quota, not an estimate. Gemini models an
 If a tool keeps its sessions outside the built-in paths, add your own roots under <b>Settings → Advanced</b> — comma or newline separated, <code>*</code> wildcards, with a live count of how many extra folders currently match. Every provider keeps its own list, so one tool's folders are never handed to another tool's parser, and your custom roots are added to the built-in ones rather than replacing them.
 </td>
 </tr>
+<tr>
+<td width="55%" valign="middle">
+<h3>📈 This month, day by day</h3>
+Week and month totals tell you how much. They cannot tell you <b>when</b>. A compact bar per day of the current month sits right under those totals — today highlighted, quiet days visibly faint, the peak labelled so the bars have a scale. It reads straight off the logs your tools already wrote, so it is filled in on the first refresh after updating rather than starting from today.
+</td>
+<td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Daily usage for the current month, one bar per day, today highlighted"></td>
+</tr>
 </table>
 
 ## Also in the box
@@ -116,6 +123,7 @@ If a tool keeps its sessions outside the built-in paths, add your own roots unde
 - **Interactive floating pet** — hover for today's usage, click to open the main window, right-click for a menu, and show limit alerts as speech bubbles.
 - **Per-service tabs** — when two or more of Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp are detected, compact tabs switch between them; today's total stays combined.
 - **Official limits** — Claude, Codex & Antigravity 5-hour / weekly utilization with reset countdowns, right under today's numbers.
+- **This month, day by day** — one bar per day of the current month under the week/month totals, today highlighted and the peak labelled. Derived from the logs already on disk, so it is complete on the first refresh after updating.
 - **Additional scan folders** — per-provider extra scan roots for logs kept outside the built-in paths (Settings → Advanced).
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
 - **In-app updates** — one-click update check; current version shown in Settings.
