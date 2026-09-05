@@ -401,16 +401,24 @@ final class MonthDailyTrendTests: XCTestCase {
     /// 로케일(이 기기는 ko_KR)을 따라, 앱을 영어/일본어로 쓰는 사용자에게 한 화면 두 언어가 된다
     /// — defect-log §표시·UI 의 `Text(_, style: .relative)` 와 같은 부류.
     func testDayStampWeekdayFollowsTheAppLanguageNotTheSystemLocale() {
-        var gregorian = Calendar(identifier: .gregorian)
-        gregorian.locale = Locale(identifier: "en_US_POSIX")
         func stamp(_ language: AppLanguage) -> String {
-            DailyTrendMetrics.dayStamp("2026-08-24", language: language, calendar: gregorian)
+            DailyTrendMetrics.dayStamp("2026-08-24", language: language)   // 월요일
         }
-        XCTAssertEqual(stamp(.ko), "8/24 (월)")
-        XCTAssertEqual(stamp(.en), "8/24 (Mon)")
-        XCTAssertEqual(stamp(.ja), "8/24 (月)")
-        // 세 언어가 서로 달라야 한다 — 전부 같으면 로케일이 무시되고 있다는 뜻이다.
-        XCTAssertEqual(Set([stamp(.ko), stamp(.en), stamp(.ja)]).count, 3)
+        // 요일 이름이 그 언어로 나온다.
+        XCTAssertTrue(stamp(.ko).contains("월"), stamp(.ko))
+        XCTAssertTrue(stamp(.en).contains("Mon"), stamp(.en))
+        XCTAssertTrue(stamp(.ja).contains("月"), stamp(.ja))
+        XCTAssertTrue(stamp(.es).lowercased().contains("lun"), stamp(.es))
+
+        // 월·일 **순서**도 로케일을 따른다 — 직접 "\(month)/\(day)" 로 조립하면 프랑스어에서도
+        // 미국식 8/24 가 강제되는데, 그 언어는 24/08 이 맞다.
+        XCTAssertTrue(stamp(.en).contains("8/24"), stamp(.en))
+        XCTAssertTrue(stamp(.fr).contains("24/08"), stamp(.fr))
+        XCTAssertTrue(stamp(.pt).contains("24/08"), stamp(.pt))
+
+        // 여섯 언어가 서로 달라야 한다 — 전부 같으면 로케일이 무시되고 있다는 뜻이다.
+        let all = [stamp(.ko), stamp(.en), stamp(.ja), stamp(.es), stamp(.fr), stamp(.pt)]
+        XCTAssertEqual(Set(all).count, 6, all.description)
         XCTAssertEqual(DailyTrendMetrics.dayStamp("nope", language: .ko), "")
     }
 
@@ -430,6 +438,38 @@ final class MonthDailyTrendTests: XCTestCase {
         // 캡션(≈13) + 막대(26) + 틱(1.5) + 축(≈13) + 간격 — 막대 트랙만으로는 절대 안 되는 높이.
         XCTAssertGreaterThan(height, DailyTrendMetrics.track + 24,
                              "축·틱 행이 빠지면 이 높이가 안 나온다 (실측 \(height))")
+    }
+
+    /// 캡션 행이 팝오버 폭 안에서 **한 줄로** 유지되는가 — 6개 언어 전부.
+    ///
+    /// 캡션에 날짜·요일·토큰·비용이 다 들어가면서 이 행이 길어졌다. 넘치면 SwiftUI 가 조용히
+    /// 줄바꿈해 행 높이가 커지고(프로바이더 탭이 폭을 넘겨 단어 중간에서 접힌 것과 같은 부류),
+    /// 언어마다 팝오버 높이가 달라진다. 줄바꿈 여부를 **렌더 높이로** 판정한다 — 코드를 읽는 게
+    /// 아니라 실제로 그려보는 것.
+    ///
+    /// 최악 조건으로 재는 이유: 억 단위 토큰 + 네 자리 비용이 실사용에 존재한다(이 기기 8월 최다
+    /// 520M, 월 비용 $600 대).
+    @MainActor
+    func testCaptionStaysOnOneLineInEveryLanguageAtWorstCaseNumbers() {
+        let series = (1...31).map { day in
+            DailyUsage(date: String(format: "2026-08-%02d", day), inputTokens: 0,
+                       outputTokens: 888_888_888, cacheCreationTokens: 0, cacheReadTokens: 0,
+                       totalTokens: 888_888_888, totalCost: 8_888.88)
+        }
+        func height(_ language: AppLanguage) -> CGFloat {
+            let view = MonthDailyTrend(series: series, showsCost: true,
+                                       today: "2026-08-24", l: L(language))
+                .environment(\.locale, language.displayLocale)
+            return NSHostingController(rootView: view)
+                .sizeThatFits(in: CGSize(width: PopoverMetrics.contentWidth, height: 600)).height
+        }
+        let heights = AppLanguage.allCases.map { ($0, height($0)) }
+        let baseline = try! XCTUnwrap(heights.first?.1)
+        for (language, value) in heights {
+            XCTAssertEqual(value, baseline, accuracy: 0.5,
+                           "\(language) 캡션이 줄바꿈된 것으로 보인다 (\(value) vs \(baseline)) — "
+                           + "폭을 넘기면 언어마다 팝오버 높이가 달라진다")
+        }
     }
 
     /// 빈 시리즈(아직 enrichment 가 안 돌아온 첫 폴링 전)에서도 그리지 않고 크래시하지 않는다.

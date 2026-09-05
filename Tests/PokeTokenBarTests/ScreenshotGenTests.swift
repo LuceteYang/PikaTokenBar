@@ -18,10 +18,15 @@ import SwiftUI
 final class ScreenshotGenTests: XCTestCase {
 
     /// 데모용 한 달치 일별 사용량 — 실제 로그처럼 쉬는 날(0)과 몰아친 날이 섞여야 기능이 읽힌다.
+    /// **한 달 전체(31일)를 채운다**: 막대가 가장 좁아지는 조건이고, 날짜 축 라벨(1·7·14·21·28·오늘)이
+    /// 다 나오는 것도 그때뿐이라, 21일치로 찍으면 실제로 좁을 때의 모습을 못 보여준다.
+    /// 주말(8/1 토 시작)에 낮은 값을 둬서 주말 밑줄 틱이 데이터와 함께 읽히게 했다.
     private static let demoDailyTokens = [
-        0, 1_240_000, 3_100_000, 480_000, 0, 0, 2_050_000,
-        5_600_000, 4_100_000, 900_000, 0, 1_700_000, 6_900_000, 3_300_000,
-        2_200_000, 0, 140_000, 4_800_000, 5_100_000, 2_600_000, 3_900_000,
+        0, 0, 3_100_000, 4_800_000, 2_050_000, 5_600_000, 1_240_000,
+        480_000, 0, 4_100_000, 6_900_000, 3_300_000, 5_100_000, 900_000,
+        0, 140_000, 4_400_000, 2_600_000, 6_100_000, 3_900_000, 1_700_000,
+        0, 2_200_000, 5_400_000, 4_700_000, 3_050_000, 6_400_000, 2_800_000,
+        0, 1_900_000, 4_200_000,
     ]
 
     @MainActor
@@ -41,18 +46,22 @@ final class ScreenshotGenTests: XCTestCase {
     @MainActor
     private func render(language: AppLanguage) throws -> Data {
         let l = L(language)
-        let today = "2026-07-21"
+        let today = "2026-08-24"
         let series = Self.demoDailyTokens.enumerated().map { index, value in
-            DailyUsage(date: String(format: "2026-07-%02d", index + 1),
+            DailyUsage(date: String(format: "2026-08-%02d", index + 1),
                        inputTokens: value / 4, outputTokens: value / 4,
                        cacheCreationTokens: value / 4, cacheReadTokens: value / 4,
                        totalTokens: value, totalCost: Double(value) / 1_000_000 * 3.2)
         }
-        let monthTotal = series.reduce(0) { $0 + $1.totalTokens }
-        let monthCost = series.reduce(0.0) { $0 + $1.totalCost }
-        let weekTotal = series.suffix(7).reduce(0) { $0 + $1.totalTokens }
-        let weekCost = series.suffix(7).reduce(0.0) { $0 + $1.totalCost }
-        let todayUsage = try XCTUnwrap(series.last)
+        // 합계는 "오늘"(=강조된 막대)까지로 잘라야 한다 — series.last 로 잡으면 헤더의 오늘 숫자와
+        // 리드아웃의 날짜가 어긋난 스크린샷이 나온다(8/24 라고 쓰고 8/31 값을 보여주는 식).
+        let todayIndex = try XCTUnwrap(series.firstIndex { $0.date == today })
+        let throughToday = series[...todayIndex]
+        let monthTotal = throughToday.reduce(0) { $0 + $1.totalTokens }
+        let monthCost = throughToday.reduce(0.0) { $0 + $1.totalCost }
+        let weekTotal = throughToday.suffix(7).reduce(0) { $0 + $1.totalTokens }
+        let weekCost = throughToday.suffix(7).reduce(0.0) { $0 + $1.totalCost }
+        let todayUsage = series[todayIndex]
 
         let content = VStack(alignment: .leading, spacing: 6) {
             Text(l.todayTokens).font(.caption).foregroundStyle(.secondary)

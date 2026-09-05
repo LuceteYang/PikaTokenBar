@@ -921,7 +921,9 @@ enum DailyTrendMetrics {
     /// 오늘을 항상 붙이는 이유: 오늘 사용량이 적으면 막대가 바닥 눈금 한 줄이라 강조색만으로는
     /// 위치를 못 찾는다(31일 렌더에서 실제로 안 보였다). 축의 숫자가 그때 유일한 단서다.
     static func axisLabel(for date: String, today: String, labelInterval: Int = 7) -> String? {
-        guard let dayOfMonth = Int(date.suffix(2)), dayOfMonth > 0 else { return nil }
+        // `Int(...)` 옵셔널 해제는 API 강제다 — 시리즈의 날짜는 항상 "yyyy-MM-dd" 라 실패하지
+        // 않는다(테스트할 분기가 아니다).
+        guard let dayOfMonth = Int(date.suffix(2)) else { return nil }
         if date == today { return "\(dayOfMonth)" }
         if dayOfMonth == 1 { return "1" }
         if labelInterval > 0, dayOfMonth % labelInterval == 0 { return "\(dayOfMonth)" }
@@ -935,22 +937,22 @@ enum DailyTrendMetrics {
         return calendar.isDateInWeekend(parsed)
     }
 
-    /// "8/24 (월)" — 숫자 날짜 + 앱 언어의 짧은 요일 심볼.
-    /// 요일 이름을 `Localization.swift` 에 새로 만들지 않는 이유: 6개 언어 × 7요일을 손으로 적으면
-    /// OS 가 이미 가진 것을 다시 적는 셈이다. 대신 **로케일을 `AppLanguage` 에서 가져온다** —
-    /// `DateFormatter` 를 기본값으로 만들면 시스템 로케일을 따라, 앱 언어를 바꾼 사용자에게
-    /// 한 화면 두 언어가 된다(defect-log §표시·UI 의 `.relative` 사례와 같은 부류).
-    static func dayStamp(_ date: String, language: AppLanguage,
-                         calendar: Calendar = .current) -> String {
+    /// 월·일 + 요일을 **그 언어가 쓰는 순서로** — ko "8. 24. (월)", en "Mon, 8/24", fr "lun. 24/08".
+    ///
+    /// 두 가지를 로케일 템플릿(`MdE`)에 맡긴다.
+    /// ① **요일 이름**: 6개 언어 × 7요일을 `Localization.swift` 에 손으로 적으면 OS 가 이미 가진 것을
+    ///    다시 적는 셈이다.
+    /// ② **월·일 순서**: `"\(month)/\(day)"` 로 조립하면 프랑스어·스페인어·포르투갈어에서도 미국식
+    ///    순서(8/24)가 강제된다 — 그 언어들은 24/08 이 맞다.
+    ///
+    /// 로케일은 반드시 `AppLanguage` 에서 온다. `DateFormatter` 를 기본값으로 만들면 시스템 로케일을
+    /// 따라, 앱 언어를 바꾼 사용자에게 한 화면 두 언어가 된다(defect-log §표시·UI 의 `.relative` 부류).
+    static func dayStamp(_ date: String, language: AppLanguage) -> String {
         guard let parsed = LocalUsageReader.localDayFormatter().date(from: date) else { return "" }
         let formatter = DateFormatter()
         formatter.locale = language.displayLocale
-        let symbols = formatter.shortWeekdaySymbols ?? []
-        let index = calendar.component(.weekday, from: parsed) - 1
-        let weekday = symbols.indices.contains(index) ? symbols[index] : ""
-        let month = calendar.component(.month, from: parsed)
-        let dayOfMonth = calendar.component(.day, from: parsed)
-        return weekday.isEmpty ? "\(month)/\(dayOfMonth)" : "\(month)/\(dayOfMonth) (\(weekday))"
+        formatter.setLocalizedDateFormatFromTemplate("MdE")
+        return formatter.string(from: parsed)
     }
 }
 
