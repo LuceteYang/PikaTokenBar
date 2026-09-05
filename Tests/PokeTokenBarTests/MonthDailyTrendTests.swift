@@ -367,11 +367,51 @@ final class MonthDailyTrendTests: XCTestCase {
     /// 한 달 전체(31일)에서 라벨은 6개다 — 1·7·14·21·28 + 오늘. 라벨이 늘어나면 서로 겹치므로
     /// 개수 자체를 고정한다.
     func testAxisLabelCountForAFullMonthStaysSmallEnoughToFit() {
-        let today = "2026-08-24"
-        let labels = (1...31).compactMap {
+        // 달이 다 찬 시점(31일) — 라벨 6개가 상한이다.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-31"), ["1", "7", "14", "21", "28", "31"])
+        // 달 중간(24일)엔 축이 24일에서 끝나므로 28 은 아예 칼럼이 없다.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-24"), ["1", "7", "14", "21", "24"])
+    }
+
+    /// 오늘이 정기 라벨 **바로 옆**이면 그 정기 라벨을 지운다. 안 지우면 한 달이 찬 축(칼럼 약 9pt,
+    /// 두 자리 숫자 약 11pt)에서 `21 22`·`28 29` 가 간격 없이 붙어 한 숫자로 읽힌다 —
+    /// 8월 실데이터를 22·27·29·30·31일 시점으로 렌더해서 확인한 결함이다.
+    func testARegularLabelNextToTodayIsDroppedSoTheTwoCannotCollide() {
+        // 22일: 21 을 지운다(간격 1).
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-22"), ["1", "7", "14", "22"])
+        // 29일: 28 을 지운다(간격 1).
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-29"), ["1", "7", "14", "21", "29"])
+        // 30일: 간격 2 — 아직 좁으므로 지운다.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-30"), ["1", "7", "14", "21", "30"])
+        // 31일: 간격 3 — 충분히 떨어졌으므로 28 을 남긴다.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-31"), ["1", "7", "14", "21", "28", "31"])
+        // 오늘이 정기 라벨 자신이면 중복 없이 하나만.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-21"), ["1", "7", "14", "21"])
+        // 1일 근처: 2일이 오늘이면 1 을 지운다 — 그래도 오늘 라벨이 남아 축이 비지 않는다.
+        XCTAssertEqual(labels(inAugustWithToday: "2026-08-02"), ["2"])
+    }
+
+    /// 어떤 날이 오늘이어도 라벨은 최소 1개(=오늘)다. 축이 완전히 비면 방향 감각이 사라진다.
+    func testTodayIsNeverSuppressedSoTheAxisIsNeverEmpty() {
+        for day in 1...31 {
+            let today = String(format: "2026-08-%02d", day)
+            let all = labels(inAugustWithToday: today)
+            XCTAssertTrue(all.contains("\(day)"), "\(today) 의 오늘 라벨이 사라졌다: \(all)")
+            // 인접 라벨이 남아 있지 않은지 — 붙어 보이는 쌍이 없어야 한다.
+            let numbers = all.compactMap(Int.init).sorted()
+            for (a, b) in zip(numbers, numbers.dropFirst()) {
+                XCTAssertGreaterThanOrEqual(b - a, 3, "\(today): \(a) 와 \(b) 라벨이 붙는다")
+            }
+        }
+    }
+
+    /// 8월 축의 라벨 목록. **오늘까지만** 돈다 — 프로덕션 시리즈는 항상 오늘에서 끝나므로
+    /// 오늘 이후 날짜에는 칼럼 자체가 없다(31일까지 돌면 존재할 수 없는 라벨을 재게 된다).
+    private func labels(inAugustWithToday today: String) -> [String] {
+        let lastDay = Int(today.suffix(2)) ?? 0
+        return (1...lastDay).compactMap {
             DailyTrendMetrics.axisLabel(for: String(format: "2026-08-%02d", $0), today: today)
         }
-        XCTAssertEqual(labels, ["1", "7", "14", "21", "24", "28"])
     }
 
     /// 주말이 어느 요일인지는 **로케일이 정한다**(금·토인 지역도 있다). 달력을 주입해 그 축이

@@ -918,16 +918,27 @@ enum DailyTrendMetrics {
     }
 
     /// 축에 숫자를 붙일 날인가 — 1일, 7일 간격, 그리고 오늘.
+    ///
     /// 오늘을 항상 붙이는 이유: 오늘 사용량이 적으면 막대가 바닥 눈금 한 줄이라 강조색만으로는
     /// 위치를 못 찾는다(31일 렌더에서 실제로 안 보였다). 축의 숫자가 그때 유일한 단서다.
-    static func axisLabel(for date: String, today: String, labelInterval: Int = 7) -> String? {
+    ///
+    /// **오늘 옆의 정기 라벨은 지운다.** 한 달이 다 찬 축은 칼럼이 약 9pt 인데 두 자리 숫자는
+    /// 약 11pt 라, 오늘이 7의 배수 바로 옆이면(22일·29일 등) `21 22` 가 간격 없이 붙어 한 숫자로
+    /// 읽힌다(8월 실데이터로 렌더해서 확인했다). 오늘은 절대 지우지 않으므로 라벨이 0개가 되는
+    /// 상태는 없고, 인접한 정기 라벨 하나를 잃는 대가는 없다 — 오늘 위치를 알면 그 옆도 안다.
+    static func axisLabel(for date: String, today: String, labelInterval: Int = 7,
+                          minimumSeparation: Int = 3) -> String?
+    {
         // `Int(...)` 옵셔널 해제는 API 강제다 — 시리즈의 날짜는 항상 "yyyy-MM-dd" 라 실패하지
         // 않는다(테스트할 분기가 아니다).
         guard let dayOfMonth = Int(date.suffix(2)) else { return nil }
         if date == today { return "\(dayOfMonth)" }
-        if dayOfMonth == 1 { return "1" }
-        if labelInterval > 0, dayOfMonth % labelInterval == 0 { return "\(dayOfMonth)" }
-        return nil
+
+        let isRegular = dayOfMonth == 1 || (labelInterval > 0 && dayOfMonth % labelInterval == 0)
+        guard isRegular else { return nil }
+        if let todayOfMonth = Int(today.suffix(2)),
+           abs(dayOfMonth - todayOfMonth) < minimumSeparation { return nil }
+        return "\(dayOfMonth)"
     }
 
     /// `calendar` 는 테스트 주입 구멍 — 주말이 어느 요일인지는 로케일이 정한다(금·토인 지역도

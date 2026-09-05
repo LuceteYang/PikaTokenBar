@@ -26,7 +26,7 @@ final class ScreenshotGenTests: XCTestCase {
         480_000, 0, 4_100_000, 6_900_000, 3_300_000, 5_100_000, 900_000,
         0, 140_000, 4_400_000, 2_600_000, 6_100_000, 3_900_000, 1_700_000,
         0, 2_200_000, 5_400_000, 4_700_000, 3_050_000, 6_400_000, 2_800_000,
-        0, 1_900_000, 4_200_000,
+        0, 1_900_000, 5_800_000,
     ]
 
     @MainActor
@@ -46,7 +46,10 @@ final class ScreenshotGenTests: XCTestCase {
     @MainActor
     private func render(language: AppLanguage) throws -> Data {
         let l = L(language)
-        let today = "2026-08-24"
+        // "오늘"은 반드시 시리즈의 **마지막** 날이다 — 프로덕션 시리즈는 오늘에서 끝나므로,
+        // 31개 막대에 오늘을 24일로 찍으면 앱이 절대 도달할 수 없는 상태를 문서에 싣는 셈이다
+        // (오늘 이후 7일이 그려진 그림). 달이 다 찬 시점 = 오늘이 말일.
+        let today = "2026-08-31"
         let series = Self.demoDailyTokens.enumerated().map { index, value in
             DailyUsage(date: String(format: "2026-08-%02d", index + 1),
                        inputTokens: value / 4, outputTokens: value / 4,
