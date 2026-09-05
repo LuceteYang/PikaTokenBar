@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="1.5.1"
+VERSION="1.5.2"
 PRODUCT="PokeTokenBar"           # SPM 산출물명 — 모듈명은 바꾸지 않는다
 BUILD_DIR="build"
 
