@@ -1546,6 +1546,58 @@ enum LocalUsageReader {
         return PeriodUsage(period: periodKey, totalTokens: b.total, totalCost: b.cost)
     }
 
+    /// Day-by-day totals for the **current month**, month start through `now`, in date order.
+    ///
+    /// This is a group-by over entries the enrichment scan has already loaded — the same set
+    /// `period()` folds into a single scalar. No extra read, no new parsing, no `Entry` field.
+    ///
+    /// Two things are deliberate here.
+    ///
+    /// 1. **Cross-month sessions are truncated.** The scan window is an mtime filter, so a
+    ///    session that started last month and continued into this one is read in full and drags
+    ///    last month's entries along with it. Grouping the entries by `localDay` and emitting
+    ///    whatever comes out would paint a partially-filled, jagged previous month — a picture
+    ///    that is not true, because the *other* files from last month were never scanned. So the
+    ///    date axis is built **from the month range** and totals are folded onto it: an entry
+    ///    outside the range has no slot to land in. The `localDay` window matches `period()`'s
+    ///    exactly, which makes `sum(monthDailySeries) == monthTotal.totalTokens` an invariant
+    ///    (`testEnrichmentSeriesAndMonthTotalStayInAgreement` holds the two together).
+    /// 2. **Days with no usage are explicit zeros, not omissions.** Bar position *is* the date in
+    ///    the popover; dropping empty days would slide every later bar onto the wrong day.
+    ///
+    /// Scope is baked in rather than parameterised — a caller cannot widen this to a rolling
+    /// window or last month, which is where this area has had month-boundary regressions before
+    /// (see `enrichmentScanStart`).
+    static func monthDailySeries(entries: [Entry], now: Date) -> [DailyUsage] {
+        let calendar = Calendar.current
+        let fmt = localDayFormatter()
+
+        var days: [String] = []
+        var cursor = calendar.startOfDay(for: startOfMonth(now))
+        let lastDay = calendar.startOfDay(for: now)
+        while cursor <= lastDay {
+            days.append(fmt.string(from: cursor))
+            // `date(byAdding:)` rather than +86400 — a DST day is 23 or 25 hours long and a fixed
+            // stride would drift the axis off the calendar for the rest of the month.
+            guard let next = calendar.date(byAdding: .day, value: 1, to: cursor) else { break }
+            cursor = next
+        }
+        guard !days.isEmpty else { return [] }
+
+        let inMonth = Set(days)
+        var buckets: [String: Bucket] = [:]
+        for e in entries where inMonth.contains(e.localDay) {
+            buckets[e.localDay, default: Bucket()].add(e)
+        }
+
+        return days.map { day in
+            let b = buckets[day] ?? Bucket()
+            return DailyUsage(date: day, inputTokens: b.input, outputTokens: b.output,
+                              cacheCreationTokens: b.cacheWrite, cacheReadTokens: b.cacheRead,
+                              totalTokens: b.total, totalCost: b.cost)
+        }
+    }
+
     /// 최근 5시간 롤링 윈도우 기반 활성 블록(번 레이트 추정용).
     static func activeBlock(entries: [Entry], now: Date) -> BlockUsage? {
         let windowStart = now.addingTimeInterval(-blockWindow)

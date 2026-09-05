@@ -171,6 +171,11 @@ struct PopoverView: View {
                 .padding(.top, 2)
             }
 
+            MonthDailyTrend(series: store.monthDailyTotals,
+                            showsCost: store.showsCost,
+                            today: LocalUsageReader.todayKey(),
+                            l: l)
+
             // 연결된 서비스가 2개 이상이면 작은 탭으로 서비스별 상세를 넘나든다
             // (합계는 위에 유지 — 상세·한도만 탭 스코프).
             if store.snapshots.count > 1 {
@@ -762,6 +767,89 @@ struct PopoverView: View {
             .buttonStyle(.borderless)
             .help(l.quit)
         }
+    }
+}
+
+/// 이번 달 일별 추이 — 주/월 스칼라 두 개로는 답할 수 없는 "지난 며칠 어땠나"를 채운다.
+///
+/// 데이터는 이미 메모리에 있다(`ProviderEnrichment.monthDaily` — enrichment 스캔이 월 전체를
+/// 읽고 있었고, 지금까지 합계만 남기고 버렸다). 새 창을 만들지 않고 기존 헤더 결을 따라 캡션 한 줄
+/// + 막대 한 줄로 접는다.
+///
+/// 표시 게이트는 **의미값**이다(`peak > 0`). `series.isEmpty` 나 `!= nil` 로 게이트하면 안 된다 —
+/// 생산자가 사용 없는 날도 0 으로 채우므로 이번 달을 한 번도 안 쓴 사용자에게도 배열은 non-empty 라
+/// #56 계열(옵셔널 tautology)의 "안 썼는데 왜 뜨지"가 재현된다.
+@MainActor
+struct MonthDailyTrend: View {
+    let series: [DailyUsage]
+    let showsCost: Bool
+    /// 오늘의 `localDay` 키 — 강조할 막대를 뷰가 시계를 다시 읽어 고르지 않게 주입한다.
+    let today: String
+    let l: L
+
+    var body: some View {
+        let peak = series.map(\.totalTokens).max() ?? 0
+        if peak > 0 {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text(l.dailyTrend)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Spacer()
+                    Text(l.peakDay)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                    Text(TokenFormatter.compact(peak))
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                HStack(alignment: .bottom, spacing: DailyTrendMetrics.spacing) {
+                    ForEach(series, id: \.date) { day in
+                        let isToday = day.date == today
+                        RoundedRectangle(cornerRadius: 1, style: .continuous)
+                            .fill(isToday ? Color.accentColor : Color.secondary.opacity(0.45))
+                            .frame(height: DailyTrendMetrics.barHeight(tokens: day.totalTokens, peak: peak))
+                            .frame(maxWidth: .infinity)
+                            .help(tooltip(day))
+                    }
+                }
+                .frame(height: DailyTrendMetrics.track, alignment: .bottom)
+            }
+            .padding(.top, 4)
+        }
+    }
+
+    /// 막대가 얇아 숫자를 붙일 자리가 없다 — 정확한 값은 호버로 준다.
+    /// 날짜는 `"yyyy-MM-dd"` 의 뒤 5자("MM-dd")를 그대로 쓴다. `DateFormatter` 를 새로 만들면
+    /// `AppLanguage` 가 아니라 시스템 로케일을 따라, 앱 언어를 바꾼 사용자에게 한 화면 두 언어가 된다
+    /// (`.environment(\.locale, ...)` 는 SwiftUI 가 만드는 문장에만 걸린다 — defect-log §표시·UI).
+    private func tooltip(_ day: DailyUsage) -> String {
+        let date = String(day.date.suffix(5))
+        let tokens = TokenFormatter.grouped(day.totalTokens)
+        guard showsCost, day.totalCost > 0 else { return "\(date)  \(tokens)" }
+        return "\(date)  \(tokens)  \(TokenFormatter.cost(day.totalCost))"
+    }
+}
+
+/// 추이 막대의 기하 — 뷰 밖의 순수 함수로 둔다. SwiftUI 안에 두면 헤드리스로 검증할 수 없고,
+/// 이 계산은 0 과 최댓값 경계에서 조용히 틀리기 쉽다(0 을 0pt 로 그리면 "그날이 없는" 것처럼 보인다).
+enum DailyTrendMetrics {
+    /// 막대 트랙 높이. 헤더가 이미 촘촘하므로 스파크라인 수준으로 낮게 잡는다.
+    static let track: CGFloat = 26
+    static let spacing: CGFloat = 1.5
+    /// 사용 없는 날에 남기는 바닥 눈금. 0pt 로 그리면 그 날짜 칸이 사라진 것처럼 보이고, 축이
+    /// 밀리지 않았다는 사실(=0 을 명시적으로 채웠다)이 화면에서 안 읽힌다.
+    static let baseline: CGFloat = 1.5
+
+    /// `tokens` 를 `peak` 대비 비율로 트랙 안에 눕힌다.
+    /// - `peak <= 0`: 스케일이 없다 → 전부 바닥 눈금 (호출부가 이미 게이트하지만 0 나눗셈은 막는다).
+    /// - `tokens <= 0`: 바닥 눈금.
+    /// - 그 외: 최소 `baseline` 을 보장해 아주 작은 날도 사라지지 않는다.
+    static func barHeight(tokens: Int, peak: Int) -> CGFloat {
+        guard peak > 0, tokens > 0 else { return baseline }
+        let ratio = min(1, Double(tokens) / Double(peak))
+        return max(baseline, CGFloat(ratio) * track)
     }
 }
 
