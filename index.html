@@ -945,7 +945,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     <div class="panel info">
       <h3 data-i18n="info.trendH3">이번 달을 하루씩</h3>
       <ul>
-        <li data-i18n="info.trendLi1">주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 오늘은 강조, 안 쓴 날은 옅게, 최다 사용일 값을 함께 적어 기준을 줍니다.</li>
+        <li data-i18n="info.trendLi1">주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 그 아래 날짜 축과 주말 밑줄이 붙어, 마우스를 올리지 않아도 어느 막대가 어느 날인지 읽힙니다. 캡션은 가리킨 날의 날짜·요일·사용량을 보여주고, 아무것도 가리키지 않으면 오늘을 보여줍니다.</li>
         <li data-i18n="info.trendLi2">도구가 이미 써 놓은 로그에서 파생되므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다. 오늘부터 새로 쌓기 시작하지 않습니다.</li>
         <li data-i18n="info.trendLi3">감지된 모든 도구의 사용량을 합산합니다. 일별을 못 주는 도구가 섞여 있어도 나머지는 그대로 표시됩니다.</li>
       </ul>
@@ -1098,7 +1098,7 @@ var I18N = {
     "info.limitsLi2": "자동 갱신에도 적용되므로 한도가 옛 값으로 멈추지 않습니다. 키를 넣지 않으면 기존 방식 그대로 동작합니다.",
     "info.limitsLi3": "Claude·Codex 에 더해 Antigravity 2.0·IDE 의 공식 한도도 모델군별 5시간·주간으로 함께 표시합니다.",
     "info.trendH3": "이번 달을 하루씩",
-    "info.trendLi1": "주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 오늘은 강조, 안 쓴 날은 옅게, 최다 사용일 값을 함께 적어 기준을 줍니다.",
+    "info.trendLi1": "주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 그 아래 날짜 축과 주말 밑줄이 붙어, 마우스를 올리지 않아도 어느 막대가 어느 날인지 읽힙니다. 캡션은 가리킨 날의 날짜·요일·사용량을 보여주고, 아무것도 가리키지 않으면 오늘을 보여줍니다.",
     "info.trendLi2": "도구가 이미 써 놓은 로그에서 파생되므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다. 오늘부터 새로 쌓기 시작하지 않습니다.",
     "info.trendLi3": "감지된 모든 도구의 사용량을 합산합니다. 일별을 못 주는 도구가 섞여 있어도 나머지는 그대로 표시됩니다.",
     "info.coexistH3": "원본과 함께 쓸 수 있습니다",
@@ -1168,7 +1168,7 @@ var I18N = {
     "info.limitsLi2": "It applies to automatic refreshes too, so limits never freeze at an old value. Save no key and everything works exactly as before.",
     "info.limitsLi3": "Alongside Claude and Codex, Antigravity 2.0 and the IDE now report their own official 5-hour and weekly limits, per model group.",
     "info.trendH3": "This month, day by day",
-    "info.trendLi1": "One bar per day of the current month, right under the week and month totals \u2014 today highlighted, quiet days visibly faint, and the peak labelled so the bars have a scale.",
+    "info.trendLi1": "One bar per day of the current month, right under the week and month totals, with a date axis beneath it and a short tick under weekends \u2014 so you can read which bar is which day without hovering. The caption names the day you point at, and shows today when you point at nothing.",
     "info.trendLi2": "Derived from the logs your tools already wrote, so the month is filled in on the first refresh after updating. It does not start counting from today.",
     "info.trendLi3": "Totals are summed across every detected tool. A tool that cannot report per-day usage simply drops out, and the rest still show.",
     "info.coexistH3": "Runs alongside the original",
@@ -1238,7 +1238,7 @@ var I18N = {
     "info.limitsLi2": "自動更新にも適用されるため、上限が古い値のまま止まりません。キーを入れなければ従来どおり動作します。",
     "info.limitsLi3": "Claude・Codex に加えて、Antigravity 2.0・IDE の公式上限もモデル群ごとの5時間・週間で表示します。",
     "info.trendH3": "今月を1日ずつ",
-    "info.trendLi1": "週間・月間の合計のすぐ下に、今月の1日ごとのバーを1本ずつ \u2014 今日は強調、使っていない日は薄く、最多の値を併記してバーに基準を与えます。",
+    "info.trendLi1": "週間・月間の合計のすぐ下に、今月の1日ごとのバーを1本ずつ。その下に日付軸と週末の下線を添えたので、ホバーしなくてもどのバーがどの日かが読めます。キャプションは指した日を示し、どこも指していなければ今日を表示します。",
     "info.trendLi2": "ツールがすでに書き出したログから導出するため、更新直後の最初のリフレッシュで今月分が埋まります。今日から数え直しにはなりません。",
     "info.trendLi3": "検出されたすべてのツールの使用量を合算します。日別を報告できないツールが混ざっていても、残りはそのまま表示されます。",
     "info.coexistH3": "オリジナルと併用できます",
