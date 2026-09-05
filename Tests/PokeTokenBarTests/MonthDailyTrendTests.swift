@@ -183,18 +183,40 @@ final class MonthDailyTrendTests: XCTestCase {
         XCTAssertEqual(series.last?.date, dayFormatter.string(from: now))
     }
 
-    /// 축 길이는 그 달의 "오늘이 며칠인가"와 항상 같아야 한다. 하루 전진을 고정 86400 으로 하면
-    /// DST 전환이 있는 달에서 축이 하루 어긋나고(현지 자정이 23/25시간), 그 뒤 전부 밀린다.
-    /// 12개월 + 윤년 2월을 함께 돌려 달 길이(28/29/30/31) 처리까지 같이 고정한다.
-    func testAxisLengthMatchesTheDayOfMonthAcrossEveryMonthIncludingLeapFebruary() {
-        var cases = (1...12).map { day(2026, $0, 27) }
-        cases.append(day(2028, 2, 29))   // 윤년 말일
-        for now in cases {
-            let series = LocalUsageReader.monthDailySeries(entries: [], now: now)
-            XCTAssertEqual(series.count, calendar.component(.day, from: now),
-                           "축 길이가 날짜와 다르다: \(dayFormatter.string(from: now))")
-            XCTAssertEqual(series.last?.date, dayFormatter.string(from: now))
-            XCTAssertEqual(Set(series.map(\.date)).count, series.count, "중복 날짜")
+    /// 축 길이는 그 달의 "오늘이 며칠인가"와 항상 같아야 한다. 하루 전진을 고정 86400 초로 하면
+    /// DST 전환이 있는 달에서 현지 자정이 23/25시간이 되어 축이 어긋나고(날짜 중복 또는 하루 누락),
+    /// 그 뒤 막대가 전부 밀린다.
+    ///
+    /// **시간대를 주입해서 돈다.** 개발 기기가 Asia/Seoul(DST 없음)이면 고정 86400 결함이 그대로
+    /// 통과한다 — 실측으로 확인했다(주입 전 이 테스트는 결함을 못 잡았고, `TZ=America/Los_Angeles`
+    /// 로 돌렸을 때만 빨개졌다). 시간대가 계약의 일부이므로 기여자의 로케일에 맡기지 않는다.
+    /// Lord Howe 는 30분 DST 라 시/분 단위 가정까지 같이 밟는다.
+    ///
+    /// 12개월 + 윤년 말일을 함께 돌려 달 길이(28/29/30/31) 처리도 같이 고정한다.
+    func testAxisLengthMatchesTheDayOfMonthInEveryMonthAndAcrossDSTTimeZones() throws {
+        for identifier in ["Asia/Seoul", "America/Los_Angeles", "Australia/Lord_Howe",
+                           "Pacific/Chatham", "Europe/Berlin"] {
+            let zone = try XCTUnwrap(TimeZone(identifier: identifier), identifier)
+            var zoned = Calendar(identifier: .gregorian)
+            zoned.timeZone = zone
+            let zonedFormatter = LocalUsageReader.localDayFormatter(timeZone: zone)
+
+            var cases = (1...12).map { (2026, $0, 27) }
+            cases.append((2028, 2, 29))   // 윤년 말일
+
+            for (year, month, dayOfMonth) in cases {
+                let now = try XCTUnwrap(zoned.date(from: DateComponents(
+                    timeZone: zone, year: year, month: month, day: dayOfMonth, hour: 12)))
+                let series = LocalUsageReader.monthDailySeries(entries: [], now: now, timeZone: zone)
+
+                XCTAssertEqual(series.count, dayOfMonth,
+                               "\(identifier) 축 길이가 날짜와 다르다: \(zonedFormatter.string(from: now))")
+                XCTAssertEqual(series.last?.date, zonedFormatter.string(from: now), identifier)
+                XCTAssertEqual(series.first?.date,
+                               String(format: "%04d-%02d-01", year, month), identifier)
+                XCTAssertEqual(Set(series.map { $0.date }).count, series.count,
+                               "\(identifier) 중복 날짜: \(zonedFormatter.string(from: now))")
+            }
         }
     }
 

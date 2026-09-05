@@ -1568,12 +1568,18 @@ enum LocalUsageReader {
     /// Scope is baked in rather than parameterised — a caller cannot widen this to a rolling
     /// window or last month, which is where this area has had month-boundary regressions before
     /// (see `enrichmentScanStart`).
-    static func monthDailySeries(entries: [Entry], now: Date) -> [DailyUsage] {
-        let calendar = Calendar.current
-        let fmt = localDayFormatter()
+    /// - Parameter timeZone: 테스트 주입 구멍. 기본값은 `Entry.localDay` 를 만든 것과 같은 현지 시간대다
+    ///   — 다른 값을 주면 축의 날짜 문자열이 엔트리의 `localDay` 와 어긋나므로 프로덕션에선 기본값만 쓴다.
+    ///   DST 가 없는 시간대(예: Asia/Seoul)에서만 테스트하면 하루 전진 결함이 통과하기 때문에 뚫었다.
+    static func monthDailySeries(entries: [Entry], now: Date,
+                                 timeZone: TimeZone = .current) -> [DailyUsage]
+    {
+        var calendar = Calendar.current
+        calendar.timeZone = timeZone
+        let fmt = localDayFormatter(timeZone: timeZone)
 
         var days: [String] = []
-        var cursor = calendar.startOfDay(for: startOfMonth(now))
+        var cursor = calendar.startOfDay(for: startOfMonth(now, calendar: calendar))
         let lastDay = calendar.startOfDay(for: now)
         while cursor <= lastDay {
             days.append(fmt.string(from: cursor))
@@ -1617,9 +1623,9 @@ enum LocalUsageReader {
 
     // MARK: 유틸
 
-    static func startOfMonth(_ date: Date) -> Date {
-        let c = Calendar.current
-        return c.date(from: c.dateComponents([.year, .month], from: date)) ?? date
+    /// `calendar` 는 테스트가 시간대를 주입하기 위한 구멍이다 — 기본값은 프로덕션과 동일한 현지 달력.
+    static func startOfMonth(_ date: Date, calendar: Calendar = .current) -> Date {
+        calendar.date(from: calendar.dateComponents([.year, .month], from: date)) ?? date
     }
 
     static func startOfWeek(_ date: Date) -> Date {
@@ -1647,10 +1653,10 @@ enum LocalUsageReader {
 
     static func todayKey() -> String { localDayFormatter().string(from: Date()) }
 
-    static func localDayFormatter() -> DateFormatter {
+    static func localDayFormatter(timeZone: TimeZone = .current) -> DateFormatter {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd"
-        f.timeZone = .current
+        f.timeZone = timeZone
         f.locale = Locale(identifier: "en_US_POSIX")
         return f
     }
