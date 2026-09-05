@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.4.0"
+VERSION = "1.5.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
