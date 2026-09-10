@@ -12,6 +12,9 @@
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
+<a href="https://trendshift.io/repositories/84522?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/84522" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/84522?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/84522/daily?language=Swift" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+
 **English** · [한국어](README.ko.md) · [日本語](README.ja.md)
 
 </div>
@@ -48,7 +51,7 @@ PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, 
 <td width="45%" align="center"><img src="assets/floating-pet.gif" width="340" alt="Floating desktop pet with a hover callout and right-click menu"></td>
 <td width="55%" valign="middle">
 <h3>🐾 Let it live on your desktop</h3>
-Move your companion out of the menu bar and onto the desktop, at any size from 48 to 192px. Hover it for today's usage, click to open the popover, right-click for a menu, drag it wherever you like — and limit alerts can appear as a speech bubble above it.
+Move your companion out of the menu bar and onto the desktop, at any size from 48 to 384px. Hover it for today's usage, click to open the popover, right-click for a menu, drag it wherever you like — and limit alerts can appear as a speech bubble above it.
 </td>
 </tr>
 <tr>
@@ -113,6 +116,20 @@ If a tool keeps its sessions outside the built-in paths, add your own roots unde
 Week and month totals tell you how much. They cannot tell you <b>when</b>. A compact bar per day of the current month sits right under those totals, with a date axis beneath it and a short tick under weekends. The caption names the day you are pointing at — <b>Mon, 8/24 5.4M $17.28</b> — and falls back to today when you are not pointing at anything, so you never have to hover to know which bar is which. It reads straight off the logs your tools already wrote, so it is filled in on the first refresh after updating rather than starting from today.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Daily usage for the current month, one bar per day, today highlighted"></td>
+</tr>
+<tr>
+<td width="55%" valign="middle">
+<h3>🔑 Official limits without the Keychain</h3>
+If the cached limit token expires, official Claude limits used to freeze until a refresh — and that press could raise a Keychain password prompt. Paste a <b>claude.ai session key</b> under <b>Settings → Advanced</b> instead: limits then come straight from claude.ai with no Keychain access at all, auto-polling keeps them fresh, and the key is validated the moment you save it.
+</td>
+<td width="45%" align="center"><img src="assets/screenshot-session-key.png" width="300" alt="claude.ai session key in Settings → Advanced"></td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-model-breakdown.png" width="300" alt="Per-model token breakdown for Pi"></td>
+<td width="55%" valign="middle">
+<h3>🧮 One session log, several models</h3>
+Pi and its forks (like omp) can route more than one model through a single session log. Usage is now attributed to the <b>real model id</b> instead of a flat "pi", and when a day spans several models the popover breaks today's tokens down per model, biggest first.
+</td>
 </tr>
 </table>
 
@@ -218,7 +235,7 @@ If a provider's logs live **outside** those built-in paths, add the folder in **
 ## Privacy & permissions
 
 - **On-device first.** Token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp data. The app never uploads usage or runs model turns.
-- **Outbound requests.** The app is not fully offline. It talks to twelve hosts: `pokeapi.co` and `graphql.pokeapi.co` (species/evolution), `raw.githubusercontent.com` (sprites), `api.anthropic.com` and — only if you save a session key — `claude.ai` (Claude official limits), `cursor.com` (Cursor usage summary when you are signed into Cursor locally — session credential only, no prompts or project paths), `cloudcode-pa.googleapis.com` and `daily-cloudcode-pa.googleapis.com` (Antigravity official limits) plus `oauth2.googleapis.com` (their token refresh), `status.claude.com` and `status.openai.com` (incident banner — off switch in Settings), and `api.github.com` (update check). **None of them carry your usage logs, prompts, or project paths** — only the request itself (Cursor sends your session cookie to fetch your own usage rows, same as the web dashboard).
+- **Outbound requests.** The app is not fully offline. It talks to twelve hosts: `pokeapi.co` and `graphql.pokeapi.co` (species/evolution), `raw.githubusercontent.com` (sprites), `api.anthropic.com` (Claude official limits), `claude.ai` (Claude official limits when you save an optional claude.ai session key in Settings — the key only, no prompts or project paths), `cursor.com` (Cursor usage summary when you are signed into Cursor locally — session credential only, no prompts or project paths), `cloudcode-pa.googleapis.com` and `daily-cloudcode-pa.googleapis.com` (Antigravity official limits) plus `oauth2.googleapis.com` (their token refresh), `status.claude.com` and `status.openai.com` (incident banner — off switch in Settings), and `api.github.com` (update check). **None of them carry your usage logs, prompts, or project paths** — only the request itself (Cursor sends your session cookie to fetch your own usage rows, same as the web dashboard).
 - **Keychain (optional).** The Claude OAuth credential is read **only when you press a refresh button** (Settings, or the limits row in the popover). Automatic polling never touches the Keychain, so it never raises a password prompt; when `~/.claude/.credentials.json` is present, each poll re-reads it, so an in-place `/login` to another account is picked up without pressing refresh. The token is held in memory only — the app creates no Keychain item of its own. If there is no credentials file, limits stay on the cached token until it expires or you refresh. Turn it off in Settings — the limits section simply hides.
 - **Session key (optional).** If you paste a claude.ai `sessionKey` in Settings, limits are fetched without touching the Keychain — so auto-polling stays current instead of going stale. The key is stored as an owner-only (`0600`) plaintext file at `~/Library/Application Support/PikaTokenBar/session-key.json`, **not encrypted**, because an app-owned Keychain item would bring the permission prompts back. It grants access to your claude.ai account, so treat it accordingly: delete it in Settings, or log out in your browser to invalidate it immediately.
 - **Pokémon assets** are fetched at runtime from PokéAPI and cached only under `~/Library/Application Support/PikaTokenBar/`. The app binary and its release artifacts contain no Pokémon assets.

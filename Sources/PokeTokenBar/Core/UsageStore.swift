@@ -36,6 +36,7 @@ final class UsageStore {
     private(set) var isRefreshing = false
     private var refreshPending = false          // 진행 중 refresh 에 겹친 요청을 1회 코얼레싱(드롭 방지)
     private(set) var isRefreshingLimitToken = false
+    private(set) var isRefreshingAntigravityLimits = false
     private(set) var lastErrorDescription: String?
     private(set) var limitTokenRefreshError: String?
 
@@ -94,6 +95,14 @@ final class UsageStore {
             case .balanced:   0.2   // ≈5fps
             case .smooth:     0.1   // ≈10fps
             }
+        }
+
+        /// macOS 저전력 모드를 반영한 유효 하한 — **저장된 선택은 건드리지 않는 파생값**이다.
+        /// 저전력이면 powerSaver 하한까지 늦추고(이미 더 느린 선택은 그대로), 해제되면 선택값으로
+        /// 돌아온다. "복원"이 계산 자체라 이전 값을 저장·복구할 상태가 없다 — 저전력 중 앱이
+        /// 종료되거나 사용자가 설정을 바꿔도 충돌할 복원 로직이 존재하지 않는다.
+        func effectiveFrameFloor(lowPower: Bool) -> TimeInterval {
+            lowPower ? max(frameFloor, Self.powerSaver.frameFloor) : frameFloor
         }
     }
     var animationQuality: AnimationQuality {
@@ -183,6 +192,7 @@ final class UsageStore {
     /// 설정 저장소 — 테스트는 suite 를 주입해 실제 사용자 설정을 오염시키지 않는다.
     private let defaults: UserDefaults
     private var timer: Timer?
+    private var networkMonitor: NetworkReachabilityMonitor?
     private var pollingSuspended = false   // 디스플레이 꺼짐 동안 폴링 정지 (배터리)
     private var emptyUsageRetryTask: Task<Void, Never>?
     /// 한도 알림 상태(엣지 트리거) — 창 이름 → 이미 알린 최고 tier(0=없음, 1=경고, 2=위험).
@@ -519,7 +529,7 @@ final class UsageStore {
         LocalAntigravityProvider(), LocalOpenCodeProvider(), LocalHermesProvider(),
         LocalCursorProvider(), LocalGrokProvider(), LocalCopilotProvider(), LocalKiroProvider(),
         LocalPiProvider(),
-        LocalOmpProvider(),
+        LocalOmpProvider(), LocalAsideProvider(),
     ],
          // 세션 키 우선, 없거나 죽었으면 기존 Keychain/파일 OAuth 경로. 두 인자는 같은
          // SessionKeyLimitsProvider 인스턴스를 봐야 한다 — 설정 화면이 고른 조직을 조회 경로가 써야 하므로.
@@ -562,6 +572,11 @@ final class UsageStore {
             sessionKeySelectedOrgID = credential.organizationID
         }
 
+        if let credential = sessionKeys.credential() {
+            sessionKeyConfigured = true
+            sessionKeySelectedOrgID = credential.organizationID
+        }
+
         reschedule()
 
         // 자정 경계: 날짜가 바뀌면 "오늘" 버킷 즉시 갱신
@@ -576,7 +591,7 @@ final class UsageStore {
         ) { [weak self] _ in
             Task { @MainActor in await self?.refresh() }
         }
-        // 디스플레이 꺼짐 → 폴링(ccusage 서브프로세스 spawn) 일시정지, 켜짐 → 재개 + 즉시 갱신 (배터리)
+        // 디스플레이 꺼짐 → 폴링(로그 파싱 + 한도 조회 + codex 서브프로세스) 일시정지, 켜짐 → 재개 + 즉시 갱신 (배터리)
         NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main
         ) { [weak self] _ in
@@ -586,6 +601,18 @@ final class UsageStore {
             forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in self?.resumePolling() }
+        }
+
+        // 네트워크 재연결 시 즉시 갱신 (오프라인/슬립 복귀/와이파이 전환 후 주기 타이머 대기 없이 한도·부화 갱신)
+        if AppEnv.isBundledApp {
+            let net = NetworkReachabilityMonitor()
+            net.onReconnected = { [weak self] in
+                Task { @MainActor [weak self] in
+                    await self?.refresh()
+                }
+            }
+            net.start()
+            self.networkMonitor = net
         }
 
         // 알림 권한은 기동 즉시 묻지 않는다 — 앱을 이해하기 전 콜드 프롬프트는 거부율이 높고
@@ -605,7 +632,7 @@ final class UsageStore {
         timer = t
     }
 
-    /// 디스플레이 꺼짐 → 폴링 타이머 정지(예약된 ccusage 서브프로세스 spawn 중단).
+    /// 디스플레이 꺼짐 → 폴링 타이머 정지(예약된 로그 파싱·한도 조회 중단).
     private func suspendPolling() {
         pollingSuspended = true
         timer?.invalidate()
@@ -628,7 +655,7 @@ final class UsageStore {
         // Claude 한도가 다음 수동 액션까지 빈 채로 남던 회귀 방지.
         if isRefreshing { refreshPending = true; return }
         isRefreshing = true
-        // App Nap 방지 — 백그라운드 스로틀로 ccusage 가 타임아웃되는 것을 막는다 (시스템 슬립은 허용)
+        // App Nap 방지 — 백그라운드 스로틀로 로그 파싱·codex 조회가 타임아웃되는 것을 막는다 (시스템 슬립은 허용)
         let activity = ProcessInfo.processInfo.beginActivity(
             options: .userInitiatedAllowingIdleSystemSleep, reason: "PokeTokenBar usage refresh")
         defer {
@@ -925,6 +952,9 @@ final class UsageStore {
     }
 
     func refreshAntigravityLimitsFromKeychain() async {
+        guard !isRefreshingAntigravityLimits else { return }
+        isRefreshingAntigravityLimits = true
+        defer { isRefreshingAntigravityLimits = false }
         await refreshAntigravityLimits(allowKeychainPrompt: true)
     }
 

@@ -81,6 +81,19 @@ private struct StubOAuthLimits: ClaudeLimitsProviding {
     }
 }
 
+/// 폴백이 어떤 `allowKeychainPrompt` 로 불렸는지 기록하는 스텁 — 값 자체가 검증 대상이라
+/// 상태를 돌려주는 것만으로는 부족하다(프롬프트 억제는 반환값에 안 드러난다).
+private final class RecordingOAuthLimits: ClaudeLimitsProviding, @unchecked Sendable {
+    private(set) var seenAllowPrompt: [Bool] = []
+    let status: LimitStatus?
+    init(status: LimitStatus?) { self.status = status }
+    func fetch(allowKeychainPrompt: Bool) async throws -> LimitStatus {
+        seenAllowPrompt.append(allowKeychainPrompt)
+        guard let status else { throw LimitsError.keychainInteractionNotAllowed }
+        return status
+    }
+}
+
 private func limitStatus(fiveHour: Double) -> LimitStatus {
     try! JSONDecoder().decode(
         LimitStatus.self, from: Data("{\"five_hour\":{\"utilization\":\(fiveHour)}}".utf8))
@@ -476,6 +489,36 @@ final class SessionKeyLimitsTests: XCTestCase {
         let limits = try await chain.fetch(allowKeychainPrompt: false)
 
         XCTAssertEqual(limits.fiveHour?.utilization, 42)
+    }
+
+    /// [회귀] 키를 넣어 둔 사용자에게는 폴백이 **Keychain 을 열지 못한다.** 이 기능의 존재 이유가
+    /// 그 프롬프트를 없애는 것이라, 죽은 키 때문에 수동 갱신에서 프롬프트가 되살아나면 기능이
+    /// 스스로를 무효화한다. `allowKeychainPrompt` 를 그대로 넘기던 원래 코드로 되돌리면 실패한다.
+    func testConfiguredButBrokenKeyNeverLetsFallbackOpenTheKeychain() async throws {
+        try seed()
+        let fallback = RecordingOAuthLimits(status: limitStatus(fiveHour: 42))
+        let chain = ChainedLimitsProvider(
+            primary: SessionKeyLimitsProvider(store: store, http: StubSessionKeyHTTP([orgsPath: fail(401)])),
+            fallback: fallback)
+
+        _ = try await chain.fetch(allowKeychainPrompt: true)   // 수동 갱신 버튼 경로
+
+        XCTAssertEqual(fallback.seenAllowPrompt, [false],
+                       "세션 키가 설정돼 있으면 수동 갱신이라도 Keychain 을 열면 안 된다")
+    }
+
+    /// A||B 의 반대편 — 키가 **없는** 사용자는 기존 동작 그대로다. 수동 갱신은 여전히 Keychain 을
+    /// 읽어야 하고, 위 가드가 그 경로까지 막으면 키를 안 쓰는 사람의 한도가 조용히 죽는다.
+    func testWithoutAStoredKeyManualRefreshStillReachesTheKeychain() async throws {
+        let fallback = RecordingOAuthLimits(status: limitStatus(fiveHour: 7))
+        let chain = ChainedLimitsProvider(
+            primary: SessionKeyLimitsProvider(store: store, http: StubSessionKeyHTTP([:])),
+            fallback: fallback)
+
+        _ = try await chain.fetch(allowKeychainPrompt: true)
+
+        XCTAssertEqual(fallback.seenAllowPrompt, [true],
+                       "키가 없으면 수동 갱신은 예전처럼 Keychain 을 읽는다")
     }
 }
 

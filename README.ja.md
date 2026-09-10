@@ -12,6 +12,10 @@
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
+<a href="https://trendshift.io/repositories/84522?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/84522" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/84522?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/84522/daily?language=Swift" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+
+
 [English](README.md) · [한국어](README.ko.md) · **日本語**
 
 </div>
@@ -48,7 +52,7 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 <td width="45%" align="center"><img src="assets/floating-pet.gif" width="340" alt="デスクトップのフローティングペット — ホバー表示と右クリックメニュー"></td>
 <td width="55%" valign="middle">
 <h3>🐾 デスクトップに置く</h3>
-パートナーをメニューバーからデスクトップへ、48〜192px の好きなサイズで。ホバーで今日の使用量、クリックでポップオーバー、右クリックでメニュー、ドラッグで自由に移動 — 上限アラートはペットの上に吹き出しでも表示されます。
+パートナーをメニューバーからデスクトップへ、48〜384px の好きなサイズで。ホバーで今日の使用量、クリックでポップオーバー、右クリックでメニュー、ドラッグで自由に移動 — 上限アラートはペットの上に吹き出しでも表示されます。
 </td>
 </tr>
 <tr>
@@ -113,6 +117,20 @@ Antigravity 2.0 と IDE が推定値ではなく実際のクォータを返し�
 週間・月間の合計は<b>どれだけ</b>は教えてくれますが、<b>いつ</b>は教えてくれません。その合計のすぐ下に今月の1日ごとのバーを並べ、その下に日付軸と週末の下線を添えました。キャプションはいま指している日を <b>8/24(月) 5.4M $17.28</b> のように示し、どこも指していなければ今日を表示します — どのバーがどの日かを知るためにホバーする必要はありません。ツールがすでに書き出したログから読むため、更新直後の最初のリフレッシュで今月分が埋まります（今日から積み直しにはなりません）。
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend-ja.png" width="300" alt="今月の日別使用量 — 1日ごとに1本のバー、今日を強調"></td>
+</tr>
+<tr>
+<td width="55%" valign="middle">
+<h3>🔑 Keychain なしで公式上限</h3>
+キャッシュされた上限トークンが切れると、公式の Claude 上限は更新を押すまで止まり、その更新が Keychain のパスワードプロンプトを出すことがありました。代わりに <b>設定 → 詳細</b> に <b>claude.ai セッションキー</b> を貼り付けてください — 上限を claude.ai から直接読むので Keychain には一切触れず、自動ポーリングが最新に保ち、保存した瞬間にキーを検証します。
+</td>
+<td width="45%" align="center"><img src="assets/screenshot-session-key-ja.png" width="300" alt="設定 → 詳細の claude.ai セッションキー"></td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-model-breakdown-ja.png" width="300" alt="Pi のモデル別トークン内訳"></td>
+<td width="55%" valign="middle">
+<h3>🧮 一つのセッションログに複数のモデル</h3>
+Pi とそのフォーク（omp など）は複数のモデルを一つのセッションログに流すことがあります。使用量は一律の「pi」ではなく<b>実際のモデル id</b> に帰属するようになり、一日に複数のモデルを使った場合はポップオーバーが本日のトークンをモデルごとに大きい順で表示します。
+</td>
 </tr>
 </table>
 
@@ -218,7 +236,7 @@ swift test                   # ユニットテスト
 ## プライバシー & 権限
 
 - **オンデバイス優先。** トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp データから直接読み取ります。使用量のアップロードも、モデルの推論実行も行いません。
-- **外部リクエスト。** 本アプリは完全オフラインではありません。12のホストに接続します — `pokeapi.co`・`graphql.pokeapi.co`（種・進化）、`raw.githubusercontent.com`（スプライト）、`api.anthropic.com` と — セッションキーを保存した場合のみ — `claude.ai`（Claude 公式の上限）、`cursor.com`（ローカルで Cursor にサインインしている場合の Cursor 使用量サマリー — セッション資格情報のみ、プロンプトやプロジェクトのパスは送りません）、`cloudcode-pa.googleapis.com`・`daily-cloudcode-pa.googleapis.com`（Antigravity 公式の上限）と `oauth2.googleapis.com`（トークン更新）、`status.claude.com`・`status.openai.com`（障害バナー — 設定でオフ可）、`api.github.com`（アップデート確認）。**いずれのリクエストにも使用量ログ・プロンプト・プロジェクトのパスは含まれません** — 送られるのはリクエストそのものだけです（Cursor は Web ダッシュボードと同様に、自分の使用量の行を取得するためセッション Cookie を送信します）。
+- **外部リクエスト。** 本アプリは完全オフラインではありません。12のホストに接続します — `pokeapi.co`・`graphql.pokeapi.co`（種・進化）、`raw.githubusercontent.com`（スプライト）、`api.anthropic.com`（Claude 公式の上限）、`claude.ai`（設定で claude.ai セッションキーを保存した場合の Claude 公式の上限 — そのキーのみ、プロンプトやプロジェクトのパスは送りません）、`cursor.com`（ローカルで Cursor にサインインしている場合の Cursor 使用量サマリー — セッション資格情報のみ、プロンプトやプロジェクトのパスは送りません）、`cloudcode-pa.googleapis.com`・`daily-cloudcode-pa.googleapis.com`（Antigravity 公式の上限）と `oauth2.googleapis.com`（トークン更新）、`status.claude.com`・`status.openai.com`（障害バナー — 設定でオフ可）、`api.github.com`（アップデート確認）。**いずれのリクエストにも使用量ログ・プロンプト・プロジェクトのパスは含まれません** — 送られるのはリクエストそのものだけです（Cursor は Web ダッシュボードと同様に、自分の使用量の行を取得するためセッション Cookie を送信します）。
 - **Keychain（任意）。** Claude OAuth 資格情報は**更新ボタンを押した時のみ**読み取ります（設定、またはポップオーバーの上限行）。自動更新では Keychain に触れないためパスワードのプロンプトは表示されず、`~/.claude/.credentials.json` があれば毎回読み直すので、`/login` でアカウントを切り替えても更新ボタンなしで追従します。トークンはメモリ上にのみ保持し、**アプリ自身の Keychain 項目は作成しません。** 資格情報ファイルが無い場合、上限はキャッシュされたトークンが期限切れになるか更新するまで以前の値のままです。設定でオフにすると上限セクションが非表示になります。
 - **セッションキー（任意）。** 設定に claude.ai の `sessionKey` を貼り付けると、Keychain に触れずに上限を取得します — 自動更新が続くため stale のまま固まりません。キーは `~/Library/Application Support/PikaTokenBar/session-key.json` に所有者のみ読み取り可能（`0600`）な**平文**で保存されます（アプリ自身の Keychain 項目を作るとプロンプトが復活するため、あえてファイルにします）。このキーは claude.ai アカウントへのアクセス権を持つため、取り扱いにはご注意ください — 設定から削除するか、ブラウザでログアウトすれば即時無効になります。
 - **ポケモンのアセット** はランタイムに PokéAPI から取得し、`~/Library/Application Support/PikaTokenBar/` にのみキャッシュされます。アプリのバイナリおよびリリース成果物にポケモンのアセットは含まれません。

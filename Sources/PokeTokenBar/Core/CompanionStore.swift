@@ -194,6 +194,34 @@ final class CompanionStore {
         )
     }
 
+    /// 놓아준 개체의 영구 기록 — 알을 새로 사서 육성을 포기하는 순간 만든다.
+    ///
+    /// **도달한 형태만 담는다**(`pathIDs.prefix(stageIndex + 1)`). 도감이 육성 중 보여주던 범위와
+    /// 같아야 놓아준 뒤에도 칸 구성이 그대로 유지된다 — `plannedPathIDs` 나 `pathIDs` 전체를 쓰면
+    /// 도달한 적 없는 진화형까지 보유로 잡힌다(`dexSpecies` 가 같은 prefix 규칙을 쓴다).
+    ///
+    /// 이로치는 `currentIsShiny` — 위장 중인 메타몽은 리빌 전까지 숨긴다(`activeDexEntry` 와 단일 판정).
+    /// `caughtAt` 은 놓아준 시각이다: 포획 로그가 그 값으로 정렬하므로 기록이 남은 시점과 일치해야 한다.
+    private func releasedDexEntry(from a: MonState) -> DexEntry {
+        // stageIndex 가 음수·범위 밖이어도 최소 한 형태는 남긴다(손상 상태 파일 방어 — MonState.currentID 와 같은 태도).
+        let reached = Array(a.pathIDs.prefix(max(1, a.stageIndex + 1)))
+        let chain = reached.isEmpty ? [a.baseID] : reached
+        let now = clock()
+        return DexEntry(
+            baseID: a.baseID,
+            finalID: chain.last ?? a.baseID,
+            chainOrder: chain,
+            rarity: a.rarity,
+            caughtAt: now,
+            isShiny: currentIsShiny,
+            nature: a.nature,
+            names: currentLine.map { line in
+                Dictionary(uniqueKeysWithValues:
+                    chain.compactMap { id in line.names[id].map { (id, $0) } })
+            },
+            releasedAt: now)
+    }
+
     var dexEntries: [DexEntry] {
         guard let activeDexEntry else { return state.dex }
         return state.dex + [activeDexEntry]
@@ -663,9 +691,13 @@ final class CompanionStore {
             }
     }
 
-    /// 상점 표시 순서 — 판매 아이템 + (활성 포켓몬 있을 때) 알 3종을 하나의 가격 오름차순 목록으로 병합.
+    /// 상점 표시 순서 — 판매 아이템 + 알 3종을 하나의 가격 오름차순 목록으로 병합.
     /// 정렬 규칙은 purchasableItems 와 동일: 구매 완료한 보유형은 맨 아래, 나머지는 가격 저렴한 순.
     /// 알은 즉시 액션이라 '보유' 개념이 없어 가격 순서에만 참여한다.
+    ///
+    /// 알은 활성 포켓몬이 없어도(알 상태) 목록에 남는다 — 구매는 `canBuyEgg` 의 `hasActive` 게이트가
+    /// 막고, EggCard 가 비활성 버튼 + 사유 한 줄로 보여준다. 목록에서 통째로 빼면 "상점에 알이 원래
+    /// 없다"로 읽혀서, 게이트는 유지하되 존재는 계속 보이게 한다.
     ///
     /// 등급 알끼리 붙여 '티어 사다리'로 묶어 보이게 하는 안도 검토했으나 채택하지 않았다 — 지금의 순수
     /// 가격 오름차순은 "알이 무조건 맨 아래로 append 돼 더 비싼 부적보다 아래에 놓이던" 표시 회귀를
@@ -673,7 +705,7 @@ final class CompanionStore {
     /// 카드의 등급 배지로 읽히게 한다.
     var shopEntries: [ShopEntry] {
         var entries: [ShopEntry] = purchasableItems.map { ShopEntry.item($0) }
-        if hasActive { entries += FreshEgg.shopTiers.map { ShopEntry.egg($0) } }
+        entries += FreshEgg.shopTiers.map { ShopEntry.egg($0) }
         return entries.sorted { a, b in
             let aDone = isPurchasedPassive(a)
             let bDone = isPurchasedPassive(b)
@@ -720,6 +752,7 @@ final class CompanionStore {
     /// 알 구매 가능 — 폐기할 활성 포켓몬이 있고 지갑이 그 티어 가격 이상일 때만.
     /// 알 상태에서도 살 수 있게 하는 안은 채택하지 않았다(기존 새 알과 게이트 통일) — 알끼리 교체하는
     /// 동작을 새로 만들지 않고, 상점의 알은 언제나 "지금 개체를 놓아주고 다시 뽑는다"는 한 가지 의미만 갖는다.
+    /// 항목 자체는 알 상태에서도 상점에 남는다(shopEntries) — 이 게이트는 구매만 막는다.
     func canBuyEgg(_ tier: Rarity?) -> Bool {
         // 파는 티어인지 먼저 확인한다 — 만족 불가능한 보증(전설: capture_rate 로 표현 불가)을 사면
         // 두 롤 경로 모두 후보가 0개라 알이 영영 안 깨지고, 부화가 없으니 보증도 안 풀리며,
@@ -729,9 +762,11 @@ final class CompanionStore {
         return hasActive && availableTokens >= FreshEgg.price(guaranteeing: tier)
     }
 
-    /// 알 구매 — 현재 포켓몬을 폐기하고 처음부터 인큐베이션하는 새 알로. 지갑에서 가격 차감.
-    /// graduate() 의 알-리셋만 미러링하고 dex/collectedFinals(도감·확률 가중)는 손대지 않는다
-    /// → "뽑은 적 없던 것처럼". 성장(usedAtStage)은 소멸(추가 비용).
+    /// 알 구매 — 현재 포켓몬을 놓아주고 처음부터 인큐베이션하는 새 알로. 지갑에서 가격 차감.
+    /// graduate() 의 알-리셋을 미러링하되, 놓아준 개체는 **도감에 남긴다**(`releasedDexEntry`).
+    /// 도감은 "쌓이기만 한다"는 약속을 주는데, 여기가 종이 사라질 수 있던 유일한 경로였다.
+    /// `collectedFinals`(최종체 완성·분기 가중)는 여전히 손대지 않는다 — 끝까지 키운 게 아니다.
+    /// 성장(usedAtStage)은 소멸(추가 비용).
     ///
     /// 여기서 종을 롤하지 않는다 — 롤에는 네트워크가 필요해서 오프라인이면 토큰만 사라진다. 보증만
     /// 상태(`eggTier`)에 적고, 실제 롤은 프리패치/부화 경로가 그 보증을 읽어 수행한다.
@@ -739,8 +774,13 @@ final class CompanionStore {
     func buyEgg(_ tier: Rarity?) -> Bool {
         guard canBuyEgg(tier) else { return false }
         state.spentTokens += FreshEgg.price(guaranteeing: tier)
-        state.active = nil            // 폐기 (졸업 아님 — dex/collectedFinals 미변경)
-        state.reconcileRepresentativeSelection()   // 미졸업 개체에만 있던 대표 종은 자동 추적으로 복귀
+        if let a = state.active {
+            state.dex.append(releasedDexEntry(from: a))   // 놓아줌 기록 — 도감에서 종이 사라지지 않게
+        }
+        state.active = nil            // 놓아줌 (졸업 아님 — collectedFinals 는 미변경)
+        // 놓아준 종도 이제 dex 에 있으므로 대표 선택은 유지된다. 손상 상태 파일 등으로 정말 보유가
+        // 끊긴 경우만 자동 추적으로 복귀한다.
+        state.reconcileRepresentativeSelection()
         activeGeneration += 1
         currentLine = nil
         state.eggUsage = 0            // 새 알은 처음부터 인큐베이션(재부화에 5M 필요)

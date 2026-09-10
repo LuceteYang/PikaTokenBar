@@ -12,6 +12,10 @@
 [![License](https://img.shields.io/badge/license-MIT-3fb950)](LICENSE)
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%99%A5-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/chattymin)
 
+<a href="https://trendshift.io/repositories/84522?utm_source=repository-badge&amp;utm_medium=badge&amp;utm_campaign=badge-repository-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/repositories/84522" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+<a href="https://trendshift.io/repositories/84522?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-84522" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/84522/daily?language=Swift" alt="chattymin%2FPokeTokenBar | Trendshift" width="250" height="55"/></a>
+
+
 [English](README.md) · **한국어** · [日本語](README.ja.md)
 
 </div>
@@ -48,7 +52,7 @@ PikaTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 <td width="45%" align="center"><img src="assets/floating-pet.gif" width="340" alt="바탕화면 플로팅 펫 — 호버 콜아웃과 우클릭 메뉴"></td>
 <td width="55%" valign="middle">
 <h3>🐾 바탕화면에 두기</h3>
-파트너를 메뉴바 밖 바탕화면으로 꺼내 48~192px 원하는 크기로 둘 수 있어요. 호버하면 오늘 사용량, 클릭하면 팝오버, 우클릭하면 메뉴, 드래그로 위치 이동 — 한도 알림은 펫 위 말풍선으로도 떠요.
+파트너를 메뉴바 밖 바탕화면으로 꺼내 48~384px 원하는 크기로 둘 수 있어요. 호버하면 오늘 사용량, 클릭하면 팝오버, 우클릭하면 메뉴, 드래그로 위치 이동 — 한도 알림은 펫 위 말풍선으로도 떠요.
 </td>
 </tr>
 <tr>
@@ -113,6 +117,20 @@ Antigravity 2.0 과 IDE 가 추정치가 아닌 실제 할당량을 보고합니
 주간·월간 합계는 <b>얼마나</b>는 알려주지만 <b>언제</b>는 알려주지 못합니다. 그 합계 바로 아래에 이번 달의 하루당 막대 하나를 두고, 그 아래 날짜 축과 주말 밑줄을 붙였습니다. 캡션은 지금 가리키고 있는 날을 <b>8. 24. (월) 5.4M $17.28</b> 처럼 적고, 아무것도 가리키지 않으면 오늘을 보여줍니다 — 어느 막대가 어느 날인지 알려고 마우스를 올릴 필요가 없습니다. 도구가 이미 써 놓은 로그에서 바로 읽으므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다(오늘부터 새로 쌓이지 않습니다).
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend-ko.png" width="300" alt="이번 달 일별 사용량 — 하루당 막대 하나, 오늘 강조"></td>
+</tr>
+<tr>
+<td width="55%" valign="middle">
+<h3>🔑 Keychain 없이 공식 한도</h3>
+캐시된 한도 토큰이 만료되면 공식 Claude 한도가 갱신을 누를 때까지 멈추고, 그 갱신이 Keychain 암호 팝업을 띄울 수 있었습니다. 대신 <b>설정 → 고급</b>에 <b>claude.ai 세션 키</b>를 붙여넣으세요 — 한도를 claude.ai 에서 바로 읽어 Keychain 을 아예 건드리지 않고, 자동 폴링이 최신 상태를 유지하며, 저장하는 순간 키를 검증합니다.
+</td>
+<td width="45%" align="center"><img src="assets/screenshot-session-key-ko.png" width="300" alt="설정 → 고급의 claude.ai 세션 키"></td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-model-breakdown-ko.png" width="300" alt="Pi 의 모델별 토큰 내역"></td>
+<td width="55%" valign="middle">
+<h3>🧮 세션 로그 하나, 모델 여럿</h3>
+Pi 와 그 포크(omp 등)는 모델 여러 개를 세션 로그 하나로 흘려보낼 수 있습니다. 이제 사용량이 일률적인 "pi" 가 아니라 <b>실제 모델 id</b> 로 귀속되고, 하루에 여러 모델을 썼다면 팝오버가 오늘 토큰을 모델별로 큰 순서대로 풀어 보여줍니다.
+</td>
 </tr>
 </table>
 
@@ -218,7 +236,7 @@ swift test                   # 단위 테스트
 ## 프라이버시 & 권한
 
 - **온디바이스 우선.** 토큰 사용량은 로컬 Claude Code·Codex·Gemini CLI·Antigravity·OpenCode·Hermes Agent·Cursor·Grok CLI·Copilot CLI·Kiro CLI·Pi Agent·omp 데이터에서 직접 읽습니다. 사용량을 업로드하거나 모델 turn을 실행하지 않습니다.
-- **외부 요청.** 앱은 완전 오프라인이 아닙니다. 12개 호스트에 접속합니다 — `pokeapi.co`·`graphql.pokeapi.co`(종·진화), `raw.githubusercontent.com`(스프라이트), `api.anthropic.com` 과 — 세션 키를 저장한 경우에만 — `claude.ai`(Claude 공식 한도), `cursor.com`(로컬에서 Cursor 에 로그인한 경우 Cursor 사용량 요약 — 세션 자격증명만, 프롬프트·프로젝트 경로 없음), `cloudcode-pa.googleapis.com`·`daily-cloudcode-pa.googleapis.com`(Antigravity 공식 한도)와 `oauth2.googleapis.com`(토큰 갱신), `status.claude.com`·`status.openai.com`(장애 배너 — 설정에서 끌 수 있음), `api.github.com`(업데이트 확인). **어느 요청에도 사용량 로그·프롬프트·프로젝트 경로는 담기지 않습니다** — 요청 자체만 나갑니다(Cursor 는 웹 대시보드와 동일하게 본인 사용량 행을 가져오기 위해 세션 쿠키를 보냅니다).
+- **외부 요청.** 앱은 완전 오프라인이 아닙니다. 12개 호스트에 접속합니다 — `pokeapi.co`·`graphql.pokeapi.co`(종·진화), `raw.githubusercontent.com`(스프라이트), `api.anthropic.com`(Claude 공식 한도), `claude.ai`(설정에서 claude.ai 세션 키를 저장한 경우의 Claude 공식 한도 — 그 키만, 프롬프트·프로젝트 경로 없음), `cursor.com`(로컬에서 Cursor 에 로그인한 경우 Cursor 사용량 요약 — 세션 자격증명만, 프롬프트·프로젝트 경로 없음), `cloudcode-pa.googleapis.com`·`daily-cloudcode-pa.googleapis.com`(Antigravity 공식 한도)와 `oauth2.googleapis.com`(토큰 갱신), `status.claude.com`·`status.openai.com`(장애 배너 — 설정에서 끌 수 있음), `api.github.com`(업데이트 확인). **어느 요청에도 사용량 로그·프롬프트·프로젝트 경로는 담기지 않습니다** — 요청 자체만 나갑니다(Cursor 는 웹 대시보드와 동일하게 본인 사용량 행을 가져오기 위해 세션 쿠키를 보냅니다).
 - **Keychain(선택).** Claude OAuth 자격증명은 **갱신 버튼을 누를 때만** 읽습니다(설정, 또는 팝오버의 한도 행). 자동 폴링은 Keychain 을 건드리지 않으므로 비밀번호 프롬프트가 뜨지 않고, `~/.claude/.credentials.json` 이 있으면 매 폴마다 다시 읽어 `/login` 으로 계정을 바꿔도 갱신 버튼 없이 따라갑니다. 토큰은 메모리에만 두며 **앱 자체 Keychain 항목은 만들지 않습니다.** 자격증명 파일이 없으면 캐시 토큰이 만료될 때까지(또는 갱신 버튼을 누를 때까지) 한도는 이전 값으로 남습니다. 설정에서 끄면 한도 섹션만 숨겨집니다.
 - **세션 키(선택).** 설정에 claude.ai `sessionKey` 를 붙여넣으면 Keychain 을 건드리지 않고 한도를 가져옵니다 — 자동 폴링이 계속 갱신되므로 stale 로 굳지 않습니다. 키는 `~/Library/Application Support/PikaTokenBar/session-key.json` 에 소유자만 읽을 수 있는(`0600`) **평문**으로 저장됩니다(앱 자체 Keychain 항목을 만들면 프롬프트가 다시 생기므로 일부러 파일을 씁니다). 이 키는 claude.ai 계정 접근 권한을 가지므로 그에 맞게 취급하세요 — 설정에서 삭제하거나, 브라우저에서 로그아웃하면 즉시 무효화됩니다.
 - **포켓몬 에셋**은 런타임에 PokéAPI에서 받아오며 `~/Library/Application Support/PikaTokenBar/`에만 캐시됩니다. 앱 바이너리와 릴리스 아티팩트에는 포켓몬 에셋이 포함되지 않습니다.

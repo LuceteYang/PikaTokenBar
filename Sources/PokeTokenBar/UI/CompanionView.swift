@@ -784,7 +784,9 @@ struct CollectionView: View {
             // 문제가 있어, 바깥 VStack 을 height 로 고정해 스크롤 영역이 나머지를 채우게 한다.
             ScrollViewReader { proxy in
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 8) {
+                    // 로그는 계속 쌓인다. 화면 밖 행까지 생성하면 진화 라인의 스프라이트 로딩과
+                    // 레이아웃도 전부 진입 시 실행되므로, 보이는 행부터 생성한다.
+                    LazyVStack(alignment: .leading, spacing: 8) {
                         Color.clear.frame(height: 0).id("dexTop")   // 스크롤 최상단 앵커
                         ForEach(visibleEntries) { entry in
                             DexEntryRow(store: store, entry: entry)
@@ -1121,6 +1123,15 @@ private struct DexEntryRow: View {
                         .padding(.horizontal, 5).padding(.vertical, 1)
                         .background(Color.accentColor.opacity(0.14))
                         .foregroundStyle(Color.accentColor)
+                        .clipShape(Capsule())
+                } else if entry.isReleased {
+                    // 놓아준 개체 — 종은 도감에 남지만 이 개체는 끝까지 키우지 않았다.
+                    // 중립색(secondary)으로 둔다: 실패가 아니라 다른 종류의 기록이라 경고색은 과하다.
+                    Text(store.l.dexReleased.uppercased())
+                        .font(.system(size: 8, weight: .bold))
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Color.secondary.opacity(0.14))
+                        .foregroundStyle(Color.secondary)
                         .clipShape(Capsule())
                 }
                 if entry.isShiny {

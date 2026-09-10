@@ -61,7 +61,7 @@ final class AppIdentityTests: XCTestCase {
     /// 쓰기는 원본 폴더로 읽기는 포크 폴더로 갈라져도 컴파일도 다른 테스트도 안 잡고 "스프라이트가
     /// 오프라인마다 계속 재다운로드된다"는 증상으로만 드러난다. 이 테스트가 그 갈림을 직접 잡는다.
     func testSpriteStoreWritesToSameDirectorySpriteLoaderReads() async {
-        let writeDir = await SpriteStore.shared.dir
+        let writeDir = SpriteStore.shared.directory
         XCTAssertEqual(writeDir, SpriteLoader.cacheDir)
     }
 }

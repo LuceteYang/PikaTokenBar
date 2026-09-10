@@ -241,6 +241,22 @@ struct PopoverView: View {
                 tokenTypeLabel("cache w", today.cacheCreationTokens)
                 tokenTypeLabel("cache r", today.cacheReadTokens)
             }
+            if let models = today.models, models.count > 1 {
+                ForEach(models.sorted(by: { $0.value > $1.value }), id: \.key) { model, tokens in
+                    HStack(spacing: 6) {
+                        Text(model.split(separator: "/").last.map(String.init) ?? model)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                        Spacer()
+                        Text(TokenFormatter.compact(tokens))
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .monospacedDigit()
+                    }
+                }
+            }
         }
         .padding(.top, 2)
     }
@@ -359,7 +375,7 @@ struct PopoverView: View {
                                 .font(.caption)
                                 .monospacedDigit()
                             Spacer()
-                            (Text("\(l.reset) ") + Text(end, style: .relative))
+                            (Text("\(l.reset) ") + Text(end, style: .relative) + resetClockSuffix(end))
                                 .font(.caption)
                                 .foregroundStyle(.tertiary)
                         }
@@ -400,9 +416,6 @@ struct PopoverView: View {
             antigravityRefreshRow
         }
         if let status = store.antigravityLimits, status.hasVisibleLimit {
-            if store.antigravityLimitsStale {
-                staleBadge(updatedAt: store.antigravityLimitsUpdatedAt)
-            }
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(Array(status.groups.enumerated()), id: \.offset) { _, group in
                     VStack(alignment: .leading, spacing: 4) {
@@ -437,7 +450,7 @@ struct PopoverView: View {
                     .monospacedDigit()
                     .foregroundStyle(limitColor(utilization))
                 if let reset = bucket.resetDate {
-                    Text("· \(reset, style: .relative)")
+                    resetLabel(reset)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
@@ -450,23 +463,27 @@ struct PopoverView: View {
 
     @ViewBuilder
     private var antigravityRefreshRow: some View {
-        Button {
-            Task { await store.refreshAntigravityLimitsFromKeychain() }
-        } label: {
-            HStack(spacing: 6) {
-                Image(systemName: "key.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 6) {
+            if store.antigravityLimits == nil {
                 Text(l.limitsTapToLoad)
-                    .font(.caption)
-                Spacer()
-                Text(l.refresh)
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                (Text(l.staleLimits) + Text(" · ") + Text(store.antigravityLimitsUpdatedAt ?? Date(), style: .relative))
+                    .font(.caption).foregroundStyle(.orange)
             }
-            .padding(.vertical, 4)
+            Spacer()
+            Button {
+                Task { await store.refreshAntigravityLimitsFromKeychain() }
+            } label: {
+                if store.isRefreshingAntigravityLimits {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Text(l.refresh)
+                }
+            }
+            .controlSize(.small)
+            .disabled(store.isRefreshingAntigravityLimits)
         }
-        .buttonStyle(.plain)
     }
 
     @ViewBuilder
@@ -501,6 +518,27 @@ struct PopoverView: View {
         return store.limitDisplayMode == .remaining ? l.percentRemaining(text) : text
     }
 
+    /// 리셋이 이 창 안(≤ 6h)이거나 오늘이면 벽시계 접미사를 "HH:mm" 만으로 짧게 낸다.
+    /// 그 밖(주간 한도 등 며칠 뒤)이면 요일·일자를 붙여 "HH:mm" 만으로 생기는 오해를 막는다.
+    /// 어느 쪽이든 접미사는 항상 붙는다 — 프로바이더 리터럴 분기 없이 리셋 근접도만 본다
+    /// (확장 규약: 플랫폼 종속 분기 금지).
+    private static let resetClockWindow: TimeInterval = 6 * 3600
+
+    /// 카운트다운 뒤에 붙는 절대 리셋 시각 " (…)". 오늘 안이거나 ≤ 6h 면 시:분만,
+    /// 며칠 뒤(주간 한도 등)면 요일·일자까지 — "in 2 days, 9 hr" 만으론 언제 풀리는지 감이 안 와서다.
+    /// 요일명은 팝오버 로케일(companion.language)로 현지화하고, 시각은 항상 24시간 표기.
+    private func resetClockSuffix(_ reset: Date) -> Text {
+        let f = DateFormatter()
+        f.locale = companion.language.displayLocale
+        let nearby = Calendar.current.isDateInToday(reset)
+            || reset.timeIntervalSinceNow <= Self.resetClockWindow
+        f.setLocalizedDateFormatFromTemplate(nearby ? "HHmm" : "EEEEdHHmm")
+        return Text(" (\(f.string(from: reset)))")
+    }
+    private func resetLabel(_ reset: Date) -> Text {
+        Text("· \(reset, style: .relative)") + resetClockSuffix(reset)
+    }
+
     @ViewBuilder
     private func limitRow(name: String, window: LimitWindow?) -> some View {
         if let window, let utilization = window.utilization {
@@ -514,7 +552,7 @@ struct PopoverView: View {
                         .monospacedDigit()
                         .foregroundStyle(limitColor(utilization))
                     if let reset = window.resetDate {
-                        Text("· \(reset, style: .relative)")
+                        resetLabel(reset)
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -653,7 +691,7 @@ struct PopoverView: View {
                         .monospacedDigit()
                         .foregroundStyle(limitColor(utilization))
                     if let reset = window.resetDate {
-                        Text("· \(reset, style: .relative)")
+                        resetLabel(reset)
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
@@ -682,7 +720,7 @@ struct PopoverView: View {
                         .font(.callout)
                         .monospacedDigit()
                         .foregroundStyle(limitColor(utilization))
-                    Text("· \(limit.resetDate, style: .relative)")
+                    resetLabel(limit.resetDate)
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
