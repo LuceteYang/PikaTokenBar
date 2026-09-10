@@ -18,6 +18,13 @@ read_when:
 
 ## 판정·데이터
 
+- **프로필 레벨은 난이도와 반복 부화 보정을 반영한 단계 진행에서 계산한다.** #244/#254의 임계값을
+  낮춰도 #264가 원시 토큰을 기본 졸업 비용으로 나누면 졸업한 개체가 레벨 5 또는 52에 남는다.
+  완료 단계의 기본 비용과 현재 단계의 실제 임계 대비 진행률을 합산해 표준 성장량을 영속한다.
+  난이도 증가·가져오기는 이미 얻은 성장량과 레벨을 낮추지 않으며, 졸업 기록을 만들기 전에 100을
+  확정한다. 메타몽 공개는 희귀도 간 성장 단위를 환산하고 개체 정보만 재설정한다.
+  `ProfileGrowthIntegrationTests`는 난이도 양 끝·반복 부화·설정 변경·재시작·가져오기·사탕·오프라인을 검증한다.
+
 - **옵셔널 tautology.** 옵셔널 필드라도 *생산자가 항상 채우면* `x != nil` 은 항상 참이다. "값이 있나"는
   의미값으로 검사한다(예: `totalTokens > 0`, 또는 진짜 nil 가능한 필드 `activeBlock`). — weekTotal 회귀(#56).
 - **JSON `null` 은 "값 있음"이 아니다.** `obj["x"] != nil` 은 `NSNull` 에도 참이라 `intValue` 가 0 을 돌려주고,
@@ -35,6 +42,19 @@ read_when:
   손으로 지우기 전까지 앱 사용 불가). 방어는 다운스트림 산술 지점마다가 아니라 **값이 들어오는 경계 한
   곳**에서(`SaveTransfer.sanitized`). 자르는 대상은 산술에 쓰이는 수치뿐 — 도감·인벤토리 *항목*은 잘라내면
   데이터 손실이다. (딥리뷰 2026-08-03: SIGTRAP 재현.)
+- **부화 시 확정되는 개체별 성장 보정은 활성 개체에 영속하고 임계값 소비 경로를 하나로 모은다.** 반복 base의
+  가중치는 `chooseBase` 에서만 낮췄고 성장 비용은 희귀도·형태·단계만 읽어서, 이미 졸업한 선형 라인을 다시
+  부화해도 새 라인과 같은 총비용을 냈다(#253). 기존 테스트도 전역 밸런스 합계와 첫 부화만 검증해
+  `졸업 → 같은 base 재부화` 트리거를 밟지 않았다. 할인 자격은 planned final이 아니라
+  `collectedFinals` 의 **base predicate**로 hatch 순간 결정한다 — final 기준이면 아직 공개하지 않은 분기 선택이
+  남은 토큰으로 샌다. 결과는 `MonState.hasGrowthBoost` 에 저장하고 Home 표시·일반 성장·메타몽 리빌이 모두
+  `stageThreshold(for:)` 에서 `MonState.phaseThreshold` 에 난이도를 곱한 값을 읽는다.
+  #244/#254 통합 시 한쪽 임계값만 선택하면 다른 배율이 사라진다. 기존 테스트는 두 기능을 따로 검증했다.
+  `testRepeatBoostComposesWithDifficultyAndLiveChanges` 는 실제 졸업·재부화 후 두 배율을 합성하고,
+  표시 임계 직전/도달·설정 즉시 변경·최종 졸업까지 검증한다.
+  가드: `testRepeatGrowthIsDecidedFromTheCollectedBaseNotThePlannedFinal`·
+  `testRepeatGrowthPersistsAcrossRestartWhileLegacyActiveDefaultsToStandardGrowth`·
+  `testRoundTripPreservesActiveRepeatGrowthBoost`·`testBoostedDisguiseRevealsAtTheHalvedThresholdAndKeepsTheBoost`.
 - **같은 규칙이 세이브 파일이 아니라 *외부에서 오는 모든 수치*에 적용된다 — 파싱 경계도 포함.** 위 규칙을
   "세이브 파일"로 좁게 읽은 탓에 사용량 로그 파서(`LocalUsageReader`)의 `intValue` 가 무방비로 남았고,
   같은 SIGTRAP 이 Codex·Claude·Gemini 세 경로에서 재현됐다(딥리뷰 2026-08-04). 사용량 로그도 앱이 쓴 게
