@@ -67,7 +67,7 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
   자체 cask 를 내므로 분기가 되살아나 있고, **머지가 토큰을 원본 것으로 되돌리면 그때가 위험**하다.
   (`pgrep`/`launchctl` 로 실행 중인 인스턴스를 내리는 로직은 이 파일이 아니라 `scripts/install.sh` 쪽에 있다.) |
 | `Core/AppLog.swift`, `CrashReporter.swift`, `Localization.swift` | 로그 파일명 |
-| `Core/CompanionStore.swift`, `PokeAPIClient.swift`, `LocalUsageCache.swift`, `UsageStore.swift`, `UI/SpriteLoader.swift` | 저장 경로가 `AppIdentity.supportDirectory` |
+| `Core/CompanionStore.swift`, `PokeAPIClient.swift`, `LocalUsageCache.swift`, `UsageStore.swift`, `UI/SpriteLoader.swift` | 저장 경로가 `AppIdentity.supportDirectory`. **`SpriteStore` 는 2.5.3 에서 upstream 이 `init(directory:)` 주입식으로 바꾸면서 기본값에 `"PokeTokenBar/sprites"` 를 하드코딩했다** — 주입 자체는 받되 기본값은 반드시 `spriteCacheDirectory()` 여야 한다. `AppIdentityTests.testSpriteStoreWritesToSameDirectorySpriteLoaderReads` 가 쓰기/읽기 폴더 갈림을 잡는다 |
 | `Core/CompanionModel.swift` | `animatedSpeciesIDs = 1...151`, `EvoLine.init` 의 re-root |
 | `Core/PokeAPIClient.swift` | `baseIndexQuery` 의 `_or`/`_gt` 가지, `isRESTIndexUsable` |
 | `PokeTokenBarApp.swift` | 레거시 저장소 이전이 **없어야** 한다 |
@@ -86,6 +86,22 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
 
 `release-fork.sh` 2단계가 `Sources/` 에서 원본 정체성 문자열(`chattymin`·`"PokeTokenBar[/"]`·
 `PokeTokenBar.log`)을 grep 해 하드 게이트로 막는다 — 머지에서 되돌아온 리터럴은 배포 전에 걸린다.
+
+## 머지에서 매번 나오는 두 부류 (2026-09-11 v2.5.3 동기화에서 확인)
+
+**1. 포크가 원본에 기여한 기능은 양쪽에 같은 코드가 두 벌 들어온다.** 세션 키(`#1` ↔ upstream `#241`)가
+그랬다. 파일 위치가 달라 git 이 충돌로 잡지 못하고 **조용히 두 벌을 다 남긴다** — 컴파일러의
+`invalid redeclaration` 이 유일한 신호다. `Localization.swift` 71줄, `UsageStoreTests.swift` 159줄이
+그렇게 중복됐다. 판정 기준은 "누가 먼저 썼나"가 아니라 **어느 쪽이 상위집합인가**다. upstream 판은
+리뷰를 한 번 더 거쳐 오는 경우가 많다(여기서도 403 처리와 Keychain 폴백 프롬프트 억제가 upstream 에만
+있었다). 머지 후 `swift build` 를 **커밋 전에** 한 번 돌려 재선언을 뽑는다.
+
+**2. upstream 이 새 UI 언어를 추가하면 포크 전용 문자열이 같이 깨진다.** `t()` 인자가 늘어 컴파일이
+막히는 건 시끄러운 실패라 괜찮지만, 채워 넣은 번역이 **길이 가드를 넘기는 건 조용하다**. 독일어
+`dailyTrend` 를 "Täglich diesen Monat" 로 넣었더니 캡션 행이 줄바꿈돼
+`testCaptionStaysOnOneLineInEveryLanguageAtWorstCaseNumbers` 가 빨개졌다("Täglich im Monat" 로 줄여 해소).
+그 테스트가 `AppLanguage.allCases` 를 도니 새 언어는 자동으로 사정권에 들어온다 — 문서가 아니라
+그 순회가 재발 방지 메커니즘이다.
 
 ## 범위를 바꿀 때 (1세대 → 다른 범위)
 
