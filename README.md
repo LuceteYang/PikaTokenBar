@@ -21,9 +21,9 @@
 
 > **PikaTokenBar** is a fork of [PokeTokenBar](https://github.com/chattymin/PokeTokenBar) by [chattymin](https://github.com/chattymin) that shows **Generation 1 only** (#1–151). It installs as a separate app (`PikaTokenBar.app`) that coexists with the original — nothing to uninstall — and is maintained independently of upstream.
 
-PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent & omp — into a growing **Pokémon companion** in your macOS menu bar. Spend tokens, hatch an egg, evolve it through its real evolution line, graduate it into your Pokédex, and start again. Underneath the companion it's a precise usage tracker — today's spend, cost, and official 5-hour / weekly limits, read straight from your local logs.
+PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp & Aside — into a growing **Pokémon companion** in your macOS menu bar. Spend tokens, hatch an egg, evolve it through its real evolution line, graduate it into your Pokédex, and start again. Underneath the companion it's a precise usage tracker — today's spend, cost, and official 5-hour / weekly limits, read straight from your local logs.
 
-> Token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp data (`totalTokens` = input + output + cache, local date) — no external CLI needed. Unofficial, non-commercial Pokémon fan project — see [License & disclaimer](#license--disclaimer).
+> Token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp, and Aside data (`totalTokens` = input + output + cache, local date) — no external CLI needed. Unofficial, non-commercial Pokémon fan project — see [License & disclaimer](#license--disclaimer).
 
 ## Why
 
@@ -37,7 +37,7 @@ PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, 
 
 ## How it works
 
-1. 🥚 **Code as usual.** The tokens you burn in Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, or omp incubate an egg — nothing extra to run.
+1. 🥚 **Code as usual.** The tokens you burn in Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp, or Aside incubate an egg — nothing extra to run.
 2. 🐣 **Hatch.** Eggs hatch into Pokémon with real evolution lines from [PokéAPI](https://pokeapi.co/) — any Gen 1 line (78 possible starts — the other 73 of the 151 are reached only by evolving), weighted by the official capture rate: commons hatch often, a legendary is a 1-in-195 event. It appears in your **Pokédex** immediately while you raise it. Every hatch rolls one of 25 natures — and once in a rare while, the egg hatches **✨ Shiny**.
 3. ⚡ **Evolve.** Keep coding and it grows through its actual evolution tree (1/2/3 stages, branching), with a little flash celebration at each step.
 4. 🎓 **Graduate & collect.** Final form + threshold permanently archives it in your **Pokédex** — rarer takes longer (≈3 days common → ≈24 days legendary at heavy use) — and a fresh egg arrives.
@@ -79,7 +79,7 @@ The <b>Pokédex</b> folds every species you've owned into one cell — 24 per pa
 <td width="45%" align="center"><img src="assets/settings.png" width="300" alt="Settings"><br><br><img src="assets/settings-advanced.png" width="300" alt="Advanced — claude.ai session key for prompt-free official limits"></td>
 <td width="55%" valign="middle">
 <h3>Tune it your way</h3>
-Menu-bar items, refresh interval (1–15 min or manual), launch at login, limit alerts with warning/critical thresholds, and companion event notifications. Under <b>Advanced</b>, paste a claude.ai <code>sessionKey</code> and official limits refresh with <b>no Keychain prompt at all</b> — auto-polling included, so they never go stale (there is still a Keychain opt-out that simply hides the limits section). Full <b>KO / EN / JA / ES / FR / PT</b> UI and Pokémon names.
+Menu-bar items, refresh interval (1–15 min or manual), launch at login, limit alerts with warning/critical thresholds, and companion event notifications. Under <b>Advanced</b>, paste a claude.ai <code>sessionKey</code> and official limits refresh with <b>no Keychain prompt at all</b> — auto-polling included, so they never go stale (there is still a Keychain opt-out that simply hides the limits section). Full <b>KO / EN / JA / ES / FR / PT / DE</b> UI and Pokémon names.
 </td>
 </tr>
 <tr>
@@ -138,7 +138,7 @@ Pi and its forks (like omp) can route more than one model through a single sessi
 - **Representative Pokémon** — pin any owned Pokédex species to the menu bar and optional floating pet, independently of the companion you're raising. While pinned, the menu bar stops following egg, hatch, and evolution changes; raising progress remains visible on Home.
 - **Animation quality** — pick how smoothly the menu bar sprite and the floating pet animate (Power saver / Balanced / Smooth). Both always-visible surfaces share the setting. Power saver is the default and keeps the frame rate the app used before this setting existed; Balanced and Smooth trade battery for smoothness (measured idle CPU ~1.8% and ~5.1%).
 - **Interactive floating pet** — hover for today's usage, click to open the main window, right-click for a menu, and show limit alerts as speech bubbles.
-- **Per-service tabs** — when two or more of Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp are detected, compact tabs switch between them; today's total stays combined.
+- **Per-service tabs** — when two or more of Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp, and Aside are detected, compact tabs switch between them; today's total stays combined.
 - **Official limits** — Claude, Codex & Antigravity 5-hour / weekly utilization with reset countdowns, right under today's numbers.
 - **This month, day by day** — one bar per day of the current month under the week/month totals, with a date axis, weekend ticks, and the day you point at named in the caption (today by default). Derived from the logs already on disk, so it is complete on the first refresh after updating.
 - **Additional scan folders** — per-provider extra scan roots for logs kept outside the built-in paths (Settings → Advanced).
@@ -161,6 +161,7 @@ Pi and its forks (like omp) can route more than one model through a single sessi
 | **Kiro CLI** | today · 5h block · week · month | — (estimated) |
 | **Pi Agent** | today · 5h block · week · month | — |
 | **omp** (oh-my-pi) | today · 5h block · week · month | — |
+| **Aside** | today · 5h block · week · month | — |
 
 All read locally — no external usage CLI required. Adding a tool is one provider file (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
@@ -168,7 +169,7 @@ All read locally — no external usage CLI required. Adding a tool is one provid
 
 ### Requirements
 
-macOS 14+ (Apple Silicon or Intel). That's it — token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp data, with no external usage CLI required.
+macOS 14+ (Apple Silicon or Intel). That's it — token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp, and Aside data, with no external usage CLI required.
 
 ### Install / update
 
@@ -222,6 +223,7 @@ swift test                   # unit tests
 | `~/Library/Application Support/kiro-cli/data.sqlite3`<br>`~/.kiro/sessions/cli/*.jsonl`<br>`~/.kiro/sessions/<ws>/<session>/messages.jsonl` | Kiro CLI daily/blocks/weekly/monthly | Pre-2.20 SQLite plus 2.20+ / `--v3` JSONL; neither store records real token counts, so input is a bytes÷4 **estimate** of accumulated conversation text resent on every turn; `usage_summary` credits are not converted to USD; a `/clear`d SQLite conversation's already-counted tokens stay counted until the app restarts; honours `$KIRO_CLI_HOME` and `$KIRO_HOME` |
 | `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | Direct persisted usage from all projects; `$PI_CODING_AGENT_DIR` and `$PI_CODING_AGENT_SESSION_DIR` overrides supported; output already includes reasoning (not counted twice); forked history deduplicated by entry ID; no cost is reported |
 | `~/.omp/agent/sessions/**/*.jsonl` | omp (oh-my-pi) daily/blocks/weekly/monthly | pi-format session JSONL; every assistant `usage` event is summed (rewound branches are already billed) and subagent session files count too, since their tokens are not folded into the parent; honours `$OMP_CODING_AGENT_DIR`; per-event `cost` is trusted when reported; `bridge/` conversion copies are skipped because their originals are already counted at the source |
+| `~/.aside/u/**/state.db` | Aside daily/blocks/weekly/monthly | SQLite read-only; only usage metadata is selected — conversation bodies and credentials are never read. Aside stores *mutable* turn aggregates and `ON DELETE CASCADE` drops a deleted session's turns, so each scan is merged with previously-seen entries (like Kiro): a deleted session stays counted until the scan cache is dropped (Settings save, month rollover, relaunch). No per-model breakdown — `sessions.model` is the session's *current* model, not a per-turn record, so it would relabel earlier turns on every refill |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude official 5h/weekly % | unofficial endpoint; the Keychain is read **only when you press refresh** — auto-polling never reads it |
 | `session-key.json` → `claude.ai/api` | Claude official 5h/weekly % | optional: paste your claude.ai `sessionKey` cookie in Settings and limits refresh with **no Keychain prompt at all**, including auto-polling |
 | `codex app-server` | Codex official 5h/weekly % | local child process; account snapshot only, no model turn |
@@ -234,7 +236,7 @@ If a provider's logs live **outside** those built-in paths, add the folder in **
 
 ## Privacy & permissions
 
-- **On-device first.** Token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, and omp data. The app never uploads usage or runs model turns.
+- **On-device first.** Token usage is read directly from local Claude Code, Codex, Gemini CLI, Antigravity, OpenCode, Hermes Agent, Cursor, Grok CLI, Copilot CLI, Kiro CLI, Pi Agent, omp, and Aside data. The app never uploads usage or runs model turns.
 - **Outbound requests.** The app is not fully offline. It talks to twelve hosts: `pokeapi.co` and `graphql.pokeapi.co` (species/evolution), `raw.githubusercontent.com` (sprites), `api.anthropic.com` (Claude official limits), `claude.ai` (Claude official limits when you save an optional claude.ai session key in Settings — the key only, no prompts or project paths), `cursor.com` (Cursor usage summary when you are signed into Cursor locally — session credential only, no prompts or project paths), `cloudcode-pa.googleapis.com` and `daily-cloudcode-pa.googleapis.com` (Antigravity official limits) plus `oauth2.googleapis.com` (their token refresh), `status.claude.com` and `status.openai.com` (incident banner — off switch in Settings), and `api.github.com` (update check). **None of them carry your usage logs, prompts, or project paths** — only the request itself (Cursor sends your session cookie to fetch your own usage rows, same as the web dashboard).
 - **Keychain (optional).** The Claude OAuth credential is read **only when you press a refresh button** (Settings, or the limits row in the popover). Automatic polling never touches the Keychain, so it never raises a password prompt; when `~/.claude/.credentials.json` is present, each poll re-reads it, so an in-place `/login` to another account is picked up without pressing refresh. The token is held in memory only — the app creates no Keychain item of its own. If there is no credentials file, limits stay on the cached token until it expires or you refresh. Turn it off in Settings — the limits section simply hides.
 - **Session key (optional).** If you paste a claude.ai `sessionKey` in Settings, limits are fetched without touching the Keychain — so auto-polling stays current instead of going stale. The key is stored as an owner-only (`0600`) plaintext file at `~/Library/Application Support/PikaTokenBar/session-key.json`, **not encrypted**, because an app-owned Keychain item would bring the permission prompts back. It grants access to your claude.ai account, so treat it accordingly: delete it in Settings, or log out in your browser to invalidate it immediately.

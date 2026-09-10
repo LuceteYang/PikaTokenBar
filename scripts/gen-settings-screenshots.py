@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -259,7 +259,7 @@ def html(lang, advanced=False):
         sec(s("pet")),
         card(
             row(s("petEnable"), tog(True), s("petHint")),
-            row(s("petSize"), slider(38) + '<div class="val">96px</div>'),
+            row(s("petSize"), slider(14) + '<div class="val">96px</div>'),
             row(s("petBubble"), tog(True)),
         ),
         sec(s("notifications")),

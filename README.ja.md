@@ -22,9 +22,9 @@
 
 > **PikaTokenBar** は [chattymin](https://github.com/chattymin) の [PokeTokenBar](https://github.com/chattymin/PokeTokenBar) をフォークし、**第1世代のみ**（#1–151）を表示するバージョンです。オリジナルとは別のアプリ（`PikaTokenBar.app`）としてインストールされ共存します — アンインストールするものはありません — オリジナルとは独立してメンテナンスされています。
 
-PikaTokenBar は、あなたがすでに使っている AI コーディングトークン（Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp）を、macOS メニューバーの中で育っていく **ポケモンのパートナー** に変えます。トークンを使うとタマゴが孵化し、実際の進化ラインに沿って進化し、最終進化後に図鑑へ卒業して、また新しいタマゴが始まります。パートナーの下には正確な使用量トラッカーがあります — 今日の使用量・コスト、公式の5時間／週間上限をローカルログから直接読み取ります。
+PikaTokenBar は、あなたがすでに使っている AI コーディングトークン（Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside）を、macOS メニューバーの中で育っていく **ポケモンのパートナー** に変えます。トークンを使うとタマゴが孵化し、実際の進化ラインに沿って進化し、最終進化後に図鑑へ卒業して、また新しいタマゴが始まります。パートナーの下には正確な使用量トラッカーがあります — 今日の使用量・コスト、公式の5時間／週間上限をローカルログから直接読み取ります。
 
-> トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp データから直接読み取ります（`totalTokens` = input + output + cache、ローカル日付）— 外部 CLI 不要。非公式・非商用のポケモンファンプロジェクトです — [ライセンス & 免責](#ライセンス--免責) を参照。
+> トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside データから直接読み取ります（`totalTokens` = input + output + cache、ローカル日付）— 外部 CLI 不要。非公式・非商用のポケモンファンプロジェクトです — [ライセンス & 免責](#ライセンス--免責) を参照。
 
 ## なぜ
 
@@ -38,7 +38,7 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 
 ## しくみ
 
-1. 🥚 **いつも通りコーディング。** Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp で使うトークンがタマゴを温めます — 追加の操作は不要です。
+1. 🥚 **いつも通りコーディング。** Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside で使うトークンがタマゴを温めます — 追加の操作は不要です。
 2. 🐣 **孵化。** [PokéAPI](https://pokeapi.co/) の**第1世代すべての進化系統（起点78種 — 残り73種は進化でしか出会えません）**から、公式の捕獲率で重み付けされて生まれます — よくいるポケモンは頻繁に、伝説は195回に1回。孵化したポケモンは育成中もすぐに **図鑑** に表示されます。孵化ごとに25種類のせいかくがひとつ決まり — **ごくまれな偶然で ✨ 色違いが生まれます**。
 3. ⚡ **進化。** コーディングを続けると実際の進化ツリー（1/2/3段階、分岐）に沿って育ち、各段階で小さな演出が流れます。
 4. 🎓 **卒業 & 収集。** 最終進化 + 閾値で **図鑑** に永久保存されます — レアなほど時間がかかり（ヘビーユーザーで common ≈3日 → legendary ≈24日）— 新しいタマゴが届きます。
@@ -80,7 +80,7 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 <td width="45%" align="center"><img src="assets/settings-ja.png" width="300" alt="設定"><br><br><img src="assets/settings-advanced-ja.png" width="300" alt="詳細 — プロンプトなしで公式上限を取得する claude.ai セッションキー"></td>
 <td width="55%" valign="middle">
 <h3>設定はお好みで</h3>
-メニューバー表示項目、更新間隔（1–15分／手動）、ログイン時に起動、警告／危険の閾値つき上限通知、パートナーのイベント通知。<b>詳細</b>で claude.ai の <code>sessionKey</code> を貼り付けると、公式上限を<b>Keychain のプロンプトなし</b>で取得します — 自動更新も含まれるため stale のまま固まりません（上限セクションだけを隠す Keychain オフも従来どおり残っています）。<b>韓国語／英語／日本語／スペイン語／フランス語／ポルトガル語</b>の UI とポケモン名を完備。
+メニューバー表示項目、更新間隔（1–15分／手動）、ログイン時に起動、警告／危険の閾値つき上限通知、パートナーのイベント通知。<b>詳細</b>で claude.ai の <code>sessionKey</code> を貼り付けると、公式上限を<b>Keychain のプロンプトなし</b>で取得します — 自動更新も含まれるため stale のまま固まりません（上限セクションだけを隠す Keychain オフも従来どおり残っています）。<b>韓国語／英語／日本語／スペイン語／フランス語／ポルトガル語／ドイツ語</b>の UI とポケモン名を完備。
 </td>
 </tr>
 <tr>
@@ -139,7 +139,7 @@ Pi とそのフォーク（omp など）は複数のモデルを一つのセッ�
 - **代表ポケモン** — 図鑑で所有している種を選び、育成中のポケモンとは別にメニューバーと任意のフローティングペットへ固定。固定中はメニューバーがタマゴ・孵化・進化を追わなくなりますが、育成の進行は Home で引き続き確認できます。
 - **アニメーション品質** — メニューバーのスプライトとフローティングペットの滑らかさを選べます（バッテリー優先／標準／滑らか）。常に表示される2つの表面が同じ設定を共有します。既定の「バッテリー優先」はこの設定が入る前と同じフレームレートで、「標準」「滑らか」はバッテリーを多く使います（実測アイドル CPU 約1.8%／約5.1%）。
 - **インタラクティブなフローティングペット** — ホバーで今日の使用量、クリックでメイン画面、右クリックでメニュー、上限アラートは吹き出しで表示。
-- **サービス別タブ** — Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp のうち2つ以上が検出されると、小さなタブでサービス別の詳細を切替（今日の合計は合算のまま）。
+- **サービス別タブ** — Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside のうち2つ以上が検出されると、小さなタブでサービス別の詳細を切替（今日の合計は合算のまま）。
 - **公式の上限** — Claude・Codex・Antigravity の5時間／週間使用率とリセットのカウントダウンを、今日の数字のすぐ下に。
 - **今月の日別推移** — 週間・月間の合計の下に、今月の1日ごとのバーを1本ずつ。日付軸と週末表示があり、指した日（既定は今日）の日付・曜日・使用量がキャプションに出ます。ディスク上のログから導出するため、更新後の最初のリフレッシュで埋まります。
 - **追加スキャンフォルダ** — 既定のパスの外にあるログのために、プロバイダーごとにスキャンルートを追加（設定 → 詳細）。
@@ -162,6 +162,7 @@ Pi とそのフォーク（omp など）は複数のモデルを一つのセッ�
 | **Kiro CLI** | 今日 · 5時間ブロック · 週 · 月 | — (推定値) |
 | **Pi Agent** | 今日 · 5時間ブロック · 週 · 月 | — |
 | **omp** (oh-my-pi) | 今日 · 5時間ブロック · 週 · 月 | — |
+| **Aside** | 今日 · 5時間ブロック · 週 · 月 | — |
 
 すべてローカルから読み取り — 外部の使用量CLIは不要。ツール追加はプロバイダーファイル1つで完結します（[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) 参照）。
 
@@ -169,7 +170,7 @@ Pi とそのフォーク（omp など）は複数のモデルを一つのセッ�
 
 ### 必要条件
 
-macOS 14+（Apple Silicon または Intel）。それだけ — トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp データから直接読み取り、外部の使用量 CLI は不要です。
+macOS 14+（Apple Silicon または Intel）。それだけ — トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside データから直接読み取り、外部の使用量 CLI は不要です。
 
 ### インストール／更新
 
@@ -223,6 +224,7 @@ swift test                   # ユニットテスト
 | `~/Library/Application Support/kiro-cli/data.sqlite3`<br>`~/.kiro/sessions/cli/*.jsonl`<br>`~/.kiro/sessions/<ws>/<session>/messages.jsonl` | Kiro CLI daily/blocks/weekly/monthly | 2.20 以前の SQLite と 2.20+ / `--v3` の JSONL。どちらも実トークン数を記録しないため、input は毎ターン再送される累積会話テキストをバイト÷4 で**推定**。`usage_summary` のクレジットは USD に換算しない。`/clear`・圧縮で消えた SQLite 会話の集計済みトークンはアプリ再起動まで数え続ける。`$KIRO_CLI_HOME` と `$KIRO_HOME` に対応 |
 | `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | 全プロジェクトの保存済み usage を直接集計；`$PI_CODING_AGENT_DIR`・`$PI_CODING_AGENT_SESSION_DIR` override 対応；output には reasoning がすでに含まれるため二重計上しない；fork のコピーは entry ID で重複排除；コストは表示しない |
 | `~/.omp/agent/sessions/**/*.jsonl` | omp (oh-my-pi) daily/blocks/weekly/monthly | pi 形式セッション JSONL；すべての assistant `usage` イベントを合算（巻き戻した分岐も請求済みトークン）し、サブエージェントのセッションファイルも親に折り込まれないため合算対象；`$OMP_CODING_AGENT_DIR` を尊重；イベントごとの `cost` が記録されていればそのまま信頼；`bridge/` 以下の変換コピーは原本側で集計済みのため除外 |
+| `~/.aside/u/**/state.db` | Aside daily/blocks/weekly/monthly | SQLite 読み取り専用；使用量メタデータのみを取得し、会話本文や資格情報は読みません。Aside は追記型イベントではなく*可変の*ターン集計を保存し、`ON DELETE CASCADE` で削除セッションのターンが消えるため、毎回のスキャンを既知エントリとマージします（Kiro と同じ方式）— 削除したセッションはスキャンキャッシュが破棄されるまで（設定の保存・月替わり・再起動）集計に残ります。モデル別内訳はありません — `sessions.model` はターン単位の記録ではなくセッションの*現在の*モデルなので、更新のたびに過去のターンのラベルが変わってしまいます |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude 公式 5h/週間 % | 非公式 endpoint；Keychain は**更新ボタンを押した時のみ**読み取り — 自動更新では読みません |
 | `session-key.json` → `claude.ai/api` | Claude 公式 5h/週間 % | 任意：設定に claude.ai の `sessionKey` クッキーを貼り付けると、**Keychain のプロンプトなしで**自動更新でも上限が更新されます |
 | `codex app-server` | Codex 公式 5h/週間 % | ローカル子プロセス；アカウント snapshot のみ、モデル turn なし |
@@ -235,7 +237,7 @@ swift test                   # ユニットテスト
 
 ## プライバシー & 権限
 
-- **オンデバイス優先。** トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp データから直接読み取ります。使用量のアップロードも、モデルの推論実行も行いません。
+- **オンデバイス優先。** トークン使用量はローカルの Claude Code・Codex・Gemini CLI・Antigravity・OpenCode・Hermes Agent・Cursor・Grok CLI・Copilot CLI・Kiro CLI・Pi Agent・omp・Aside データから直接読み取ります。使用量のアップロードも、モデルの推論実行も行いません。
 - **外部リクエスト。** 本アプリは完全オフラインではありません。12のホストに接続します — `pokeapi.co`・`graphql.pokeapi.co`（種・進化）、`raw.githubusercontent.com`（スプライト）、`api.anthropic.com`（Claude 公式の上限）、`claude.ai`（設定で claude.ai セッションキーを保存した場合の Claude 公式の上限 — そのキーのみ、プロンプトやプロジェクトのパスは送りません）、`cursor.com`（ローカルで Cursor にサインインしている場合の Cursor 使用量サマリー — セッション資格情報のみ、プロンプトやプロジェクトのパスは送りません）、`cloudcode-pa.googleapis.com`・`daily-cloudcode-pa.googleapis.com`（Antigravity 公式の上限）と `oauth2.googleapis.com`（トークン更新）、`status.claude.com`・`status.openai.com`（障害バナー — 設定でオフ可）、`api.github.com`（アップデート確認）。**いずれのリクエストにも使用量ログ・プロンプト・プロジェクトのパスは含まれません** — 送られるのはリクエストそのものだけです（Cursor は Web ダッシュボードと同様に、自分の使用量の行を取得するためセッション Cookie を送信します）。
 - **Keychain（任意）。** Claude OAuth 資格情報は**更新ボタンを押した時のみ**読み取ります（設定、またはポップオーバーの上限行）。自動更新では Keychain に触れないためパスワードのプロンプトは表示されず、`~/.claude/.credentials.json` があれば毎回読み直すので、`/login` でアカウントを切り替えても更新ボタンなしで追従します。トークンはメモリ上にのみ保持し、**アプリ自身の Keychain 項目は作成しません。** 資格情報ファイルが無い場合、上限はキャッシュされたトークンが期限切れになるか更新するまで以前の値のままです。設定でオフにすると上限セクションが非表示になります。
 - **セッションキー（任意）。** 設定に claude.ai の `sessionKey` を貼り付けると、Keychain に触れずに上限を取得します — 自動更新が続くため stale のまま固まりません。キーは `~/Library/Application Support/PikaTokenBar/session-key.json` に所有者のみ読み取り可能（`0600`）な**平文**で保存されます（アプリ自身の Keychain 項目を作るとプロンプトが復活するため、あえてファイルにします）。このキーは claude.ai アカウントへのアクセス権を持つため、取り扱いにはご注意ください — 設定から削除するか、ブラウザでログアウトすれば即時無効になります。
