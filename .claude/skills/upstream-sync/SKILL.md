@@ -110,28 +110,9 @@ revert 는 커밋일 뿐이라 **git 에게 그 내용을 앞으로도 거부하
 포크에서 고친 것 중 **범위·정체성과 무관한 것**은 원본 사용자에게도 이롭다. 원본에 올리면 다음
 동기화 때 그 수정이 upstream 쪽에서 돌아와 포크의 diff 가 줄어든다 — 유지비가 내려간다.
 
-### 자격
-
-세 가지를 **모두** 만족해야 후보다:
-
-- `AppIdentity` 를 참조하지 않는다 (정체성 무관)
-- 1세대 범위를 가정하지 않는다 — 649 에서도 참이어야 한다
-- 원본에서 **실제로 재현되는** 문제를 고친다 (내 범위에서만 드러나는 잠재 결함이면, 원본 기준으로
-  재현되는지 먼저 확인한다. 재현 안 되면 "견고성 개선"으로 제안하되 거절될 수 있음을 안다)
-
-### 절차
-
-포크 `main` 은 정체성 변경을 이고 있으므로 **거기서 PR 을 만들면 안 된다.** 원본 기준으로 새로 딴다:
-
-    git fetch upstream
-    git checkout -b fix/<topic> upstream/main
-    git cherry-pick <내-커밋-sha>       # 정체성 변경이 섞여 있으면 손으로 덜어낸다
-    swift test                          # 649 범위 기준으로 통과해야 한다
-    git push -u origin fix/<topic>
-    gh pr create --repo chattymin/PokeTokenBar --base main
-
-**PR 제목·본문은 영어로 쓴다** (`CLAUDE.md` 기여 언어 규약 — 한국어로 지시받아도 산출물은 영어).
-포크에 대한 언급은 PR 에 넣지 않는다. 원본 입장에서 그 변경이 왜 옳은지만 쓴다.
+절차는 이 스킬이 아니라 **`contribute-upstream` 스킬**이 담당한다: 기여 자격 3조건, 포크에서
+개발·검증한 뒤 `upstream/main` 기준으로 옮겨 담는 법, 영어 PR, 그리고 머지된 기능이 sync 로
+돌아올 때까지 **포크 `main` 에 머지하지 않는** 착지 규칙까지 거기 있다.
 
 ## Quick Reference
 
@@ -143,7 +124,7 @@ revert 는 커밋일 뿐이라 **git 에게 그 내용을 앞으로도 거부하
 | 원본 커밋이 포크 목적과 충돌 | 머지 후 `git revert` + `upstream-reject <sha>:` 커밋 메시지 |
 | 머지 충돌 | `fork-maintenance.md` 표에서 포크 소유 파일 확인 → 내 쪽 유지 |
 | 지금까지 뭘 거부했지? | `git log --grep="upstream-reject"` |
-| 내 수정을 원본에 | `upstream/main` 기준 브랜치 → cherry-pick → 영어 PR |
+| 내 수정을 원본에 | `contribute-upstream` 스킬 |
 
 ## Common Mistakes
 
