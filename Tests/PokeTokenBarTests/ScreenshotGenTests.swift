@@ -20,6 +20,13 @@ import SwiftUI
 /// `ImageRenderer` 에서 "미지원" 플레이스홀더로 그려진다. 그런 뷰를 담으려면
 /// `NSWindow` 에 올려 `cacheDisplay(in:to:)` 로 떠야 실제 모습이 나온다
 /// (`LimitProgressRenderingTests` 가 그 방식으로 페이스 눈금을 검증한다).
+///
+/// 다만 **색까지는 재현되지 않는다.** 테스트 프로세스는 앱으로 활성화되지 않아
+/// (`NSApp.isActive == false`) AppKit 이 컨트롤을 비강조 스타일로 그린다 — 막대 채움이 tint
+/// 대신 회색으로 나온다. 활성화 정책 `.regular`, `NSApp.activate`, key/main 오버라이드,
+/// 화면에 띄운 창의 컴포지터 캡처(`CGWindowListCreateImage`)까지 모두 회색이었다.
+/// 그래서 이 헬퍼의 출력은 **배치·크기 확인용**이고, 색이 중요한 홍보용 이미지는 실행 중인
+/// 앱을 직접 캡처해서 쓴다(`assets/screenshot-quota-alignment.png` 도 그렇게 만들어졌다).
 final class ScreenshotGenTests: XCTestCase {
 
     /// 데모용 한 달치 일별 사용량 — 실제 로그처럼 쉬는 날(0)과 몰아친 날이 섞여야 기능이 읽힌다.
