@@ -227,18 +227,20 @@ struct PopoverView: View {
             }
             .padding(.top, 2)
 
-            MonthDailyTrend(series: store.monthDailyTotals,
-                            providers: store.snapshots.compactMap { snap in
-                                snap.monthDaily.map {
-                                    DailyTrendStack.ProviderSeries(
-                                        id: snap.providerID, name: snap.displayName,
-                                        days: $0, reportsCost: snap.reportsCost)
-                                }
-                            },
-                            providerOrder: store.registeredProviderIDs,
-                            showsCost: store.showsCost,
-                            today: LocalUsageReader.todayKey(),
-                            l: l)
+            ActivityPanel(visualization: store.activityVisualization,
+                          series: store.monthDailyTotals,
+                          providers: store.snapshots.compactMap { snap in
+                              snap.monthDaily.map {
+                                  DailyTrendStack.ProviderSeries(
+                                      id: snap.providerID, name: snap.displayName,
+                                      days: $0, reportsCost: snap.reportsCost)
+                              }
+                          },
+                          providerOrder: store.registeredProviderIDs,
+                          showsCost: store.showsCost,
+                          today: LocalUsageReader.todayKey(),
+                          l: l,
+                          onCycle: { store.activityVisualization = store.activityVisualization.next })
 
             // 연결된 서비스가 2개 이상이면 작은 탭으로 서비스별 상세를 넘나든다
             // (합계는 위에 유지 — 상세·한도만 탭 스코프).
@@ -1064,6 +1066,9 @@ struct MonthDailyTrend: View {
     /// 오늘의 `localDay` 키 — 강조할 막대를 뷰가 시계를 다시 읽어 고르지 않게 주입한다.
     let today: String
     let l: L
+    /// What sits at the caption's right end — the visualization switch dots (`PageDots`). A slot
+    /// rather than a reference to `ActivityVisualization`, so visualizations do not know each other.
+    var trailing = AnyView(EmptyView())
 
     /// The hovered bar. Its day's numbers show in a tooltip above the bars, without the `.help` delay.
     /// The caption keeps today's combined readout either way — opening the popover shows today's
@@ -1108,7 +1113,7 @@ struct MonthDailyTrend: View {
                 weekendTickRow(columns)
                 axisRow(columns)
                 if DailyTrendStack.isStacked(stack) {
-                    legend(stack, colors: colors)
+                    Self.legend(stack, colors: colors)
                         .padding(.top, 2)
                 }
             }
@@ -1139,6 +1144,7 @@ struct MonthDailyTrend: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
+            trailing
         }
     }
 
@@ -1153,8 +1159,8 @@ struct MonthDailyTrend: View {
     }
 
     /// Swatch + name per provider, wrapping onto more lines rather than truncating — names are
-    /// what tells providers apart once colors repeat.
-    private func legend(_ stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
+    /// what tells providers apart once colors repeat. Shared with `MonthHeatmap`.
+    static func legend(_ stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
         WrappingHStack(spacing: 8, lineSpacing: 2) {
             ForEach(stack, id: \.id) { provider in
                 HStack(spacing: 3) {
@@ -1167,7 +1173,7 @@ struct MonthDailyTrend: View {
         }
     }
 
-    private func swatch(_ providerID: String, _ colors: [String: Int]) -> some View {
+    static func swatch(_ providerID: String, _ colors: [String: Int]) -> some View {
         RoundedRectangle(cornerRadius: 1)
             .fill(color(for: providerID, in: colors))
             .frame(width: 6, height: 6)
@@ -1203,7 +1209,7 @@ struct MonthDailyTrend: View {
             .font(.caption)
             ForEach(info.providers, id: \.id) { row in
                 HStack(spacing: 4) {
-                    swatch(row.id, colors)
+                    Self.swatch(row.id, colors)
                     Text(row.name).foregroundStyle(.secondary)
                     Spacer(minLength: 8)
                     Text(row.tokens)
@@ -1267,7 +1273,7 @@ struct MonthDailyTrend: View {
                             colors: [String: Int], highlighted: Bool) -> some View {
         VStack(spacing: 0) {
             ForEach(segments.reversed(), id: \.providerID) { segment in
-                color(for: segment.providerID, in: colors)
+                Self.color(for: segment.providerID, in: colors)
                     .opacity(highlighted ? 1 : 0.55)
                     .frame(height: segment.height)
             }
@@ -1276,7 +1282,7 @@ struct MonthDailyTrend: View {
         .clipShape(RoundedRectangle(cornerRadius: 1, style: .continuous))
     }
 
-    private func color(for providerID: String, in colors: [String: Int]) -> Color {
+    static func color(for providerID: String, in colors: [String: Int]) -> Color {
         Self.providerPalette[(colors[providerID] ?? 0) % Self.providerPalette.count]
     }
 
