@@ -33,7 +33,7 @@ PikaTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 - 공식 **5시간 / 주간** 한도를 리셋 카운트다운과 함께 추적하고, 현재 burn rate로 언제 도달할지 예측합니다.
 
 <div align="center">
-<img src="assets/screenshot-home.gif" width="420" alt="팝오버 홈 — companion, 오늘 토큰, 공식 한도">
+<img src="assets/screenshot-home.png" width="420" alt="팝오버 홈 — companion, 오늘 토큰, 공식 한도">
 </div>
 
 ## 어떻게 자라나요
@@ -100,7 +100,7 @@ PikaTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 <tr>
 <td width="55%" valign="middle">
 <h3>📊 공식 한도, 이제 Antigravity 도</h3>
-Antigravity 2.0 과 IDE 가 추정치가 아닌 실제 할당량을 보고합니다. Gemini 모델군과 Claude &amp; GPT 모델군이 각각 <b>5시간</b>·<b>주간</b> 버킷과 리셋 카운트다운을 갖고, Claude Code·Codex 와 나란히 표시됩니다. 백그라운드에서 조용히 읽어와서 Keychain 팝업이 뜨지 않고, 세션도 알아서 갱신됩니다.
+Antigravity 2.0 과 IDE 가 추정치가 아닌 실제 할당량을 보고합니다. Gemini 모델군과 Claude &amp; GPT 모델군이 각각 <b>5시간</b>·<b>주간</b> 버킷과 리셋 카운트다운을 갖고, Claude Code·Codex 와 나란히 표시됩니다. 백그라운드에서는 토큰 파일을 읽고 OAuth 자격증명을 자동 갱신할 수 있습니다. 수동 갱신은 Keychain에 접근할 수 있습니다.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-antigravity-limits-ko.png" width="300" alt="Antigravity 공식 한도 — 모델군별 5시간·주간 버킷"></td>
 </tr>
@@ -129,13 +129,43 @@ Antigravity 2.0 과 IDE 가 추정치가 아닌 실제 할당량을 보고합니
 <td width="45%" align="center"><img src="assets/screenshot-model-breakdown-ko.png" width="300" alt="Pi 의 모델별 토큰 내역"></td>
 <td width="55%" valign="middle">
 <h3>🧮 세션 로그 하나, 모델 여럿</h3>
-Pi 와 그 포크(omp 등)는 모델 여러 개를 세션 로그 하나로 흘려보낼 수 있습니다. 이제 사용량이 일률적인 "pi" 가 아니라 <b>실제 모델 id</b> 로 귀속되고, 하루에 여러 모델을 썼다면 팝오버가 오늘 토큰을 모델별로 큰 순서대로 풀어 보여줍니다.
+Pi는 모델 여러 개를 세션 로그 하나로 흘려보낼 수 있습니다. 이제 사용량이 일률적인 "pi" 가 아니라 <b>실제 모델 id</b> 로 귀속되고, 하루에 여러 모델을 썼다면 팝오버가 오늘 토큰을 모델별로 큰 순서대로 풀어 보여줍니다.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-pokemon-profile-ko.png" width="300" alt="포켓몬마다 고유한 프로필"></td>
+<td width="55%" valign="middle">
+<h3>포켓몬마다 고유한 프로필</h3>
+<b>도감</b>에서 종을 열면 개체별 레벨·성별·성격·특성·개체값·계산된 능력치·배운 기술을 확인할 수 있습니다. 종 설명과 특성·기술은 선택 언어로 표시하고, PokéAPI에 번역이 없으면 영어를 사용합니다.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-difficulty-ko.png" width="300" alt="내 페이스에 맞춰 키우기"></td>
+<td width="55%" valign="middle">
+<h3>내 페이스에 맞춰 키우기</h3>
+성장 임계값과 상점 가격을 각각 <b>10%~200%</b>로 조절합니다. 슬라이더는 임시 변경이며 <b>저장</b>을 눌러야 적용됩니다. 성장 난이도를 바꿔도 현재 단계의 진행률을 유지해 즉시 진화하지 않습니다. 이미 졸업시킨 진화 계보에서 다시 부화하면 <b>2배 빠르게</b> 자랍니다.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-daily-trend-ko.png" width="300" alt="이번 달 사용량을 하루씩"></td>
+<td width="55%" valign="middle">
+<h3>이번 달 사용량을 하루씩</h3>
+주간·월간 합계 아래의 작은 그래프로 이번 달 시작부터 오늘까지 확인합니다. 그래프는 모든 도구의 합계입니다. 막대에 마우스를 올려 해당 날짜의 토큰 수와, 비용 표시를 켠 경우 비용을 확인하세요.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-quota-alignment-ko.png" width="300" alt="한눈에 읽는 한도"></td>
+<td width="55%" valign="middle">
+<h3>한눈에 읽는 한도</h3>
+리셋 카운트다운에 실제 시각을 함께 표시하고, 모든 한도 행의 강조색 퍼센트를 오른쪽 끝에 정렬합니다. 설정에서 사용량·남은량을 고르면 숫자와 그래프가 모두 같은 기준으로 바뀝니다.
 </td>
 </tr>
 </table>
 
 ## 이 밖에도
 
+- **저전력 모드** — 메뉴바 애니메이션을 배터리 절약 품질로 계속 표시합니다.
+- **재연결 시 새로고침** — 네트워크가 복구되면 사용량과 한도를 새로고침합니다.
 - **대표 포켓몬** — 도감에서 보유한 종을 골라 현재 키우는 포켓몬과 별개로 메뉴바와 선택적 플로팅 펫에 고정. 고정 중에는 메뉴바가 알·부화·진화를 따라가지 않지만, 육성 과정은 Home에서 계속 확인할 수 있습니다.
 - **애니메이션 품질** — 메뉴바 스프라이트와 플로팅 펫이 얼마나 부드럽게 움직일지 고릅니다(배터리 절약 / 기본 / 부드럽게). 상시 표시되는 두 표면이 같은 설정을 씁니다. 기본값 "배터리 절약"은 이 설정이 생기기 전과 같은 프레임 레이트이고, "기본"·"부드럽게"는 배터리를 더 씁니다(실측 유휴 CPU 약 1.8% / 약 5.1%).
 - **인터랙티브 플로팅 펫** — 호버로 오늘 사용량, 클릭으로 메인 창, 우클릭 메뉴, 한도 알림은 말풍선으로 표시.
@@ -164,7 +194,7 @@ Pi 와 그 포크(omp 등)는 모델 여러 개를 세션 로그 하나로 흘�
 | **omp** (oh-my-pi) | 오늘 · 5시간 블록 · 주 · 월 | — |
 | **Aside** | 오늘 · 5시간 블록 · 주 · 월 | — |
 
-모두 로컬에서 읽습니다 — 외부 사용량 CLI 불필요. 도구 추가는 프로바이더 파일 하나면 됩니다([CONTRIBUTING.ko.md](CONTRIBUTING.ko.md) 참고).
+모두 로컬에서 읽습니다 — 외부 사용량 CLI 불필요. 도구는 프로바이더 구현과 등록으로 추가합니다([CONTRIBUTING.ko.md](CONTRIBUTING.ko.md) 참고).
 
 ## 설치
 
@@ -222,7 +252,7 @@ swift test                   # 단위 테스트
 | `~/.grok/sessions/**/updates.jsonl` | Grok CLI daily/blocks/weekly/monthly | `turn_completed` 레코드(턴 단위 `usage`, 서버 보고 비용); `$GROK_HOME` 설정 시 그 경로; 서브에이전트 세션은 토큰이 부모 턴에 이미 포함돼 제외 |
 | `~/.copilot/session-store.db` | Copilot CLI daily/blocks/weekly/monthly | SQLite 읽기 전용; `assistant_usage_events` 1행 = API 호출 1건; `$COPILOT_HOME` 설정 시 그 경로; `input_tokens` 에 캐시 프롬프트가 이미 포함돼 캐시 read/write 를 빼고 집계; premium request 과금이라 비용은 추정하지 않음 |
 | `~/Library/Application Support/kiro-cli/data.sqlite3`<br>`~/.kiro/sessions/cli/*.jsonl`<br>`~/.kiro/sessions/<ws>/<session>/messages.jsonl` | Kiro CLI daily/blocks/weekly/monthly | 2.20 이전 SQLite + 2.20+/`--v3` JSONL; 어느 쪽도 실제 토큰 수를 저장하지 않아 input 은 매 턴 재전송되는 누적 대화 텍스트를 바이트÷4 로 **추정**; `usage_summary` 크레딧은 USD 로 바꾸지 않음; `/clear`·압축으로 지워진 SQLite 대화의 이미 집계된 토큰은 앱을 재시작하기 전까지 계속 집계; `$KIRO_CLI_HOME`·`$KIRO_HOME` 지원 |
-| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | 모든 프로젝트의 저장된 usage를 직접 집계; `$PI_CODING_AGENT_DIR`·`$PI_CODING_AGENT_SESSION_DIR` override 지원; output에는 reasoning이 이미 포함되어 별도 합산하지 않음; fork 복사본은 entry ID로 중복 제거; 비용은 표시하지 않음 |
+| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | 모든 프로젝트의 저장된 usage를 직접 집계; `$PI_CODING_AGENT_DIR`·`$PI_CODING_AGENT_SESSION_DIR` override 지원; output에는 reasoning이 이미 포함되어 별도 합산하지 않음; fork 복사본은 entry ID로 중복 제거; 기록된 비용 사용 |
 | `~/.omp/agent/sessions/**/*.jsonl` | omp (oh-my-pi) daily/blocks/weekly/monthly | pi 포맷 세션 JSONL; 모든 assistant `usage` 이벤트를 합산(되돌린 분기도 이미 청구된 토큰)하고 서브에이전트 세션 파일도 부모에 합산되지 않으므로 함께 집계; `$OMP_CODING_AGENT_DIR` 지원; 이벤트별 `cost` 가 기록돼 있으면 그대로 신뢰; `bridge/` 아래 변환 사본은 원본이 이미 집계되므로 제외 |
 | `~/.aside/u/**/state.db` | Aside daily/blocks/weekly/monthly | SQLite 읽기 전용; 사용량 메타데이터만 조회하고 대화 본문·자격증명은 읽지 않음. Aside 는 append-only 이벤트가 아니라 *변경 가능한* 턴 집계를 저장하고 `ON DELETE CASCADE` 로 삭제된 세션의 턴이 사라지므로, 매 스캔을 기존 엔트리와 병합(Kiro 와 같은 방식) — 삭제한 세션은 스캔 캐시가 비워질 때(설정 저장·월 넘김·재실행)까지 계속 집계됨. 모델별 분해는 없음 — `sessions.model` 은 턴 단위 기록이 아니라 세션의 *현재* 모델이라 갱신 때마다 과거 턴의 라벨이 바뀜 |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude 공식 5h/주간 % | 비공식 endpoint; Keychain 은 **갱신 버튼을 누를 때만** 읽음 — 자동 폴링은 읽지 않음 |

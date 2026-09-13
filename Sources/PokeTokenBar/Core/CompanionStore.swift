@@ -38,6 +38,7 @@ final class CompanionStore {
     func consumeMintFeedback() { mintFeedbackNature = nil }
 
     private let provider: any PokeProviding
+    private var dexNameRequests: [Int: Task<EvoLine, Error>] = [:]
     private let detailProvider: (any PokemonDetailProviding)?
     private let clock: () -> Date
     private let fileURL: URL
@@ -76,11 +77,20 @@ final class CompanionStore {
         self.rng = rng
         self.dittoDisguiseRollingEnabled = dittoDisguiseRollingEnabled
         self.defaults = defaults
-        growthDifficulty = PokemonBalance.clampDifficulty(
-            defaults.object(forKey: "growthDifficulty") as? Double ?? PokemonBalance.defaultDifficulty)
+        let storedGrowth = defaults.object(forKey: "growthDifficulty") as? Double ?? PokemonBalance.defaultDifficulty
+        // Previous releases accepted 0.01%–2000%. Reprice their banked progress before
+        // persisting the narrower range, otherwise an upgrade silently changes completion.
+        let previousGrowth = storedGrowth.isFinite ? min(20, max(0.0001, storedGrowth)) : 1
+        growthDifficulty = PokemonBalance.clampDifficulty(storedGrowth)
         shopDifficulty = PokemonBalance.clampDifficulty(
             defaults.object(forKey: "shopDifficulty") as? Double ?? PokemonBalance.defaultDifficulty)
         load()
+        if previousGrowth != growthDifficulty {
+            rescaleBankedGrowth(from: previousGrowth, to: growthDifficulty)
+            save()
+        }
+        defaults.set(growthDifficulty, forKey: "growthDifficulty")
+        defaults.set(shopDifficulty, forKey: "shopDifficulty")
         migratePokemonProfilesIfNeeded()
         refreshRepresentativeSubject()
         if state.active != nil { displayState = .idle }
@@ -98,20 +108,35 @@ final class CompanionStore {
     var language: AppLanguage { state.language }
     func setLanguage(_ lang: AppLanguage) { state.language = lang; save() }
 
-    // MARK: 난이도 — 설정에서 조절, 즉시 반영(재시작 불필요)
+    // MARK: 난이도 — 저장할 때만 적용
 
-    /// 성장 배율 변경. 배율을 내리면 이미 쌓인 진행도가 그 자리에서 임계를 넘을 수 있으므로,
-    /// 다음 사용량 폴링(기본 120s)까지 기다리지 않고 여기서 진화·부화 판정을 다시 돌린다.
-    /// `applyUsage(0)` 은 메타몽 리빌·라인 로드 뒤 재평가에 쓰는 기존 킥과 같은 형태이며,
-    /// 내부에서 save() 까지 수행한다(활성 개체가 없으면 no-op).
+    /// Keep the earned fraction of this egg/stage. These are progression credits,
+    /// not actual usage: lifetime tokens, provider ledgers and wallet never change here.
     func setGrowthDifficulty(_ value: Double) {
         let clamped = PokemonBalance.clampDifficulty(value)
         guard clamped != growthDifficulty else { return }
+        rescaleBankedGrowth(from: growthDifficulty, to: clamped)
         growthDifficulty = clamped
         defaults.set(clamped, forKey: "growthDifficulty")
-        applyUsage(0)
-        if state.active == nil, state.eggUsage >= eggHatchThreshold, !isHatching {
-            Task { await hatchIfNeeded() }
+        // Do not evolve, graduate or hatch just because Settings changed.
+        save()
+    }
+
+    private func rescaleBankedGrowth(from old: Double, to new: Double) {
+        func rescaled(_ credits: Int, base: Int) -> Int {
+            // Calculate the old threshold without the new range clamp during migration.
+            let oldThreshold = max(1, Int((Double(base) * old).rounded()))
+            let newThreshold = max(1, Int((Double(base) * new).rounded()))
+            let value = Double(credits) / Double(oldThreshold) * Double(newThreshold)
+            let rounded = Int(min(Double(SaveTransfer.maxTokenValue), max(0, value.rounded(.down))))
+            // Rounding must never turn an incomplete stage into a completed one.
+            return credits < oldThreshold ? min(newThreshold - 1, rounded) : rounded
+        }
+        if var active = state.active {
+            active.usedAtStage = rescaled(active.usedAtStage, base: active.phaseThreshold)
+            state.active = active
+        } else {
+            state.eggUsage = rescaled(state.eggUsage, base: PokemonBalance.eggHatchThreshold)
         }
     }
 
@@ -385,14 +410,14 @@ final class CompanionStore {
         }
     }
 
-    /// 이름이 없는 구버전 졸업 항목의 체인 이름을 채운다(도감 격자 진입 시 1회).
+    /// Refresh legacy names once, including saves that retained only app-supported languages.
     ///
     /// 격자는 저장된 이름만 읽으므로 백필이 없으면 칸이 종 번호(`#41`)로 남는다. 포획 로그는 행이
     /// 뜰 때 행 단위로 같은 일을 해 왔지만, 로그를 한 번도 안 열면 격자는 계속 번호다.
     /// 라인 조회는 `PokeAPIClient` 가 base 단위로 캐시하므로 같은 라인이 여러 항목이어도 네트워크는 1회.
     /// 오프라인이면 `dexResolveChainNames` 가 저장 없이 폴백만 돌려주므로 다음 진입에서 다시 시도한다.
     func backfillMissingDexNames() async {
-        for entry in state.dex where entry.names == nil {
+        for entry in state.dex where entry.needsNamesRefresh {
             _ = await dexResolveChainNames(entry)   // 성공분만 내부에서 state.dex 에 저장
         }
     }
@@ -404,20 +429,49 @@ final class CompanionStore {
         return names.compactMapValues { state.language.resolveName($0) }
     }
 
-    /// 이름 미저장(구버전) 항목용 — line 을 1회 조회해 체인 전 종의 다국어 이름을 얻고 항목에 백필한다
-    /// (다음부터 네트워크 0). 저장돼 있으면 그대로(fetch 없음). 오프라인이면 종 번호(#id)로 폴백.
+    /// Refresh missing/legacy multilingual names; current versions require no lookup.
+    /// Offline, keep saved names and use species numbers only where no name is available.
     /// 반환은 chainOrder 전 종을 채운 [speciesID: 현재 언어 이름].
+    private func dexNameLine(baseID: Int) async throws -> EvoLine {
+        if let request = dexNameRequests[baseID] { return try await request.value }
+        let provider = self.provider
+        let request = Task { try await provider.line(baseSpeciesID: baseID) }
+        dexNameRequests[baseID] = request
+        defer { dexNameRequests[baseID] = nil }
+        return try await request.value
+    }
+
     func dexResolveChainNames(_ entry: DexEntry) async -> [Int: String] {
-        if let stored = dexStoredChainNames(entry) { return stored }
-        guard let line = try? await provider.line(baseSpeciesID: entry.baseID) else {
-            return Dictionary(uniqueKeysWithValues: entry.chainOrder.map { ($0, "#\($0)") })
+        // Another row of this evolution line may already have refreshed the stored entry.
+        let entry = state.dex.first { $0.id == entry.id } ?? entry
+        if !entry.needsNamesRefresh, let stored = dexStoredChainNames(entry) { return stored }
+        let oldNames = dexStoredChainNames(entry) ?? [:]
+        guard let line = try? await dexNameLine(baseID: entry.baseID) else {
+            return Dictionary(uniqueKeysWithValues: entry.chainOrder.map { ($0, oldNames[$0] ?? "#\($0)") })
         }
-        let chainNames = Dictionary(uniqueKeysWithValues:
-            entry.chainOrder.compactMap { id in line.names[id].map { (id, $0) } })
-        if !chainNames.isEmpty, let idx = state.dex.firstIndex(where: { $0.id == entry.id }) {
-            state.dex[idx].names = chainNames   // 백필 저장
-            save()
+        // Preserve usable older names if a response is partial. Only a complete chain gets
+        // the new version, so partial/offline responses remain eligible for retry.
+        func refreshed(_ original: DexEntry) -> DexEntry {
+            var result = original
+            var merged = original.names ?? [:]
+            for id in original.chainOrder {
+                if let incoming = line.names[id], !incoming.isEmpty {
+                    merged[id] = (merged[id] ?? [:]).merging(incoming) { _, new in new }
+                }
+            }
+            result.names = merged.isEmpty ? nil : merged
+            if original.chainOrder.allSatisfy({ line.names[$0]?.isEmpty == false }) {
+                result.namesVersion = DexEntry.currentNamesVersion
+            }
+            return result
         }
+        // One successful lookup also refreshes duplicate catches of the same evolution line.
+        for index in state.dex.indices where state.dex[index].baseID == entry.baseID
+            && state.dex[index].needsNamesRefresh {
+            state.dex[index] = refreshed(state.dex[index])
+        }
+        save()
+        let chainNames = refreshed(entry).names ?? [:]
         return Dictionary(uniqueKeysWithValues: entry.chainOrder.map { id in
             (id, chainNames[id].flatMap { state.language.resolveName($0) } ?? "#\(id)")
         })

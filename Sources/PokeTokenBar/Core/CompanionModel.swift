@@ -13,18 +13,10 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
         switch self {
         case .ko: return ["ko"]
         case .en: return ["en"]
-        case .ja: return ["ja-Hrkt", "ja"]
+        case .ja: return ["ja-hrkt", "ja"]
         case .es: return ["es"]
         case .fr: return ["fr"]
-        // PokéAPI has no `pt` in its language list, so this falls through to
-        // resolveName's English fallback. That fallback IS the expected result:
-        // the core series was never localised into Portuguese, so Brazilian
-        // players use the English species names anyway. The code is listed
-        // regardless, so the day PokéAPI adds it, it works with no edit here.
-        // PokéAPI 의 language 목록에 pt 는 없다 → resolveName 의 영어 폴백으로 내려간다.
-        // 본가 시리즈가 포르투갈어로 나온 적이 없어 브라질에서도 종 이름은 영어를 쓰므로 폴백이 곧 기대값이다.
-        // 그래도 코드를 적어두는 건 PokéAPI 가 pt 를 추가하는 순간 분기 수정 없이 반영되게 하기 위해서다.
-        case .pt: return ["pt"]
+        case .pt: return ["pt-br", "pt"]
         case .de: return ["de"]
         }
     }
@@ -36,8 +28,7 @@ enum AppLanguage: String, Codable, Sendable, CaseIterable {
 
     /// byLang(langCode→name) 에서 이 언어의 이름을 고른다(apiCodes 첫 매칭 → 영어 폴백).
     func resolveName(_ byLang: [String: String]) -> String? {
-        for code in apiCodes { if let n = byLang[code] { return n } }
-        return byLang["en"]
+        PokemonNameLocalization.resolve(byLang, preferredCodes: apiCodes)
     }
 
     /// 신규 설치 기본 언어 — 시스템 선호 언어에서 유추(글로벌 출시: 한국어 강제 금지).
@@ -135,7 +126,7 @@ enum PokemonBalance {
     // MARK: 난이도 배율 (설정 슬라이더)
 
     /// 사용자 조절 배율의 허용 범위. 1 미만이면 기본보다 빠르고·싸며, 1 초과면 느리고·비싸다.
-    static let difficultyRange: ClosedRange<Double> = 0.0001...20.0
+    static let difficultyRange: ClosedRange<Double> = 0.1...2.0
     /// 기본값 — 이 값에서 모든 밸런스가 위 상수표 그대로다(기존 동작과 동일).
     static let defaultDifficulty: Double = 1.0
 
@@ -154,14 +145,7 @@ enum PokemonBalance {
     }
 
     // MARK: 슬라이더 위치 ↔ 배율 (로그 매핑)
-    //
-    // 범위가 다섯 자릿수를 넘어 선형 슬라이더로는 못 쓴다 — 1.0(기본)이 트랙의 5% 지점에 몰려
-    // 실사용 구간을 손으로 집을 수 없고, 0.1 미만은 전부 한 틱에 뭉갠다. 위치를 로그로 매핑해
-    // "배율 10배당 이동거리"를 일정하게 만든다.
-
-    /// 기본값(100%)이 트랙에서 차지하는 폭. 로그축이라 1.0 근처 1px 이 배율 7% 에 해당해서,
-    /// 값 기준으로 스냅하면 창이 1px 보다 좁아져 드래그가 100% 를 그냥 지나친다 —
-    /// 되돌릴 수단이 없어지므로 창을 **위치 기준**으로 잡는다(트랙의 ±1%).
+    // 같은 비율의 변화가 같은 거리를 차지한다. 기본값은 트랙의 ±1%에서 스냅한다.
     private static let defaultSnapWidth = 0.01
 
     /// 슬라이더 위치(0…1) → 배율.
@@ -535,6 +519,8 @@ struct MonState: Codable, Sendable {
 
 /// 도감 항목 — 라인 전체(초기→최종) 순서 보존.
 struct DexEntry: Codable, Sendable, Identifiable {
+    /// Version 1 preserves every API language; earlier saves retained only app-supported names.
+    static let currentNamesVersion = 1
     var id = UUID().uuidString
     var baseID: Int
     var finalID: Int
@@ -549,6 +535,11 @@ struct DexEntry: Codable, Sendable, Identifiable {
     /// 도감의 단계별 스프라이트 밑 이름 표시가 네트워크 없이 즉시 + 언어 전환 대응. 구버전 저장분엔
     /// 없어(nil) 뷰가 line fetch 로 조회 후 백필한다.
     var names: [Int: [String: String]]?
+    var namesVersion: Int?
+    var needsNamesRefresh: Bool {
+        namesVersion != Self.currentNamesVersion
+            || chainOrder.contains { names?[$0]?.isEmpty != false }
+    }
     /// 놓아준 시각 — 알을 새로 사서 육성을 포기한 기록. nil = 졸업분(구버전 저장분 포함).
     ///
     /// 두 기록을 한 배열에 두는 이유: 도감(`dexSpecies`)은 종이 어떻게 확보됐는지와 무관하게
@@ -572,6 +563,8 @@ struct DexEntry: Codable, Sendable, Identifiable {
         self.nature = nature
         self.profile = profile
         self.names = names
+        self.namesVersion = chainOrder.allSatisfy { names?[$0]?.isEmpty == false }
+            ? Self.currentNamesVersion : nil
         self.releasedAt = releasedAt
     }
 
@@ -591,6 +584,7 @@ struct DexEntry: Codable, Sendable, Identifiable {
         // try? — 구버전(최종체 단일 [String:String]) 형식이 남아 있어도 종별 맵 디코딩 실패 시 nil 로
         // 강등(항목 전체 로드는 유지). 뷰가 line 조회로 백필한다.
         names = (try? c.decodeIfPresent([Int: [String: String]].self, forKey: .names)) ?? nil
+        namesVersion = try? c.decodeIfPresent(Int.self, forKey: .namesVersion)
         // 이 필드 이전에 저장된 항목은 전부 졸업분이다 — nil 이 곧 "졸업"이라 마이그레이션이 필요 없다.
         releasedAt = try c.decodeIfPresent(Date.self, forKey: .releasedAt)
     }

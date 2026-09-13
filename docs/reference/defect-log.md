@@ -16,7 +16,56 @@ read_when:
 `CLAUDE.md` §결함 대응 프로토콜의 4단계(근본원인 → 부류 스윕 → 회귀 테스트 → 영구 캡처)를 거쳐
 남은 규칙들이다. 각 항목은 실제로 겪은 회귀에 묶여 있다.
 
+## 스프라이트 전환
+
+- **움직이는 상세 화면은 첫 렌더부터 캐시된 GIF 프레임을 사용한다.** 정적 PNG는 96px 투명
+  캔버스이고 GIF는 본체에 맞춘 작은 캔버스라, PNG를 먼저 보여준 뒤 같은 슬롯에 GIF를 맞추면
+  정지한 작은 포켓몬이 뒤늦게 커진다. 디코드 프레임을 캐시해 시드와 재생에서 공유하고 GIF 요청을
+  정적 PNG 다운로드 뒤에 직렬화하지 않는다. 미캐시 정적 폴백만 콘텐츠 크롭하고 원본 PNG 상태는
+  보존해 정적 보기로 전환할 때 복원한다. `SpriteAnimationPreviewTests`는 실제 SwiftUI 첫 렌더의
+  GIF 픽셀·크기, 캐시 재사용, 프레임 지연, 정적 원본 보존을 검사한다.
+
 ## 판정·데이터
+
+- **Localized metadata names must not replace persistent API identifiers.** The dex rendered
+  ability, move, and type slugs directly, while existing tests covered species names and profile
+  metadata rather than these visible labels. All five detail-view name sites now use a shared
+  selected-language → English resolver, with a formatted identifier only after a completed response or failed request.
+  Pending metadata must show a neutral placeholder, not an English identifier that flashes before
+  translation. Keep a synchronous presentation snapshot for the first frame on detail reentry;
+  the API client remains responsible for freshness. Test pending, loaded, partial, and failed
+  states separately—the old test incorrectly asserted English during loading.
+  Preserve every API language in the cache, normalize legacy language-code casing, and derive
+  supported API codes from `AppLanguage` so future languages need no second allowlist.
+  Fetch names from mounted detail rows rather than profile preparation. `PokemonNameLocalizationTests`
+  covers locale selection, missing translations, future languages, native text rendering, request
+  reuse, disk restoration, and offline retry without changing profile identifiers.
+  Existing saves need a name-cache version as well: nonempty dictionaries from the old allowlist
+  are not complete multilingual responses. `DexNameMigrationTests` covers legacy JSON, duplicate
+  catches, offline/partial recovery, progress preservation, and an unavailable language that must
+  not trigger repeated fetches. Restoring the old nil-only backfill filter makes the regression fail.
+  Catch-log rows must resolve legacy entries even when old names exist, and prefer persisted
+  multilingual names over previously rendered strings after a language change.
+
+- **Translate at display time, including errors and accessibility labels.** Storing translated
+  error strings left session-key and quota-refresh failures in the previous language. Store the
+  failure and resolve it through the shared language selector. `LocalizationErrorsTests` switches
+  languages while a real store error remains visible and checks diagnostic preservation.
+  English UI literals bypassed the Hangul-only source guard; `LanguageSurfaceRegressionTests`
+  now covers usage labels, hidden control labels, selected-language backup dates, and Gen-V
+  `light-ball-egg`/`form-change` methods alongside native rendering in all supported languages.
+
+- **Cost availability is not a numeric zero.** Codex providers overwrote priced totals with zero
+  while leaving cost UI enabled; earlier tests asserted that subscription policy instead of
+  comparing the public provider result with priced log entries. Preserve explicit source zero,
+  unknown model/token breakdown, and source/estimate provenance separately through daily, period,
+  block, and merged chart totals. An unknown portion must mark a total partial, never complete.
+  `UsageCostTests` exercises Codex JSONL through cold/warm cache and the provider, source-zero vs
+  missing, mixed totals, menu/chart projections, legacy decoding, and native localized rendering.
+  The Codex regression must fail if its provider again overwrites the returned cost with zero.
+  Session/turn aggregates (Hermes/Aside), Cursor bubbles without cache buckets, and Kiro text
+  estimates cannot be passed to request-size-dependent pricing as if they were single requests.
+  Parser semantic changes require the corresponding disk-cache version bump.
 
 - **프로필 레벨은 난이도와 반복 부화 보정을 반영한 단계 진행에서 계산한다.** #244/#254의 임계값을
   낮춰도 #264가 원시 토큰을 기본 졸업 비용으로 나누면 졸업한 개체가 레벨 5 또는 52에 남는다.
@@ -93,6 +142,20 @@ read_when:
   스캔을 통과한 엔트리**로 잡는다 — 배열을 손으로 만들면 "그 상황이 일어나는가"에 답하지 못하므로,
   지난달 엔트리가 *실제로 로드된다*는 전제를 먼저 어서션한다
   (`testCrossMonthSessionDoesNotLeakLastMonthIntoTheSeries`).
+- **토큰 파일 파서는 외부 도구의 실제 직렬화 구조체(중첩 객체)를 반영해야 한다.** `jetski-standalone-oauth-token`
+  파일에서 `json["token"]`은 단순 문자열이 아니라 `{"access_token": "...", "refresh_token": "...", "expiry": "..."}`
+  형태의 중첩 객체다. 기존 `readTokenFile`이 `json["token"] as? String`만 처리하여 유효한 토큰 파일이 있어도
+  항상 파싱에 실패했다. 백그라운드 자동 폴은 키체인 상호작용을 차단(`allowKeychainPrompt: false`)하므로
+  파일 파싱이 실패하면 갱신이 중단되었고, 수동 갱신 시에는 키체인 암호 프롬프트가 발생했다(macOS 키체인은
+  Antigravity CLI가 새 토큰을 쓸 때 `security add-generic-password -U`로 ACL을 초기화해 "항상 허용"이 지워짐).
+  해결: `readTokenFileCredential`에서 `parseCredential`을 재활용하여 중첩 객체(`access_token`),
+  문자열 토큰(`token`), 최상위 `access_token`을 모두 수용하고 `refresh_token`을 통한 자동 갱신을 지원한다.
+  Google의 네이티브 앱 OAuth 가이드에서는 `client_secret`이 선택 사항으로 기술되어 있으나, Antigravity
+  클라이언트는 갱신 시 `client_secret`을 요구하는 클라이언트 고유 제약(`client-specific requirement`)이 있어
+  함께 전송한다. 또한 만료 직전(near-expiry) 계정 전환 시 이전 계정 캐시로 잘못 폴백하지 않도록 동일 출처
+  검증(`isSameSourceCredential`)을 통해 같은 계정의 갱신 캐시만 디스크의 만료 토큰보다 우선 유지한다.
+  가드: `testAntigravityAutoPollReadsNestedTokenObject`·`testAntigravityAutoPollPicksUpNestedTokenSwitch`·`testNearExpiryAccountSwitchDoesNotFallBackToPreviousCachedAccount`·`testExpiredFileRefreshesAndSubsequentPollRetainsRefreshedToken`.
+
 - **append-only SQLite watermark 루프를 프로바이더마다 복사하지 마라.** Cursor 와 Copilot 이
   같은 `didReset` / `highWater == 0` 규칙을 두 벌로 들고 있으면 한쪽만 고친 수정이 다른 쪽에 남는다
   (#157). 루프는 `scanIncrementalStores` 한 곳, 포맷만 콜백. 회귀는 공유 헬퍼 테스트 **그리고**
@@ -167,6 +230,22 @@ read_when:
   방식으로 더하면 실사용량이 두 번 집계된다. 반대로 provider가 `thoughts`를 아직 output에 접지 않았다면
   빼면 안 된다. 회귀 픽스처는 `input + output + cacheRead + cacheWrite == totalTokens` 같은 **writer의
   불변식**을 함께 고정하고, 매핑을 고치면 해당 provider cache parser version을 올려 기존 blob도 재파싱한다.
+- **breakdown 이 비고 `total` 만 남은 이벤트는 "무조건 total 신뢰"도 "무조건 0"도 틀리다.** Codex
+  `last_token_usage` 가 성분 전부 0 이면서 `total_tokens` 만 채운 턴이 있다(#278, ~2.5%). 그 total 이
+  세션 전체와 같거나 cumulative 도 total-only 이거나(또는 직전 대비 cumulative.total 이 증가)하면
+  실사용이라 Entry 에 넣어야 하고, fork post-replay 의 zero-context 턴
+  (`Fixtures/CodexFork/child.jsonl` L11: cumulative 성분은 채워져 있고 last.total 만 고아)은
+  cumulative 성장에 안 들어가므로 0 으로 남겨야 한다. 가드:
+  `testCodexTotalOnlyLastUsageCountsWhenItMatchesSessionTotal`·
+  `…WhenCumulativeIsAbsent`·`…WhenCumulativeGrew`·
+  `testCodexUnchangedCumulativeWithDifferentLastVectorIsPreserved`·
+  `testCodexManualForkFixtureKeepsOnlyPostReplayUsage`. 매핑 변경 시 `codexParserVersion` 을 올린다.
+- **패밀리 단가 폴백은 "같은 패밀리 = 같은 네 단가"가 깨지는 순간 틀린다.** Fable 5.1 은
+  input/output/cache-write 는 Fable 5 와 같고 cache-read 만 $1.00 → $0.25 로 바뀌었는데,
+  `contains("fable")` 폴백이 Fable 5 단가를 적용해 캐시 위주 세션 비용을 4× 로 부풀렸다(#277).
+  패치·마이너가 단가 한 칸만 바꿀 수 있으면 **정확 매칭 행을 표에 추가**하고, 폴백이 우연히 맞는
+  모델(예: `claude-opus-5` → opus 폴백)은 건드리지 않는다. 가드: `testPricingExactAndFallbackAndZero`
+  의 `claude-fable-5-1` cache-read $0.25 단언.
 - **새 provider를 추가할 때 reader/cache만 연결하면 Settings의 custom-root contract가 조용히 빠진다.** `CustomScanRoots`는
   provider별 `curatedRoots(for:)`와 실제 reader의 `CustomScanRoots.storedValue(for:)` 조회를 모두 registry로
   취급한다. Pi 추가 때 reader/cache/provider는 등록했지만 이 두 지점을 빠뜨려 CI의
@@ -397,6 +476,11 @@ read_when:
   회귀 가드: `testAutoRefreshUsesNoPromptPathManualUsesPromptPath`. (완전 근절은 Developer ID
   notarization 으로 '항상 허용' 승인을 안정화하는 것뿐 — 신뢰된 서명 신원이라야 ACL 승인이 지속된다.
   미도입.)
+- **Claude Keychain '항상 허용'은 ACL 리셋으로 유지되지 않는다 — 비간섭 상시 `(?)` 도움말로 세션 키 등록을 유도.**
+  macOS 의 `security add-generic-password -U` 동작상 Claude CLI 가 토큰을 갱신할 때마다 기존 항목의 ACL(항상 허용)이
+  날아간다. 사용자가 시스템 창에서 '항상 허용'을 눌렀음에도 다음 번에 또 암호를 묻는 것은 앱 버그가 아닌 macOS+CLI 한계이므로,
+  시끄러운 팝업 배너 대신 `한도 (공식)` 헤더 옆의 은은한 `(?)` 팝오버 및 설정 세션 키 입력란으로의 원클릭 바운스(#275)를 통해
+  키체인 사용자에게는 0% 노이즈를 유지하면서도 세션 키 우회로를 친절히 안내한다.
 - **Claude 의 `refreshToken` 은 보이지만 우리가 쓰면 안 된다 — 갱신 시 회전되어 Claude Code 를 깨뜨린다.**
   키체인 항목(`claudeAiOauth`)에는 `accessToken`(수명 ~5h) 옆에 `refreshToken`·`refreshTokenExpiresAt`
   (~15일)이 함께 들어 있다. "그걸로 갱신하면 키체인 접근이 5시간마다 → 15일마다로 줄겠다"는 발상이

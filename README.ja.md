@@ -33,7 +33,7 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 - 公式の **5時間 / 週間** 上限をリセットのカウントダウンとともに追跡し、現在の burn rate でいつ到達するかを予測します。
 
 <div align="center">
-<img src="assets/screenshot-home.gif" width="420" alt="ポップオーバー ホーム — パートナー、今日のトークン、公式上限">
+<img src="assets/screenshot-home.png" width="420" alt="ポップオーバー ホーム — パートナー、今日のトークン、公式上限">
 </div>
 
 ## しくみ
@@ -100,7 +100,7 @@ PikaTokenBar は、あなたがすでに使っている AI コーディングト
 <tr>
 <td width="55%" valign="middle">
 <h3>📊 公式の上限、Antigravity にも</h3>
-Antigravity 2.0 と IDE が推定値ではなく実際のクォータを返します。Gemini モデル群と Claude &amp; GPT モデル群がそれぞれ <b>5時間</b>・<b>週間</b> のバケットとリセットのカウントダウンを持ち、Claude Code・Codex と並んで表示されます。バックグラウンドで静かに読むので Keychain のプロンプトは出ず、セッションも自動で更新されます。
+Antigravity 2.0 と IDE が推定値ではなく実際のクォータを返します。Gemini モデル群と Claude &amp; GPT モデル群がそれぞれ <b>5時間</b>・<b>週間</b> のバケットとリセットのカウントダウンを持ち、Claude Code・Codex と並んで表示されます。バックグラウンドではトークンファイルを読み、OAuth 資格情報を自動更新できます。手動更新では Keychain にアクセスする場合があります。
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-antigravity-limits-ja.png" width="300" alt="Antigravity の公式上限 — モデル群ごとの5時間・週間バケット"></td>
 </tr>
@@ -129,13 +129,43 @@ Antigravity 2.0 と IDE が推定値ではなく実際のクォータを返し�
 <td width="45%" align="center"><img src="assets/screenshot-model-breakdown-ja.png" width="300" alt="Pi のモデル別トークン内訳"></td>
 <td width="55%" valign="middle">
 <h3>🧮 一つのセッションログに複数のモデル</h3>
-Pi とそのフォーク（omp など）は複数のモデルを一つのセッションログに流すことがあります。使用量は一律の「pi」ではなく<b>実際のモデル id</b> に帰属するようになり、一日に複数のモデルを使った場合はポップオーバーが本日のトークンをモデルごとに大きい順で表示します。
+Pi は複数のモデルを一つのセッションログに流すことがあります。使用量は一律の「pi」ではなく<b>実際のモデル id</b> に帰属するようになり、一日に複数のモデルを使った場合はポップオーバーが本日のトークンをモデルごとに大きい順で表示します。
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-pokemon-profile-ja.png" width="300" alt="一匹ごとに固有のプロフィール"></td>
+<td width="55%" valign="middle">
+<h3>一匹ごとに固有のプロフィール</h3>
+<b>図鑑</b>で種を開くと、個体ごとのレベル・性別・せいかく・とくせい・個体値・計算された能力値・覚えた技を確認できます。種の説明ととくせい・技は選択言語を優先し、PokéAPIに翻訳がない場合は英語を使用します。
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-difficulty-ja.png" width="300" alt="自分のペースで育てる"></td>
+<td width="55%" valign="middle">
+<h3>自分のペースで育てる</h3>
+成長の閾値とショップ価格をそれぞれ <b>10%〜200%</b>に調整できます。スライダー操作は下書きで、<b>保存</b>を押すと適用されます。成長難易度を変えても現在の段階の進捗率を保ち、突然進化しません。卒業済みの進化系統から再び孵化すると、<b>2倍の速さ</b>で育ちます。
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-daily-trend-ja.png" width="300" alt="今月の使用量を一日ずつ"></td>
+<td width="55%" valign="middle">
+<h3>今月の使用量を一日ずつ</h3>
+週間・月間合計の下に、月初から今日までの小さな日別グラフを表示します。グラフは全ツールの合計です。バーにポインタを重ねると、その日のトークン数と、コスト表示が有効ならコストを確認できます。
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-quota-alignment-ja.png" width="300" alt="一目でわかる上限"></td>
+<td width="55%" valign="middle">
+<h3>一目でわかる上限</h3>
+リセットのカウントダウンに実際の時刻を添え、すべての上限行の色付きパーセントを右端に揃えます。設定で使用量・残量を選ぶと、数値とグラフの両方が同じ基準に切り替わります。
 </td>
 </tr>
 </table>
 
 ## そのほかにも
 
+- **低電力モード** — メニューバーのアニメーションはバッテリー優先の品質で継続します。
+- **再接続時の更新** — ネットワークが復帰すると使用量と上限を更新します。
 - **代表ポケモン** — 図鑑で所有している種を選び、育成中のポケモンとは別にメニューバーと任意のフローティングペットへ固定。固定中はメニューバーがタマゴ・孵化・進化を追わなくなりますが、育成の進行は Home で引き続き確認できます。
 - **アニメーション品質** — メニューバーのスプライトとフローティングペットの滑らかさを選べます（バッテリー優先／標準／滑らか）。常に表示される2つの表面が同じ設定を共有します。既定の「バッテリー優先」はこの設定が入る前と同じフレームレートで、「標準」「滑らか」はバッテリーを多く使います（実測アイドル CPU 約1.8%／約5.1%）。
 - **インタラクティブなフローティングペット** — ホバーで今日の使用量、クリックでメイン画面、右クリックでメニュー、上限アラートは吹き出しで表示。
@@ -164,7 +194,7 @@ Pi とそのフォーク（omp など）は複数のモデルを一つのセッ�
 | **omp** (oh-my-pi) | 今日 · 5時間ブロック · 週 · 月 | — |
 | **Aside** | 今日 · 5時間ブロック · 週 · 月 | — |
 
-すべてローカルから読み取り — 外部の使用量CLIは不要。ツール追加はプロバイダーファイル1つで完結します（[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) 参照）。
+すべてローカルから読み取り — 外部の使用量CLIは不要。ツールはプロバイダーの実装と登録で追加します（[CONTRIBUTING.ja.md](CONTRIBUTING.ja.md) 参照）。
 
 ## インストール
 
@@ -222,7 +252,7 @@ swift test                   # ユニットテスト
 | `~/.grok/sessions/**/updates.jsonl` | Grok CLI daily/blocks/weekly/monthly | `turn_completed` レコード（ターン単位の `usage`、サーバー報告のコスト）；`$GROK_HOME` を設定していればそのパス；サブエージェントのセッションは親ターンに合算済みのため除外 |
 | `~/.copilot/session-store.db` | Copilot CLI daily/blocks/weekly/monthly | SQLite 読み取り専用；`assistant_usage_events` の1行が API 呼び出し1回；`$COPILOT_HOME` を設定していればそのパス；`input_tokens` にキャッシュ分が含まれるため cache read/write を差し引いて集計；premium request 課金のためコストは推定しない |
 | `~/Library/Application Support/kiro-cli/data.sqlite3`<br>`~/.kiro/sessions/cli/*.jsonl`<br>`~/.kiro/sessions/<ws>/<session>/messages.jsonl` | Kiro CLI daily/blocks/weekly/monthly | 2.20 以前の SQLite と 2.20+ / `--v3` の JSONL。どちらも実トークン数を記録しないため、input は毎ターン再送される累積会話テキストをバイト÷4 で**推定**。`usage_summary` のクレジットは USD に換算しない。`/clear`・圧縮で消えた SQLite 会話の集計済みトークンはアプリ再起動まで数え続ける。`$KIRO_CLI_HOME` と `$KIRO_HOME` に対応 |
-| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | 全プロジェクトの保存済み usage を直接集計；`$PI_CODING_AGENT_DIR`・`$PI_CODING_AGENT_SESSION_DIR` override 対応；output には reasoning がすでに含まれるため二重計上しない；fork のコピーは entry ID で重複排除；コストは表示しない |
+| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | 全プロジェクトの保存済み usage を直接集計；`$PI_CODING_AGENT_DIR`・`$PI_CODING_AGENT_SESSION_DIR` override 対応；output には reasoning がすでに含まれるため二重計上しない；fork のコピーは entry ID で重複排除；記録されたコストを使用 |
 | `~/.omp/agent/sessions/**/*.jsonl` | omp (oh-my-pi) daily/blocks/weekly/monthly | pi 形式セッション JSONL；すべての assistant `usage` イベントを合算（巻き戻した分岐も請求済みトークン）し、サブエージェントのセッションファイルも親に折り込まれないため合算対象；`$OMP_CODING_AGENT_DIR` を尊重；イベントごとの `cost` が記録されていればそのまま信頼；`bridge/` 以下の変換コピーは原本側で集計済みのため除外 |
 | `~/.aside/u/**/state.db` | Aside daily/blocks/weekly/monthly | SQLite 読み取り専用；使用量メタデータのみを取得し、会話本文や資格情報は読みません。Aside は追記型イベントではなく*可変の*ターン集計を保存し、`ON DELETE CASCADE` で削除セッションのターンが消えるため、毎回のスキャンを既知エントリとマージします（Kiro と同じ方式）— 削除したセッションはスキャンキャッシュが破棄されるまで（設定の保存・月替わり・再起動）集計に残ります。モデル別内訳はありません — `sessions.model` はターン単位の記録ではなくセッションの*現在の*モデルなので、更新のたびに過去のターンのラベルが変わってしまいます |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude 公式 5h/週間 % | 非公式 endpoint；Keychain は**更新ボタンを押した時のみ**読み取り — 自動更新では読みません |

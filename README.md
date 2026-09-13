@@ -32,7 +32,7 @@ PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, 
 - Track official **5-hour / weekly** limits with reset countdowns and a burn-rate forecast for when you'll hit them.
 
 <div align="center">
-<img src="assets/screenshot-home.gif" width="420" alt="Popover home — companion, today's tokens, official limits">
+<img src="assets/screenshot-home.png" width="420" alt="Popover home — companion, today's tokens, official limits">
 </div>
 
 ## How it works
@@ -99,7 +99,7 @@ The tokens you've already used are your currency. Spend them in the new <b>Shop<
 <tr>
 <td width="55%" valign="middle">
 <h3>📊 Official limits, now for Antigravity too</h3>
-Antigravity 2.0 and the IDE report real quota, not an estimate. Gemini models and Claude &amp; GPT models each get their own <b>5-hour</b> and <b>weekly</b> buckets with reset countdowns, alongside Claude Code and Codex. Read quietly in the background — no Keychain prompt, and the session refreshes itself.
+Antigravity 2.0 and the IDE report real quota, not an estimate. Gemini models and Claude &amp; GPT models each get their own <b>5-hour</b> and <b>weekly</b> buckets with reset countdowns, alongside Claude Code and Codex. Background reads use the token file and can refresh OAuth credentials automatically; a manual refresh may still access the Keychain.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-antigravity-limits.png" width="300" alt="Antigravity official limits — 5-hour and weekly buckets per model group"></td>
 </tr>
@@ -128,13 +128,43 @@ If the cached limit token expires, official Claude limits used to freeze until a
 <td width="45%" align="center"><img src="assets/screenshot-model-breakdown.png" width="300" alt="Per-model token breakdown for Pi"></td>
 <td width="55%" valign="middle">
 <h3>🧮 One session log, several models</h3>
-Pi and its forks (like omp) can route more than one model through a single session log. Usage is now attributed to the <b>real model id</b> instead of a flat "pi", and when a day spans several models the popover breaks today's tokens down per model, biggest first.
+Pi can route more than one model through a single session log. Usage is now attributed to the <b>real model id</b> instead of a flat "pi", and when a day spans several models the popover breaks today's tokens down per model, biggest first.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-pokemon-profile.png" width="300" alt="Every Pokémon has its own profile"></td>
+<td width="55%" valign="middle">
+<h3>Every Pokémon has its own profile</h3>
+Open a species in the <b>Pokédex</b> to inspect each individual: level, gender, nature, ability, IVs, calculated stats, and learned moves. Species descriptions, abilities, and moves use your selected language, with English as the fallback when PokéAPI has no translation.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-difficulty.png" width="300" alt="Choose your growth pace"></td>
+<td width="55%" valign="middle">
+<h3>Choose your growth pace</h3>
+Set growth thresholds and shop prices independently from <b>10% to 200%</b>. Dragging only edits a draft; press <b>Save</b> to apply it. Changing growth difficulty preserves your current stage progress instead of triggering an evolution. A hatch from an evolution line you have already graduated grows <b>2× faster</b>.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Your month, day by day"></td>
+<td width="55%" valign="middle">
+<h3>Your month, day by day</h3>
+A compact daily chart below the weekly and monthly totals shows the current month through today. The chart combines all tools; hover a bar for that day’s tokens and, when enabled, cost.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-quota-alignment.png" width="300" alt="Limits you can scan at a glance"></td>
+<td width="55%" valign="middle">
+<h3>Limits you can scan at a glance</h3>
+Reset countdowns include the clock time, and the colored percentage stays aligned at the right edge across all quota rows. Choose used or remaining in Settings: both the number and the bar follow that choice.
 </td>
 </tr>
 </table>
 
 ## Also in the box
 
+- **Low Power Mode** — menu-bar animation continues at Power saver quality.
+- **Reconnect refresh** — usage and limits refresh when the network comes back.
 - **Representative Pokémon** — pin any owned Pokédex species to the menu bar and optional floating pet, independently of the companion you're raising. While pinned, the menu bar stops following egg, hatch, and evolution changes; raising progress remains visible on Home.
 - **Animation quality** — pick how smoothly the menu bar sprite and the floating pet animate (Power saver / Balanced / Smooth). Both always-visible surfaces share the setting. Power saver is the default and keeps the frame rate the app used before this setting existed; Balanced and Smooth trade battery for smoothness (measured idle CPU ~1.8% and ~5.1%).
 - **Interactive floating pet** — hover for today's usage, click to open the main window, right-click for a menu, and show limit alerts as speech bubbles.
@@ -163,7 +193,7 @@ Pi and its forks (like omp) can route more than one model through a single sessi
 | **omp** (oh-my-pi) | today · 5h block · week · month | — |
 | **Aside** | today · 5h block · week · month | — |
 
-All read locally — no external usage CLI required. Adding a tool is one provider file (see [CONTRIBUTING.md](CONTRIBUTING.md)).
+All read locally — no external usage CLI required. Adding a tool is a provider implementation and registration (see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Install
 
@@ -221,7 +251,7 @@ swift test                   # unit tests
 | `~/.grok/sessions/**/updates.jsonl` | Grok CLI daily/blocks/weekly/monthly | `turn_completed` records (per-turn `usage`, server-reported cost); honours `$GROK_HOME`; subagent sessions are skipped because their tokens are already folded into the parent turn |
 | `~/.copilot/session-store.db` | Copilot CLI daily/blocks/weekly/monthly | SQLite read-only; one `assistant_usage_events` row per API call; honours `$COPILOT_HOME`; `input_tokens` already contains the cached prompt, so cache reads/writes are subtracted; premium-request billing, so no cost is estimated |
 | `~/Library/Application Support/kiro-cli/data.sqlite3`<br>`~/.kiro/sessions/cli/*.jsonl`<br>`~/.kiro/sessions/<ws>/<session>/messages.jsonl` | Kiro CLI daily/blocks/weekly/monthly | Pre-2.20 SQLite plus 2.20+ / `--v3` JSONL; neither store records real token counts, so input is a bytes÷4 **estimate** of accumulated conversation text resent on every turn; `usage_summary` credits are not converted to USD; a `/clear`d SQLite conversation's already-counted tokens stay counted until the app restarts; honours `$KIRO_CLI_HOME` and `$KIRO_HOME` |
-| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | Direct persisted usage from all projects; `$PI_CODING_AGENT_DIR` and `$PI_CODING_AGENT_SESSION_DIR` overrides supported; output already includes reasoning (not counted twice); forked history deduplicated by entry ID; no cost is reported |
+| `~/.pi/agent/sessions/**/*.jsonl` | Pi Agent daily/blocks/weekly/monthly | Direct persisted usage from all projects; `$PI_CODING_AGENT_DIR` and `$PI_CODING_AGENT_SESSION_DIR` overrides supported; output already includes reasoning (not counted twice); forked history deduplicated by entry ID; source-recorded costs are retained |
 | `~/.omp/agent/sessions/**/*.jsonl` | omp (oh-my-pi) daily/blocks/weekly/monthly | pi-format session JSONL; every assistant `usage` event is summed (rewound branches are already billed) and subagent session files count too, since their tokens are not folded into the parent; honours `$OMP_CODING_AGENT_DIR`; per-event `cost` is trusted when reported; `bridge/` conversion copies are skipped because their originals are already counted at the source |
 | `~/.aside/u/**/state.db` | Aside daily/blocks/weekly/monthly | SQLite read-only; only usage metadata is selected — conversation bodies and credentials are never read. Aside stores *mutable* turn aggregates and `ON DELETE CASCADE` drops a deleted session's turns, so each scan is merged with previously-seen entries (like Kiro): a deleted session stays counted until the scan cache is dropped (Settings save, month rollover, relaunch). No per-model breakdown — `sessions.model` is the session's *current* model, not a per-turn record, so it would relabel earlier turns on every refill |
 | Keychain / `~/.claude/.credentials.json` → `api.anthropic.com` | Claude official 5h/weekly % | unofficial endpoint; the Keychain is read **only when you press refresh** — auto-polling never reads it |

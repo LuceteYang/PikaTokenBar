@@ -57,6 +57,7 @@ struct PopoverView: View {
     @Environment(PopoverNavigation.self) private var nav
 
     private var l: L { companion.l }
+    @State private var showingClaudeKeychainHelp = false
 
     var body: some View {
         // NOTE: 설정을 .sheet 로 띄우면 transient 팝오버가 닫힐 때 시트가 고아로 남아
@@ -65,7 +66,10 @@ struct PopoverView: View {
         Group {
             if nav.showSettings {
                 SettingsView(
-                    onClose: { nav.showSettings = false },
+                    onClose: {
+                        nav.showSettings = false
+                        nav.expandAdvancedOnOpen = false
+                    },
                     onChooseRepresentative: { nav.openRepresentativeDex() },
                     startExpanded: nav.expandAdvancedOnOpen
                 )
@@ -155,7 +159,7 @@ struct PopoverView: View {
                     .monospacedDigit()
                 Spacer()
                 if store.showsCost {
-                    Text(TokenFormatter.cost(todayCost))
+                    UsageCostText(cost: store.todayUsageCost, l: l)
                         .font(.callout)
                         .foregroundStyle(.secondary)
                 }
@@ -164,8 +168,8 @@ struct PopoverView: View {
             // 주간/월간 누적 (전 서비스 합산 — 오늘 합계와 함께 통합 통계)
             if store.weekTotalTokens > 0 || store.monthTotalTokens > 0 {
                 HStack(spacing: 14) {
-                    periodLabel(l.thisWeek, tokens: store.weekTotalTokens, cost: store.showsCost ? store.weekCostTotal : nil)
-                    periodLabel(l.thisMonth, tokens: store.monthTotalTokens, cost: store.showsCost ? store.monthCostTotal : nil)
+                    periodLabel(l.thisWeek, tokens: store.weekTotalTokens, cost: store.showsCost ? store.weekUsageCost : nil)
+                    periodLabel(l.thisMonth, tokens: store.monthTotalTokens, cost: store.showsCost ? store.monthUsageCost : nil)
                     Spacer()
                 }
                 .padding(.top, 2)
@@ -200,7 +204,7 @@ struct PopoverView: View {
             onSelect: { nav.providerID = $0 })
     }
 
-    private func periodLabel(_ name: String, tokens: Int, cost: Double?) -> some View {
+    private func periodLabel(_ name: String, tokens: Int, cost: UsageCost?) -> some View {
         HStack(spacing: 4) {
             Text(name)
                 .font(.caption)
@@ -209,15 +213,11 @@ struct PopoverView: View {
                 .font(.caption.weight(.semibold))
                 .monospacedDigit()
             if let cost {
-                Text(TokenFormatter.cost(cost))
+                UsageCostText(cost: cost, l: l)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
-    }
-
-    private var todayCost: Double {
-        store.costingSnapshots.reduce(0) { $0 + ($1.today?.totalCost ?? 0) }
     }
 
     private func providerRow(snapshot: ProviderSnapshot, today: DailyUsage) -> some View {
@@ -230,16 +230,20 @@ struct PopoverView: View {
                     .font(.callout)
                     .monospacedDigit()
                 if snapshot.reportsCost {
-                    Text(TokenFormatter.cost(today.totalCost))
+                    UsageCostText(cost: today.usageCost, l: l)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            HStack(spacing: 10) {
-                tokenTypeLabel("in", today.inputTokens)
-                tokenTypeLabel("out", today.outputTokens)
-                tokenTypeLabel("cache w", today.cacheCreationTokens)
-                tokenTypeLabel("cache r", today.cacheReadTokens)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 10) {
+                    tokenTypeLabel(l.tokenInput, today.inputTokens)
+                    tokenTypeLabel(l.tokenOutput, today.outputTokens)
+                }
+                HStack(spacing: 10) {
+                    tokenTypeLabel(l.tokenCacheWrite, today.cacheCreationTokens)
+                    tokenTypeLabel(l.tokenCacheRead, today.cacheReadTokens)
+                }
             }
             if let models = today.models, models.count > 1 {
                 ForEach(models.sorted(by: { $0.value > $1.value }), id: \.key) { model, tokens in
@@ -323,9 +327,14 @@ struct PopoverView: View {
     @ViewBuilder
     private var limitsSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(l.limitsOfficial)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(l.limitsOfficial)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if selectedSnapshot?.providerID == "claude_code", !store.sessionKeyConfigured {
+                    claudeKeychainHelpButton
+                }
+            }
             if selectedSnapshot?.providerID == "claude_code", store.limitsAuthExpiry == .sessionKey {
                 sessionKeyExpiredNotice
             } else if selectedSnapshot?.providerID == "claude_code", store.limitsAuthExpired {
@@ -436,29 +445,9 @@ struct PopoverView: View {
         }
     }
 
-    @ViewBuilder
     private func antigravityBucketRow(_ bucket: AntigravityQuotaBucket) -> some View {
-        let name = l.antigravityWindow(window: bucket.window, bucketId: bucket.bucketId)
-        let utilization = bucket.usedPercent
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                Text(name)
-                    .font(.callout)
-                Spacer()
-                Text(limitPercentText(utilization))
-                    .font(.callout)
-                    .monospacedDigit()
-                    .foregroundStyle(limitColor(utilization))
-                if let reset = bucket.resetDate {
-                    resetLabel(reset)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-            }
-            ProgressView(value: min(utilization, 100), total: 100)
-                .tint(limitColor(utilization))
-                .controlSize(.small)
-        }
+        quotaRow(name: l.antigravityWindow(window: bucket.window, bucketId: bucket.bucketId),
+                 utilization: bucket.usedPercent, reset: bucket.resetDate)
     }
 
     @ViewBuilder
@@ -512,7 +501,7 @@ struct PopoverView: View {
 
 
     /// 한도 % 표시 문자열 — remaining 모드면 남은 %에 자기설명 접미사("남음/left/残り").
-    /// 게이지 채움·경고색은 사용률 원값 기준 유지 — 숫자 텍스트만 모드를 따른다.
+    /// 게이지 채움도 같은 표시 모드를 따르며, 경고색은 실제 사용률로 판단한다.
     private func limitPercentText(_ utilization: Double) -> String {
         let text = TokenFormatter.percent(store.limitDisplayPercent(utilization))
         return store.limitDisplayMode == .remaining ? l.percentRemaining(text) : text
@@ -536,31 +525,40 @@ struct PopoverView: View {
         return Text(" (\(f.string(from: reset)))")
     }
     private func resetLabel(_ reset: Date) -> Text {
-        Text("· \(reset, style: .relative)") + resetClockSuffix(reset)
+        Text("\(reset, style: .relative)") + resetClockSuffix(reset)
     }
 
     @ViewBuilder
     private func limitRow(name: String, window: LimitWindow?) -> some View {
         if let window, let utilization = window.utilization {
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(name)
-                        .font(.callout)
-                    Spacer()
-                    Text(limitPercentText(utilization))
-                        .font(.callout)
+            quotaRow(name: name, utilization: utilization, reset: window.resetDate)
+        }
+    }
+
+    /// All quota types share the same trailing percentage alignment.
+    private func quotaRow(name: String, utilization: Double, reset: Date?,
+                          detail: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack {
+                Text(name).font(.callout)
+                Spacer()
+                if let detail {
+                    Text(detail)
+                        .font(.caption)
                         .monospacedDigit()
-                        .foregroundStyle(limitColor(utilization))
-                    if let reset = window.resetDate {
-                        resetLabel(reset)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
+                        .foregroundStyle(.secondary)
                 }
-                ProgressView(value: min(utilization, 100), total: 100)
-                    .tint(limitColor(utilization))
-                    .controlSize(.small)
+                if let reset {
+                    resetLabel(reset)
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                }
+                Text(limitPercentText(utilization))
+                    .font(.callout)
+                    .monospacedDigit()
+                    .foregroundStyle(limitColor(utilization))
             }
+            LimitProgressBar(usedPercent: utilization, tint: limitColor(utilization))
         }
     }
 
@@ -642,6 +640,38 @@ struct PopoverView: View {
 
     /// Claude 공식 한도 — 최초 로드/만료(stale) 시 사용자가 원탭으로 Keychain 을 읽어 갱신.
     /// 자동 폴링이 Keychain 을 안 읽는 대신 여기서 명시적 사용자 동작으로만 재취득한다.
+    private var claudeKeychainHelpButton: some View {
+        Button {
+            showingClaudeKeychainHelp.toggle()
+        } label: {
+            Image(systemName: "questionmark.circle")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .buttonStyle(.plain)
+        .help(l.claudeKeychainHelpTooltip)
+        .popover(isPresented: $showingClaudeKeychainHelp) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(l.claudeKeychainHelpTitle)
+                    .font(.caption).fontWeight(.semibold)
+                Text(l.claudeKeychainHelpBody)
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack {
+                    Spacer()
+                    Button(l.registerSessionKey) {
+                        showingClaudeKeychainHelp = false
+                        nav.openSessionKeySettings()
+                    }
+                    .controlSize(.small)
+                }
+            }
+            .padding(12)
+            .frame(width: 250)
+        }
+    }
+
+    /// 자동 폴링이 Keychain 을 안 읽는 대신 여기서 명시적 사용자 동작으로만 재취득한다.
     @ViewBuilder
     private var claudeLimitsRefreshRow: some View {
         HStack(spacing: 6) {
@@ -680,54 +710,15 @@ struct PopoverView: View {
     @ViewBuilder
     private func codexLimitRow(name: String, window: CodexRateLimitWindow?) -> some View {
         if let window {
-            let utilization = Double(window.usedPercent)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(name)
-                        .font(.callout)
-                    Spacer()
-                    Text(limitPercentText(utilization))
-                        .font(.callout)
-                        .monospacedDigit()
-                        .foregroundStyle(limitColor(utilization))
-                    if let reset = window.resetDate {
-                        resetLabel(reset)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                ProgressView(value: min(utilization, 100), total: 100)
-                    .tint(limitColor(utilization))
-                    .controlSize(.small)
-            }
+            quotaRow(name: name, utilization: Double(window.usedPercent), reset: window.resetDate)
         }
     }
 
     @ViewBuilder
     private func codexSpendLimitRow(_ limit: CodexSpendControlLimit?) -> some View {
         if let limit {
-            let utilization = Double(limit.usedPercent)
-            VStack(alignment: .leading, spacing: 2) {
-                HStack {
-                    Text(l.personalSpendLimit)
-                        .font(.callout)
-                    Spacer()
-                    Text("\(limit.used) / \(limit.limit)")
-                        .font(.caption)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                    Text(limitPercentText(utilization))
-                        .font(.callout)
-                        .monospacedDigit()
-                        .foregroundStyle(limitColor(utilization))
-                    resetLabel(limit.resetDate)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                ProgressView(value: min(utilization, 100), total: 100)
-                    .tint(limitColor(utilization))
-                    .controlSize(.small)
-            }
+            quotaRow(name: l.personalSpendLimit, utilization: Double(limit.usedPercent),
+                     reset: limit.resetDate, detail: "\(limit.used) / \(limit.limit)")
         }
     }
 
@@ -786,19 +777,10 @@ struct PopoverView: View {
                 if store.lastErrorDescription != nil {
                     Image(systemName: "exclamationmark.triangle")
                         .foregroundStyle(.orange)
-                        .help(store.lastErrorDescription ?? "")
+                        .help(store.lastErrorMessage(l) ?? "")
                 }
             }
             Spacer()
-            // 데스크톱 펫 표시 토글 — 설정창의 스위치와 **같은 값**(store.floatingPetEnabled)을 읽고 쓴다.
-            // @Observable 이라 어느 쪽에서 바꾸든 다른 쪽이 즉시 따라온다(별도 동기화 없음).
-            Button {
-                store.floatingPetEnabled.toggle()
-            } label: {
-                Image(systemName: FloatingPetView.visibilitySymbol(visible: store.floatingPetEnabled))
-            }
-            .buttonStyle(.borderless)
-            .help(store.floatingPetEnabled ? l.floatingPetHideLabel : l.floatingPetEnableLabel)
             Button {
                 nav.showSettings = true
             } label: {
@@ -937,8 +919,8 @@ struct MonthDailyTrend: View {
         guard let day = series.first(where: { $0.date == target }) else { return "" }
         let stamp = DailyTrendMetrics.dayStamp(day.date, language: l.lang)
         let tokens = TokenFormatter.compact(day.totalTokens)
-        guard showsCost, day.totalCost > 0 else { return "\(stamp) \(tokens)" }
-        return "\(stamp) \(tokens) \(TokenFormatter.cost(day.totalCost))"
+        guard showsCost else { return "\(stamp) \(tokens)" }
+        return "\(stamp) \(tokens) \(day.usageCost.text(l))"
     }
 }
 
@@ -1047,5 +1029,19 @@ struct ProviderTabBar: View {
         }
         // 탭이 적으면(대부분의 사용자) 스크롤·바운스가 생기지 않아 기존과 동일하게 보인다.
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+    }
+}
+
+/// Text and fill describe the same quantity; warning colors still represent actual usage.
+@MainActor
+struct LimitProgressBar: View {
+    let usedPercent: Double
+    let tint: Color
+    @Environment(UsageStore.self) private var store
+
+    var body: some View {
+        ProgressView(value: min(100, max(0, store.limitDisplayPercent(usedPercent))), total: 100)
+            .tint(tint)
+            .controlSize(.small)
     }
 }
