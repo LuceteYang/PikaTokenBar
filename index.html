@@ -952,6 +952,22 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     </div>
 
     <div class="panel info">
+      <h3 data-i18n="info.ivH3">포켓몬마다 개체가 다릅니다</h3>
+      <ul>
+        <li data-i18n="info.ivLi1">도감에서 종을 열면 그 개체의 레벨·성별·성격·특성·개체값(IV)·실제 능력치·배운 기술까지 한 화면에서 볼 수 있습니다.</li>
+        <li data-i18n="info.ivLi2">종 설명·특성·기술 이름은 선택한 언어로 표시되고, PokéAPI에 번역이 없는 항목만 영어로 남습니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
+      <h3 data-i18n="info.paceH3">성장 속도는 직접 정합니다</h3>
+      <ul>
+        <li data-i18n="info.paceLi1">설정 → 난이도에서 성장 임계와 상점 가격을 각각 10%~200%로 조절합니다. 슬라이더는 초안만 바꾸고 저장을 눌러야 적용되며, 지금까지 쌓인 진행도는 난이도를 바꿔도 그대로 유지됩니다.</li>
+        <li data-i18n="info.paceLi2">이미 졸업시킨 진화 라인이 다시 부화하면 2배 빠르게 자랍니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
       <h3 data-i18n="info.coexistH3">원본과 함께 쓸 수 있습니다</h3>
       <ul>
         <li data-i18n="info.coexistLi1">별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.</li>
@@ -1101,6 +1117,12 @@ var I18N = {
     "info.trendLi1": "주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 그 아래 날짜 축과 주말 밑줄이 붙어, 마우스를 올리지 않아도 어느 막대가 어느 날인지 읽힙니다. 캡션은 가리킨 날의 날짜·요일·사용량을 보여주고, 아무것도 가리키지 않으면 오늘을 보여줍니다.",
     "info.trendLi2": "도구가 이미 써 놓은 로그에서 파생되므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다. 오늘부터 새로 쌓기 시작하지 않습니다.",
     "info.trendLi3": "감지된 모든 도구의 사용량을 합산합니다. 일별을 못 주는 도구가 섞여 있어도 나머지는 그대로 표시됩니다.",
+    "info.ivH3": "포켓몬마다 개체가 다릅니다",
+    "info.ivLi1": "도감에서 종을 열면 그 개체의 레벨·성별·성격·특성·개체값(IV)·실제 능력치·배운 기술까지 한 화면에서 볼 수 있습니다.",
+    "info.ivLi2": "종 설명·특성·기술 이름은 선택한 언어로 표시되고, PokéAPI에 번역이 없는 항목만 영어로 남습니다.",
+    "info.paceH3": "성장 속도는 직접 정합니다",
+    "info.paceLi1": "설정 → 난이도에서 성장 임계와 상점 가격을 각각 10%~200%로 조절합니다. 슬라이더는 초안만 바꾸고 저장을 눌러야 적용되며, 지금까지 쌓인 진행도는 난이도를 바꿔도 그대로 유지됩니다.",
+    "info.paceLi2": "이미 졸업시킨 진화 라인이 다시 부화하면 2배 빠르게 자랍니다.",
     "info.coexistH3": "원본과 함께 쓸 수 있습니다",
     "info.coexistLi1": "별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.",
     "info.coexistLi2": "데이터도 분리되어 있어 서로 영향을 주지 않습니다.",
@@ -1171,6 +1193,12 @@ var I18N = {
     "info.trendLi1": "One bar per day of the current month, right under the week and month totals, with a date axis beneath it and a short tick under weekends \u2014 so you can read which bar is which day without hovering. The caption names the day you point at, and shows today when you point at nothing.",
     "info.trendLi2": "Derived from the logs your tools already wrote, so the month is filled in on the first refresh after updating. It does not start counting from today.",
     "info.trendLi3": "Totals are summed across every detected tool. A tool that cannot report per-day usage simply drops out, and the rest still show.",
+    "info.ivH3": "Every Pokémon is its own individual",
+    "info.ivLi1": "Open a species in the Pokédex to see that individual's level, gender, nature, ability, IVs, calculated stats, and learned moves on one screen.",
+    "info.ivLi2": "Species descriptions, abilities, and move names follow your selected language; only entries PokéAPI has no translation for stay in English.",
+    "info.paceH3": "You set the pace",
+    "info.paceLi1": "Settings → Difficulty scales growth thresholds and shop prices independently, from 10% to 200%. Dragging edits a draft — press Save to apply — and the progress you have already banked survives the change.",
+    "info.paceLi2": "A hatch from an evolution line you have already graduated grows twice as fast.",
     "info.coexistH3": "Runs alongside the original",
     "info.coexistLi1": "Installs as a separate app — runs side-by-side with the original PokeTokenBar.",
     "info.coexistLi2": "Its data is separate too, so neither one affects the other.",
@@ -1241,6 +1269,12 @@ var I18N = {
     "info.trendLi1": "週間・月間の合計のすぐ下に、今月の1日ごとのバーを1本ずつ。その下に日付軸と週末の下線を添えたので、ホバーしなくてもどのバーがどの日かが読めます。キャプションは指した日を示し、どこも指していなければ今日を表示します。",
     "info.trendLi2": "ツールがすでに書き出したログから導出するため、更新直後の最初のリフレッシュで今月分が埋まります。今日から数え直しにはなりません。",
     "info.trendLi3": "検出されたすべてのツールの使用量を合算します。日別を報告できないツールが混ざっていても、残りはそのまま表示されます。",
+    "info.ivH3": "ポケモンごとに個体が違います",
+    "info.ivLi1": "図鑑で種を開くと、その個体のレベル・性別・性格・特性・個体値(IV)・実際の能力値・覚えた技まで1画面で確認できます。",
+    "info.ivLi2": "種の説明・特性・技名は選択した言語で表示され、PokéAPI に翻訳がない項目だけ英語のまま残ります。",
+    "info.paceH3": "成長ペースは自分で決めます",
+    "info.paceLi1": "設定 → 難易度で、成長のしきい値とショップ価格をそれぞれ 10%〜200% に調整します。スライダーは下書きを変えるだけで、保存を押すと適用され、これまで貯めた進行度はそのまま残ります。",
+    "info.paceLi2": "すでに卒業させた進化ラインから孵化すると、2倍の速さで育ちます。",
     "info.coexistH3": "オリジナルと併用できます",
     "info.coexistLi1": "別のアプリとしてインストールされます — オリジナルのPokeTokenBarと並行して起動できます。",
     "info.coexistLi2": "データも分離されているため、互いに影響しません。",
