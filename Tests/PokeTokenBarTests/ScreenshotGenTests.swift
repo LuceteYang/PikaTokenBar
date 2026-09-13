@@ -15,6 +15,11 @@ import SwiftUI
 ///
 /// 함정: `ScrollView` 를 품은 뷰(`ProviderTabBar`)는 `ImageRenderer` 에서 빈 칸으로 나온다 —
 /// 스크린샷에 넣지 말 것. 헤더처럼 스크롤 없는 부분만 렌더된다.
+///
+/// 같은 부류: AppKit 컨트롤을 감싼 뷰(`ProgressView` → `NSProgressIndicator`, 즉 한도 막대)는
+/// `ImageRenderer` 에서 "미지원" 플레이스홀더로 그려진다. 그런 뷰를 담으려면
+/// `NSWindow` 에 올려 `cacheDisplay(in:to:)` 로 떠야 실제 모습이 나온다
+/// (`LimitProgressRenderingTests` 가 그 방식으로 페이스 눈금을 검증한다).
 final class ScreenshotGenTests: XCTestCase {
 
     /// 데모용 한 달치 일별 사용량 — 실제 로그처럼 쉬는 날(0)과 몰아친 날이 섞여야 기능이 읽힌다.
@@ -99,6 +104,88 @@ final class ScreenshotGenTests: XCTestCase {
         let image = try XCTUnwrap(renderer.nsImage)
         let tiff = try XCTUnwrap(image.tiffRepresentation)
         let rep = try XCTUnwrap(NSBitmapImageRep(data: tiff))
+        return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+    }
+
+    // MARK: 페이스 눈금
+
+    /// 눈금 하나로 읽히게 두 행만 쓴다 — 설명 문구·화살표를 얹지 않는다.
+    /// 5시간은 눈금 바로 앞(페이스대로), 주간은 눈금을 크게 넘어섬(빠름). 두 행의 대비가 곧 설명이다.
+    @MainActor
+    func testGeneratePaceMarkerScreenshots() throws {
+        guard let directory = ProcessInfo.processInfo.environment["PTB_SCREENSHOT_DIR"] else {
+            throw XCTSkip("PTB_SCREENSHOT_DIR 미지정 — 에셋 생성은 릴리스 때만 실행한다")
+        }
+        for (language, suffix) in [(AppLanguage.en, ""), (.ko, "-ko"), (.ja, "-ja")] {
+            let data = try renderPaceMarker(language: language)
+            let url = URL(fileURLWithPath: directory)
+                .appendingPathComponent("screenshot-pace-marker\(suffix).png")
+            try data.write(to: url)
+            print("wrote \(url.path) (\(data.count) bytes)")
+        }
+    }
+
+    @MainActor
+    private func renderPaceMarker(language: AppLanguage) throws -> Data {
+        let l = L(language)
+        let suite = "PaceShot-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
+
+        /// PopoverView.quotaRow 와 같은 구성 — 그 함수는 private 이라 여기서 형태만 맞춘다.
+        /// 리셋 라벨이 퍼센트 **앞**에 온다(후행 정렬, #292). 순서가 어긋나면 스크린샷이
+        /// 실제 UI 와 갈라지므로 quotaRow 를 고칠 때 여기도 같이 본다.
+        func row(_ name: String, used: Double, resetIn: TimeInterval, pace: Double) -> some View {
+            let reset = Date().addingTimeInterval(resetIn)
+            let formatter = DateFormatter()
+            formatter.locale = language.displayLocale
+            formatter.setLocalizedDateFormatFromTemplate(resetIn <= 6 * 3600 ? "HHmm" : "EEEEdHHmm")
+            return VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(name).font(.callout)
+                    Spacer()
+                    (Text("\(reset, style: .relative)") + Text(" (\(formatter.string(from: reset)))"))
+                        .font(.caption).foregroundStyle(.tertiary)
+                    Text(TokenFormatter.percent(used))
+                        .font(.callout).monospacedDigit().foregroundStyle(Color.green)
+                }
+                LimitProgressBar(usedPercent: used, tint: .green, pace: pace)
+            }
+        }
+
+        let content = VStack(alignment: .leading, spacing: 8) {
+            Text(l.limitsOfficial).font(.caption).foregroundStyle(.secondary)
+            row(l.fiveHourSession, used: 62, resetIn: 2 * 3600, pace: 0.6)
+            row(l.weekly, used: 78, resetIn: 3 * 24 * 3600, pace: 4.0 / 7.0)
+        }
+        .environment(store)
+        .padding(.horizontal, PopoverMetrics.padding)
+        .padding(.vertical, 16)
+        .frame(width: PopoverMetrics.width, alignment: .leading)
+        .background(Color(red: 41 / 255, green: 41 / 255, blue: 42 / 255))
+        .environment(\.colorScheme, .dark)
+        .environment(\.locale, language.displayLocale)
+
+        // ImageRenderer 로는 막대가 플레이스홀더로 나온다(파일 상단 함정 참조) → 창에 올려 캡처.
+        let host = NSHostingController(rootView: content)
+        host.view.setFrameSize(NSSize(width: PopoverMetrics.width, height: host.view.fittingSize.height))
+        let window = NSWindow(contentRect: host.view.frame, styleMask: [.borderless],
+                              backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.contentView = host.view
+        host.view.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+
+        // 기존 에셋과 같은 2배 해상도(720px 폭). rep 의 픽셀 크기는 2배, 논리 크기는 pt 로 둔다.
+        let bounds = host.view.bounds
+        let rep = try XCTUnwrap(NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: Int(bounds.width) * 2, pixelsHigh: Int(bounds.height) * 2,
+            bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
+        rep.size = bounds.size
+        host.view.cacheDisplay(in: bounds, to: rep)
         return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
     }
 

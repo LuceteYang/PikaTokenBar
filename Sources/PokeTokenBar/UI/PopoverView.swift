@@ -1089,22 +1089,29 @@ struct LimitProgressBar: View {
             .overlay { paceMarker }
     }
 
-    /// 세로 눈금 1px. 새 타이머를 두지 않는다 — 5시간 창에서 분당 0.33%p 라 갱신 주기
+    /// 짧고 통통한 세로 눈금. 새 타이머를 두지 않는다 — 5시간 창에서 분당 0.33%p 라 갱신 주기
     /// (refreshInterval, 기본 120초)와 팝오버 재오픈만으로 충분히 "시간 따라 이동"한다.
     @ViewBuilder
     private var paceMarker: some View {
         if let fraction = Self.markerFraction(pace: pace, mode: store.limitDisplayMode) {
             GeometryReader { geo in
-                Rectangle()
+                RoundedRectangle(cornerRadius: Self.markerWidth / 2, style: .continuous)
                     .fill(.primary.opacity(0.55))
-                    .frame(width: Self.markerWidth, height: geo.size.height + Self.markerOverhang * 2)
+                    .frame(width: Self.markerWidth, height: Self.markerHeight)
                     // 양 끝에서도 선이 막대 밖으로 반쯤 걸치지 않도록 폭을 빼고 배분한다.
-                    .offset(x: (geo.size.width - Self.markerWidth) * fraction, y: -Self.markerOverhang)
+                    .offset(x: (geo.size.width - Self.markerWidth) * fraction,
+                            y: (geo.size.height - Self.markerHeight) / 2)
             }
             .allowsHitTesting(false)
         }
     }
 
-    private static let markerWidth: CGFloat = 1
+    /// 2.5pt = 2배 화면에서 딱 5px — 반픽셀에 걸려 흐려지지 않는 가장 얇은 "선 아닌 눈금" 굵기.
+    private static let markerWidth: CGFloat = 2.5
+    /// 눈금 길이는 `geo.size.height`(=12pt 레이아웃 칸)가 아니라 **실제로 칠해지는 트랙**(6pt)에
+    /// 맞춘다. 칸 기준으로 잡았더니 6pt 막대에 16pt 눈금이 붙어 막대보다 눈금이 커 보였다.
+    /// 위아래 2pt 씩만 물려 막대 위에 얹힌 눈금으로 읽히게 한다.
+    private static let trackHeight: CGFloat = 6
     private static let markerOverhang: CGFloat = 2
+    private static let markerHeight: CGFloat = trackHeight + markerOverhang * 2
 }

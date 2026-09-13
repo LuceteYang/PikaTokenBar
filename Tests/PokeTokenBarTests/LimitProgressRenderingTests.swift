@@ -95,4 +95,51 @@ final class LimitProgressRenderingTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(markerColumn(pace: 0)), 0, accuracy: 3)
         XCTAssertEqual(try XCTUnwrap(markerColumn(pace: 1)), width - 1, accuracy: 3)
     }
+
+    /// 눈금 길이는 오버레이 칸이 아니라 **칠해진 트랙**을 따라야 한다. `ProgressView` 의 칸은
+    /// 트랙보다 두 배 높아서, 칸을 기준으로 잡으면 6pt 막대에 16pt 눈금이 붙어 눈금이 막대보다
+    /// 커 보였다. 위치 테스트는 어느 쪽이든 통과하므로(가장 어두운 *열*만 본다) 길이를 따로 잰다.
+    func testPaceMarkerStaysCloseToPaintedTrackHeight() throws {
+        let suite = "LimitPaceHeight-\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
+        let width = 200.0
+        let height = 20.0
+
+        let view = LimitProgressBar(usedPercent: 0, tint: .clear, pace: 0.5)
+            .environment(store).frame(width: width, height: height)
+        let host = NSHostingController(rootView: view)
+        host.view.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        let window = NSWindow(contentRect: host.view.frame, styleMask: [.borderless],
+                              backing: .buffered, defer: false)
+        window.appearance = NSAppearance(named: .aqua)
+        window.contentView = host.view
+        host.view.layoutSubtreeIfNeeded()
+        window.displayIfNeeded()
+
+        let rep = try XCTUnwrap(host.view.bitmapImageRepForCachingDisplay(in: host.view.bounds))
+        host.view.cacheDisplay(in: host.view.bounds, to: rep)
+
+        /// 투명은 흰색으로 친다 — 트랙/눈금만 배경보다 어둡다.
+        func brightness(x: Int, y: Int) -> Double {
+            guard let color = rep.colorAt(x: x, y: y),
+                  let rgb = color.usingColorSpace(.deviceRGB) else { return 1 }
+            return rgb.brightnessComponent * rgb.alphaComponent + (1 - rgb.alphaComponent)
+        }
+        func paintedRows(column: Int, darkerThan limit: Double) -> Int {
+            (0..<rep.pixelsHigh).count { brightness(x: column, y: $0) < limit }
+        }
+
+        let scale = Double(rep.pixelsHigh) / height
+        let markerColumn = Int(Double(rep.pixelsWide) * 0.5)
+        // 눈금에서 몇 pt 떨어진 열 — 트랙만 칠해진 곳.
+        let trackOnlyColumn = markerColumn + Int(8 * scale)
+        let trackHeight = Double(paintedRows(column: trackOnlyColumn, darkerThan: 0.98)) / scale
+        let markerHeight = Double(paintedRows(column: markerColumn, darkerThan: 0.6)) / scale
+
+        XCTAssertGreaterThan(trackHeight, 0, "트랙이 칠해져야 아래 비교가 뜻을 가진다")
+        XCTAssertEqual(markerHeight, trackHeight + 4, accuracy: 1,
+                       "눈금은 트랙 위아래로 2pt 씩만 물려야 한다 (트랙 \(trackHeight)pt, 눈금 \(markerHeight)pt)")
+    }
 }
