@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.6.0"
+VERSION = "1.7.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -44,6 +44,14 @@ S = {
  "limitUsed":     ("사용량", "Used", "使用量"),
  "limitRemain":   ("남은 양", "Remaining", "残量"),
  "launch":        ("로그인 시 자동 시작", "Launch at login", "ログイン時に自動起動"),
+ "difficulty":    ("난이도", "Difficulty", "難易度"),
+ "diffGrowth":    ("성장", "Growth", "成長"),
+ "diffShop":      ("상점 가격", "Shop prices", "ショップ価格"),
+ "diffHint":      ("10%–200% · 기본값 100% 기준이에요 — 낮추면 빨리 자라고 싸지고, 높이면 그 반대예요",
+                   "10%–200% · Percentages of the default balance — lower grows faster and costs less, higher does the opposite",
+                   "10%–200% · 標準バランスに対する割合です — 下げると早く育ち安くなり、上げるとその逆になります"),
+ "web":           ("웹사이트", "Website", "ウェブサイト"),
+ "sponsorLink":   ("후원", "Sponsor", "支援"),
  "menuBar":       ("메뉴바에 표시", "Show in menu bar", "メニューバーに表示"),
  "todayTokens":   ("오늘 토큰", "Today's tokens", "本日のトークン"),
  "todayCost":     ("오늘 비용 ($)", "Today's cost ($)", "本日のコスト ($)"),
@@ -249,6 +257,14 @@ def html(lang, advanced=False):
                 f'<div class="seg"><span class="on">{s("limitUsed")}</span><span>{s("limitRemain")}</span></div>'),
             row(s("launch"), tog(True)),
         ),
+        sec(s("difficulty")),
+        card(
+            row(f'<span style="display:inline-block;width:84px">{s("diffGrowth")}</span>',
+                slider(50) + '<div class="val">100%</div>'),
+            row(f'<span style="display:inline-block;width:84px">{s("diffShop")}</span>',
+                slider(50) + '<div class="val">100%</div>'),
+        ),
+        f'<div class="note">{s("diffHint")}</div>',
         sec(s("menuBar")),
         card(
             row(s("todayTokens"), tog(True)),
@@ -288,7 +304,7 @@ def html(lang, advanced=False):
             row(s("showLog"), f'<div class="btn">{s("finder")}</div>'),
         ),
         f'<div class="ftr"><span>v{VERSION}</span><span>·</span><a>GitHub</a><span>·</span>'
-        f'<a>Web</a><span>·</span><span class="hrt">♥</span><a>Sponsor</a></div>',
+        f'<a>{s("web")}</a><span>·</span><span class="hrt">♥</span><a>{s("sponsorLink")}</a></div>',
     ]
     return ("<!doctype html><html lang=%s><head><meta charset=utf-8><style>%s</style></head>"
             "<body>%s<script>document.title=document.body.getBoundingClientRect().height"
