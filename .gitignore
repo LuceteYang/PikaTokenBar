@@ -36,3 +36,7 @@ docs/*
 # Local-only review-gate opt-out (not published)
 .no-review-gate
 .gstack/
+
+# Python bytecode (scripts/tests)
+__pycache__/
+*.pyc

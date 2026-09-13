@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+FORK_GUARD = "✗ 이 포크(PikaTokenBar)에서는 release.sh 를 쓰지 않습니다"
 spec = importlib.util.spec_from_file_location("release_metadata", ROOT / "scripts/release-metadata.py")
 metadata = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(metadata)
@@ -115,13 +116,26 @@ class ReleaseMetadataTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             metadata.commit_message("2.5.4", str(authors))
 
+    def test_fork_guard_blocks_release_sh(self):
+        # 이 포크는 release.sh 로 배포하지 않는다(release-fork.sh 를 쓴다). 가드가 사라지면
+        # 원작자 저장소·원작자 인증서로 릴리스를 시도하므로, 문서가 아니라 여기서 지킨다.
+        blocked = subprocess.run(["bash", str(ROOT / "scripts/release.sh"), "2.5.4"],
+                                 capture_output=True, text=True)
+        self.assertNotEqual(blocked.returncode, 0)
+        self.assertIn(FORK_GUARD, blocked.stderr)
+
     def test_release_stops_before_side_effects_when_notes_are_missing(self):
         # Run the real shell entry point inside a disposable fixture. No git writes,
         # network, app build, signing, or installation commands are reachable.
         scripts = self.root / "scripts"
         scripts.mkdir()
-        for name in ("release.sh", "release-metadata.py"):
-            (scripts / name).write_text((ROOT / "scripts" / name).read_text())
+        # 가드 아래의 upstream 절차 자체를 검증하려면 사본에서 가드만 걷어낸다 —
+        # 가드가 살아 있는지는 test_fork_guard_blocks_release_sh 가 따로 본다.
+        release = (ROOT / "scripts/release.sh").read_text()
+        start = release.index('echo "' + FORK_GUARD)
+        end = release.index("exit 1", start) + len("exit 1")
+        (scripts / "release.sh").write_text(release[:start] + release[end:])
+        (scripts / "release-metadata.py").write_text((ROOT / "scripts/release-metadata.py").read_text())
         (scripts / "build-app.sh").write_text('VERSION="2.5.3"\n')
         marker = self.root / "test-gate-reached"
         gate = scripts / "test-gate.sh"

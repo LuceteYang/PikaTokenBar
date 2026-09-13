@@ -22,6 +22,12 @@ read_when:
 
     PTB_NOTES_FILE=/tmp/notes.md ./scripts/release-fork.sh <version>
 
+릴리스 커밋 메시지는 `scripts/release-metadata.py commit-message` 가 만든다 — **기본은 트레일러
+없음**이고, 실제 공동작업자가 있을 때만 `PTB_COAUTHORS_FILE` 에 `Name <email>` 을 한 줄씩 담아
+넘긴다(`CLAUDE.md` §릴리스). 도구를 돌렸다는 이유로 Claude·Codex 를 고정으로 붙이지 않는다.
+`scripts/tests` 는 `swift test` 밖이라 `test-gate.sh` 가 돌지 않으므로 `release-fork.sh` 1단계가
+직접 실행한다 — 거기서 `release.sh` 포크 가드가 살아 있는지도 함께 검증된다.
+
 버전은 **포크 자체 semver** 다(원본 버전과 무관, `1.0.0` 부터). 접미사(`-gen1`)를 붙이면
 `UpdateChecker.isNewer` 의 정수 파싱(`Int($0) ?? 0`)에서 조용히 0 으로 잘리므로 순수 semver 만 쓴다.
 `release-fork.sh` 도 버전 인자를 `^[0-9]+\.[0-9]+\.[0-9]+$` 로 하드 게이트한다.

@@ -170,6 +170,10 @@ echo "=== PikaTokenBar 릴리스 $PREV → $VERSION ==="
 
 echo "▶ 1/7 테스트 게이트"
 ./scripts/test-gate.sh >/dev/null || { echo "✗ test-gate 실패 — 중단"; exit 1; }
+# scripts/tests 는 swift test 밖(파이썬)이라 test-gate 가 안 돈다 — 릴리스 메타데이터 게이트와
+# release.sh 포크 가드가 여기서만 검증된다. 빼면 두 규칙이 아무도 안 지키는 문서로 남는다.
+python3 -m unittest discover -s scripts/tests -q >/dev/null \
+  || { echo "✗ scripts/tests 실패 — 중단"; exit 1; }
 echo "  ✓ 통과"
 
 echo "▶ 2/7 정체성 누수 검사"
@@ -239,9 +243,11 @@ git add scripts/build-app.sh
 # gh release create(7/7)가 실패해 재실행할 때, VERSION 이 이미 범프돼 있으면 diff 가 비어 커밋할
 # 게 없다 — 그대로 커밋하면 set -e 로 스크립트가 죽어 재시도가 막힌다(I-2). 커밋을 조건부로 만들어
 # push+release 재시도만으로 복구되게 한다.
-git diff --cached --quiet || git commit -q -m "release: bump version to $VERSION
-
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
+# 공동작성자는 고정하지 않는다(CLAUDE.md) — 도구를 돌렸다는 이유로 트레일러가 붙으면 기여 기록이
+# 사실과 어긋난다. 기본은 트레일러 없음이고, 실제 공동작업자가 있을 때만 PTB_COAUTHORS_FILE 로
+# 'Name <email>' 을 한 줄씩 넘긴다(형식 검증은 release-metadata.py 가 한다).
+RELEASE_COMMIT_MSG=$(python3 scripts/release-metadata.py commit-message "$VERSION" "${PTB_COAUTHORS_FILE:-}")
+git diff --cached --quiet || git commit -q -m "$RELEASE_COMMIT_MSG"
 git push -q origin main
 
 echo "▶ 7/7 GitHub Release v$VERSION"
