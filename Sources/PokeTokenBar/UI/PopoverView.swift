@@ -578,9 +578,16 @@ struct PopoverView: View {
     }
 
     /// 툴팁 문구. 숫자도 `limitDisplayPercent` 를 거쳐 눈금 위치와 같은 방향을 말한다.
-    private func paceHelp(_ pace: Double?) -> String? {
+    /// 단계가 있으면 이름과 차이를 첫 줄에 둔다 — 행에는 색만 있으므로 글로 된 단계는 여기서 준다.
+    private func paceHelp(_ pace: Double?, tier: PaceTier?, utilization: Double) -> String? {
         guard let pace else { return nil }
-        return l.paceHint(TokenFormatter.percent(store.limitDisplayPercent(pace * 100)))
+        let hint = l.paceHint(TokenFormatter.percent(store.limitDisplayPercent(pace * 100)))
+        guard let tier else { return hint }
+        var head = l.paceTier(tier)
+        if let delta = l.paceDelta(PaceTier.roundedDelta(utilization: utilization, pace: pace)) {
+            head += " · " + delta
+        }
+        return head + "\n" + hint
     }
 
     @ViewBuilder
@@ -628,11 +635,8 @@ struct PopoverView: View {
                     .foregroundStyle(percentTint)
             }
             LimitProgressBar(usedPercent: utilization, tint: tint, pace: pace)
-            if let tier, let pace {
-                paceTierLine(tier, delta: PaceTier.roundedDelta(utilization: utilization, pace: pace))
-            }
         }
-        .helpIfPresent(paceHelp(pace))
+        .helpIfPresent(paceHelp(pace, tier: tier, utilization: utilization))
     }
 
     @ViewBuilder
@@ -934,19 +938,6 @@ struct PopoverView: View {
         f.dateFormat = "HH:mm"
         return f
     }()
-
-    /// 게이지 아래 단계 줄 — 색만으로 정보를 전하지 않도록 단계 이름과 차이를 글로 함께 낸다.
-    /// 점만 단계색이고 글자는 secondary — 노랑 글자는 라이트 모드 배경에서 읽기 어렵다.
-    private func paceTierLine(_ tier: PaceTier, delta: Int) -> some View {
-        HStack(spacing: 4) {
-            Circle().fill(tier.color).frame(width: 5, height: 5)
-            Text(l.paceTier(tier)).foregroundStyle(.secondary)
-            if let text = l.paceDelta(delta) {
-                Text("· \(text)").foregroundStyle(.tertiary).monospacedDigit()
-            }
-        }
-        .font(.caption2)
-    }
 
     private func limitColor(_ utilization: Double) -> Color {
         if utilization >= store.critThreshold { return .red }
@@ -1346,6 +1337,6 @@ extension PaceTier {
     }
 
     /// % 숫자색. 노랑 글자는 라이트 모드 배경에서 거의 안 읽혀 그 단계만 기본 글자색으로 둔다 —
-    /// 단계는 채움·점·아래 줄이 여전히 말해 준다.
+    /// 단계는 채움 색과 툴팁이 여전히 말해 준다.
     var percentColor: Color { self == .slightlyOver ? .primary : color }
 }

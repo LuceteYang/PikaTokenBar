@@ -29,7 +29,7 @@ final class PaceTierTests: XCTestCase {
         }
     }
 
-    /// 판정은 반올림한 delta 로 한다 — 아래 줄에 찍히는 정수와 단계가 경계에서 어긋나지 않게.
+    /// 판정은 반올림한 delta 로 한다 — 툴팁에 찍히는 정수와 단계가 경계에서 어긋나지 않게.
     func testTierFollowsRoundedDelta() {
         XCTAssertEqual(tier(54.6), .slightlyOver)  // +4.6 → "5 pts over" 이므로 조금 빠름
         XCTAssertEqual(tier(54.4), .onPace)

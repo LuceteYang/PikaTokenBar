@@ -15,7 +15,7 @@ enum PaceTier: Int, CaseIterable {
     static func tier(utilization: Double, pace: Double?, critThreshold: Double) -> PaceTier? {
         guard let pace, pace >= minimumPace else { return nil }
         if utilization >= critThreshold { return .wayOver }
-        // 반올림한 delta 로 판정해 아래 줄에 찍히는 정수와 단계가 경계에서 어긋나지 않게 한다.
+        // 반올림한 delta 로 판정해 툴팁에 찍히는 정수와 단계가 경계에서 어긋나지 않게 한다.
         switch roundedDelta(utilization: utilization, pace: pace) {
         case ..<(-25): return .wayUnder
         case ..<(-10): return .under
