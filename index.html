@@ -968,6 +968,22 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     </div>
 
     <div class="panel info">
+      <h3 data-i18n="info.accountsH3">Claude 계정이 여러 개여도 따로 봅니다</h3>
+      <ul>
+        <li data-i18n="info.accountsLi1">설정 폴더(CLAUDE_CONFIG_DIR)마다 로그인한 Claude Code 계정은 공식 한도 아래에 각자의 탭이 생기고, 게이지·이상한 사탕·알림·오늘/이번 달 토큰을 따로 보여 줍니다.</li>
+        <li data-i18n="info.accountsLi2">~/.claude-* 폴더와 export 된 CLAUDE_CONFIG_DIR 은 자동으로 찾고, 다른 위치는 설정 → 고급에서 추가합니다. 메뉴바 한도 %와 컴패니언 기분은 마지막으로 쓴 계정을 따릅니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
+      <h3 data-i18n="info.burnH3">한도는 총량이 아니라 페이스로 읽습니다</h3>
+      <ul>
+        <li data-i18n="info.burnLi1">각 한도 막대에 고르게 썼다면 지금쯤 도달했을 지점을 얇은 눈금으로 표시합니다. 채움이 눈금을 넘으면 리셋 전에 바닥난다는 뜻입니다.</li>
+        <li data-i18n="info.burnLi2">Cursor 에 로그인돼 있으면 이번 달 포함 사용량(사용률·남은 금액·auto/API 구분)도 공식 한도에 나옵니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
       <h3 data-i18n="info.coexistH3">원본과 함께 쓸 수 있습니다</h3>
       <ul>
         <li data-i18n="info.coexistLi1">별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.</li>
@@ -1123,6 +1139,12 @@ var I18N = {
     "info.paceH3": "성장 속도는 직접 정합니다",
     "info.paceLi1": "설정 → 난이도에서 성장 임계와 상점 가격을 각각 10%~200%로 조절합니다. 슬라이더는 초안만 바꾸고 저장을 눌러야 적용되며, 지금까지 쌓인 진행도는 난이도를 바꿔도 그대로 유지됩니다.",
     "info.paceLi2": "이미 졸업시킨 진화 라인이 다시 부화하면 2배 빠르게 자랍니다.",
+    "info.accountsH3": "Claude 계정이 여러 개여도 따로 봅니다",
+    "info.accountsLi1": "설정 폴더(CLAUDE_CONFIG_DIR)마다 로그인한 Claude Code 계정은 공식 한도 아래에 각자의 탭이 생기고, 게이지·이상한 사탕·알림·오늘/이번 달 토큰을 따로 보여 줍니다.",
+    "info.accountsLi2": "~/.claude-* 폴더와 export 된 CLAUDE_CONFIG_DIR 은 자동으로 찾고, 다른 위치는 설정 → 고급에서 추가합니다. 메뉴바 한도 %와 컴패니언 기분은 마지막으로 쓴 계정을 따릅니다.",
+    "info.burnH3": "한도는 총량이 아니라 페이스로 읽습니다",
+    "info.burnLi1": "각 한도 막대에 고르게 썼다면 지금쯤 도달했을 지점을 얇은 눈금으로 표시합니다. 채움이 눈금을 넘으면 리셋 전에 바닥난다는 뜻입니다.",
+    "info.burnLi2": "Cursor 에 로그인돼 있으면 이번 달 포함 사용량(사용률·남은 금액·auto/API 구분)도 공식 한도에 나옵니다.",
     "info.coexistH3": "원본과 함께 쓸 수 있습니다",
     "info.coexistLi1": "별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.",
     "info.coexistLi2": "데이터도 분리되어 있어 서로 영향을 주지 않습니다.",
@@ -1199,6 +1221,12 @@ var I18N = {
     "info.paceH3": "You set the pace",
     "info.paceLi1": "Settings → Difficulty scales growth thresholds and shop prices independently, from 10% to 200%. Dragging edits a draft — press Save to apply — and the progress you have already banked survives the change.",
     "info.paceLi2": "A hatch from an evolution line you have already graduated grows twice as fast.",
+    "info.accountsH3": "Several Claude accounts, kept apart",
+    "info.accountsLi1": "Each Claude Code login in its own config folder (CLAUDE_CONFIG_DIR) gets a tab under the official limits, with its own gauges, Rare Candy, alerts, and today/month tokens.",
+    "info.accountsLi2": "~/.claude-* folders and an exported CLAUDE_CONFIG_DIR are found automatically; add others in Settings → Advanced. The menu bar percentage and companion mood follow the account you used last.",
+    "info.burnH3": "Read limits by pace, not just total",
+    "info.burnLi1": "Every quota bar carries a thin tick where an even burn would be by now. Fill past the tick means the window runs out before it resets.",
+    "info.burnLi2": "Signed into Cursor? The official limits also show this month's included usage — percent used, dollars remaining, and the auto/API split.",
     "info.coexistH3": "Runs alongside the original",
     "info.coexistLi1": "Installs as a separate app — runs side-by-side with the original PokeTokenBar.",
     "info.coexistLi2": "Its data is separate too, so neither one affects the other.",
@@ -1275,6 +1303,12 @@ var I18N = {
     "info.paceH3": "成長ペースは自分で決めます",
     "info.paceLi1": "設定 → 難易度で、成長のしきい値とショップ価格をそれぞれ 10%〜200% に調整します。スライダーは下書きを変えるだけで、保存を押すと適用され、これまで貯めた進行度はそのまま残ります。",
     "info.paceLi2": "すでに卒業させた進化ラインから孵化すると、2倍の速さで育ちます。",
+    "info.accountsH3": "Claude アカウントが複数でも別々に",
+    "info.accountsLi1": "設定フォルダ（CLAUDE_CONFIG_DIR）ごとにログインした Claude Code アカウントには公式上限の下にそれぞれのタブが付き、ゲージ・ふしぎなアメ・通知・今日/今月のトークンを個別に表示します。",
+    "info.accountsLi2": "~/.claude-* フォルダとエクスポートされた CLAUDE_CONFIG_DIR は自動で見つけ、それ以外は設定 → 詳細で追加します。メニューバーの上限 % とコンパニオンの様子は最後に使ったアカウントに従います。",
+    "info.burnH3": "上限は合計ではなくペースで読む",
+    "info.burnLi1": "各上限バーには、均等に使っていれば今ごろ届いている位置に細い目盛りがあります。塗りが目盛りを越えていれば、リセット前に使い切るという意味です。",
+    "info.burnLi2": "Cursor にログインしていれば、今月の included usage（使用率・残り金額・auto/API の内訳）も公式上限に表示されます。",
     "info.coexistH3": "オリジナルと併用できます",
     "info.coexistLi1": "別のアプリとしてインストールされます — オリジナルのPokeTokenBarと並行して起動できます。",
     "info.coexistLi2": "データも分離されているため、互いに影響しません。",
