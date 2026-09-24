@@ -213,6 +213,14 @@ struct PopoverView: View {
             }
 
             MonthDailyTrend(series: store.monthDailyTotals,
+                            providers: store.snapshots.compactMap { snap in
+                                snap.monthDaily.map {
+                                    DailyTrendStack.ProviderSeries(
+                                        id: snap.providerID, name: snap.displayName,
+                                        days: $0, reportsCost: snap.reportsCost)
+                                }
+                            },
+                            providerOrder: store.providerOrder,
                             showsCost: store.showsCost,
                             today: LocalUsageReader.todayKey(),
                             l: l)
@@ -1051,6 +1059,11 @@ struct PopoverView: View {
 @MainActor
 struct MonthDailyTrend: View {
     let series: [DailyUsage]
+    /// Each provider's own month series. With two or more providers used this month the bars
+    /// stack by provider and a legend/breakdown line appears; otherwise the row is unchanged.
+    var providers: [DailyTrendStack.ProviderSeries] = []
+    /// `UsageStore.providerOrder` — what keeps a provider's color fixed (see `DailyTrendStack.colorIndices`).
+    var providerOrder: [String] = []
     let showsCost: Bool
     /// 오늘의 `localDay` 키 — 강조할 막대를 뷰가 시계를 다시 읽어 고르지 않게 주입한다.
     let today: String
@@ -1061,12 +1074,31 @@ struct MonthDailyTrend: View {
     /// 반드시 호버해야 했던 게 첫 버전의 불만이었다.
     @State private var hovered: String?
 
+    /// Segment colors, indexed by `DailyTrendStack.colorIndices`. Muted enough to sit next to
+    /// the accent-colored today bar of the single-provider row without competing with it.
+    static let providerPalette: [Color] = [
+        Color(red: 0.85, green: 0.47, blue: 0.34),
+        Color(red: 0.36, green: 0.62, blue: 0.95),
+        Color(red: 0.45, green: 0.78, blue: 0.52),
+        Color(red: 0.78, green: 0.55, blue: 0.92),
+        Color(red: 0.95, green: 0.76, blue: 0.32),
+        Color(red: 0.35, green: 0.78, blue: 0.80),
+        Color(red: 0.93, green: 0.51, blue: 0.68),
+        Color(red: 0.62, green: 0.64, blue: 0.70),
+    ]
+
     var body: some View {
         let peak = series.map(\.totalTokens).max() ?? 0
         if peak > 0 {
+            let stack = DailyTrendStack.ordered(providers)
+            let colors = DailyTrendStack.colorIndices(for: stack.map(\.id), registry: providerOrder,
+                                                      paletteCount: Self.providerPalette.count)
             VStack(alignment: .leading, spacing: 3) {
                 captionRow(peak: peak)
-                barRow(peak: peak)
+                if DailyTrendStack.isStacked(stack) {
+                    breakdownRow(stack: stack, colors: colors)
+                }
+                barRow(peak: peak, stack: stack, colors: colors)
                 weekendTickRow
                 axisRow
             }
@@ -1096,23 +1128,96 @@ struct MonthDailyTrend: View {
         }
     }
 
-    private func barRow(peak: Int) -> some View {
+    private func barRow(peak: Int, stack: [DailyTrendStack.ProviderSeries],
+                        colors: [String: Int]) -> some View {
         HStack(alignment: .bottom, spacing: DailyTrendMetrics.spacing) {
             ForEach(series, id: \.date) { day in
                 let isToday = day.date == today
                 // 사용 0 인 날은 바닥 눈금만 남으므로, 아주 조금 쓴 날과 높이로는 구분되지
                 // 않는다 — 색을 한 단계 흐리게 해 "안 쓴 날"과 "조금 쓴 날"을 갈라준다.
                 let isEmptyDay = day.totalTokens == 0
-                RoundedRectangle(cornerRadius: 1, style: .continuous)
-                    .fill(isToday ? Color.accentColor
-                                  : Color.secondary.opacity(isEmptyDay ? 0.18 : 0.45))
-                    .frame(height: DailyTrendMetrics.barHeight(tokens: day.totalTokens, peak: peak))
+                let height = DailyTrendMetrics.barHeight(tokens: day.totalTokens, peak: peak)
+                let segments = DailyTrendStack.isStacked(stack) && !isEmptyDay
+                    ? DailyTrendStack.segments(on: day.date, stack: stack, barHeight: height) : []
+                Group {
+                    if segments.isEmpty {
+                        RoundedRectangle(cornerRadius: 1, style: .continuous)
+                            .fill(isToday ? Color.accentColor
+                                          : Color.secondary.opacity(isEmptyDay ? 0.18 : 0.45))
+                            .frame(height: height)
+                    } else {
+                        stackedBar(segments, height: height, colors: colors,
+                                   highlighted: isToday || hovered == day.date)
+                    }
+                }
                     .frame(maxWidth: .infinity)
                     .contentShape(Rectangle())   // 낮은 막대도 칼럼 전체가 호버 대상이 되게
                     .onHover { inside in hovered = inside ? day.date : nil }
             }
         }
         .frame(height: DailyTrendMetrics.track, alignment: .bottom)
+    }
+
+    /// One bar split into provider segments. `segments` runs bottom → top; a `VStack` lays out
+    /// top → bottom, hence the reversal. Days other than today/hovered are dimmed — in the stacked
+    /// row the accent color no longer marks today, so brightness does.
+    private func stackedBar(_ segments: [DailyTrendStack.Segment], height: CGFloat,
+                            colors: [String: Int], highlighted: Bool) -> some View {
+        VStack(spacing: 0) {
+            ForEach(segments.reversed(), id: \.providerID) { segment in
+                color(for: segment.providerID, in: colors)
+                    .opacity(highlighted ? 1 : 0.55)
+                    .frame(height: segment.height)
+            }
+        }
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: 1, style: .continuous))
+    }
+
+    /// Legend and per-provider split of the day the caption reads out (hovered, else today).
+    /// Cost appears only for providers that bill (`reportsCost`), same rule as the totals.
+    ///
+    /// Narrows in steps when the full line would not fit — first without names, then without
+    /// cost. Nine-digit days with four-digit costs overflow the popover from two providers with
+    /// names and from four without, and wrapping would change the popover's height day to day.
+    private func breakdownRow(stack: [DailyTrendStack.ProviderSeries],
+                              colors: [String: Int]) -> some View {
+        let target = hovered ?? today
+        return ViewThatFits(in: .horizontal) {
+            breakdownLine(stack: stack, colors: colors, day: target, showsNames: true, showsCost: showsCost)
+            breakdownLine(stack: stack, colors: colors, day: target, showsNames: false, showsCost: showsCost)
+            breakdownLine(stack: stack, colors: colors, day: target, showsNames: false, showsCost: false)
+        }
+        .font(.caption2)
+        .monospacedDigit()
+    }
+
+    private func breakdownLine(stack: [DailyTrendStack.ProviderSeries], colors: [String: Int],
+                               day target: String, showsNames: Bool, showsCost: Bool) -> some View {
+        HStack(spacing: 8) {
+            ForEach(stack, id: \.id) { provider in
+                let day = provider.days.first { $0.date == target }
+                HStack(spacing: 3) {
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(color(for: provider.id, in: colors))
+                        .frame(width: 6, height: 6)
+                    if showsNames {
+                        Text(provider.name).foregroundStyle(.tertiary)
+                    }
+                    Text(TokenFormatter.compact(day?.totalTokens ?? 0)).foregroundStyle(.secondary)
+                    if showsCost, provider.reportsCost, let day {
+                        Text(day.usageCost.text(l)).foregroundStyle(.secondary)
+                    }
+                }
+                .lineLimit(1)
+                .fixedSize()
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func color(for providerID: String, in colors: [String: Int]) -> Color {
+        Self.providerPalette[(colors[providerID] ?? 0) % Self.providerPalette.count]
     }
 
     /// 주말 칼럼에 짧은 밑줄. **전체 높이 음영으로 하면 안 된다** — 다크 배경에서 그 음영이
@@ -1233,6 +1338,93 @@ enum DailyTrendMetrics {
         formatter.locale = language.displayLocale
         formatter.setLocalizedDateFormatFromTemplate("MdE")
         return formatter.string(from: parsed)
+    }
+}
+
+/// Per-provider stacking of the daily trend bars — pure, like `DailyTrendMetrics`, so the
+/// ordering and the height split can be checked headlessly. The split is where a view-local
+/// version goes quietly wrong: independently scaled segments do not sum to the bar, and the
+/// stacked bar then disagrees with the single-color bar's height for the same day.
+enum DailyTrendStack {
+    struct ProviderSeries {
+        var id: String
+        var name: String
+        var days: [DailyUsage]
+        var reportsCost: Bool
+    }
+
+    struct Segment: Equatable {
+        var providerID: String
+        var tokens: Int
+        var height: CGFloat
+    }
+
+    /// Providers that used anything this month, largest month total first (bottom of the stack).
+    /// Ties break on id so the order cannot flip between refreshes.
+    static func ordered(_ providers: [ProviderSeries]) -> [ProviderSeries] {
+        let totals: [(provider: ProviderSeries, tokens: Int)] = providers.map { provider in
+            (provider, provider.days.reduce(0) { $0 + $1.totalTokens })
+        }
+        return totals
+            .filter { $0.tokens > 0 }
+            .sorted { lhs, rhs in
+                lhs.tokens != rhs.tokens ? lhs.tokens > rhs.tokens : lhs.provider.id < rhs.provider.id
+            }
+            .map(\.provider)
+    }
+
+    /// Whether the row stacks at all. With one provider (or none) the row stays the plain
+    /// single-color bar with today in the accent color.
+    static func isStacked(_ ordered: [ProviderSeries]) -> Bool { ordered.count > 1 }
+
+    /// Segments of `date`'s bar, bottom → top in `ordered` order. Zero-token providers are left
+    /// out. Heights come from cumulative shares, so they add up to exactly `barHeight` with no
+    /// rounding drift. Empty when nobody used anything that day.
+    static func segments(on date: String, stack ordered: [ProviderSeries],
+                         barHeight: CGFloat) -> [Segment] {
+        let parts = ordered.compactMap { provider -> (String, Int)? in
+            let tokens = provider.days.first { $0.date == date }?.totalTokens ?? 0
+            return tokens > 0 ? (provider.id, tokens) : nil
+        }
+        let total = parts.reduce(0) { $0 + $1.1 }
+        guard total > 0 else { return [] }
+
+        var segments: [Segment] = []
+        var running = 0
+        var placed: CGFloat = 0
+        for (index, part) in parts.enumerated() {
+            running += part.1
+            let top = index == parts.count - 1
+                ? barHeight
+                : barHeight * CGFloat(running) / CGFloat(total)
+            segments.append(Segment(providerID: part.0, tokens: part.1, height: top - placed))
+            placed = top
+        }
+        return segments
+    }
+
+    /// Palette slot per provider id. The slot follows the provider's registration order
+    /// (`UsageStore.providerOrder`), not its usage rank — rank changes as the month goes on, and
+    /// a provider that changes color when it overtakes another reads as a different provider.
+    /// Registration order also needs no per-provider branch.
+    ///
+    /// The palette is smaller than the provider list, so two ids can want the same slot; among
+    /// the ids actually shown, a later one moves to the next free slot. Every snapshot comes from
+    /// a registered provider, so `ids` is always a subset of `registry`.
+    static func colorIndices(for ids: [String], registry: [String],
+                             paletteCount: Int) -> [String: Int] {
+        let shown = Set(ids)
+        var slots: [String: Int] = [:]
+        var taken = Set<Int>()
+        for (rank, id) in registry.enumerated() where shown.contains(id) {
+            var slot = rank % paletteCount
+            if taken.count < paletteCount {
+                while taken.contains(slot) { slot = (slot + 1) % paletteCount }
+            }
+            slots[id] = slot
+            taken.insert(slot)
+        }
+        return slots
     }
 }
 
