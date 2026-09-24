@@ -198,6 +198,31 @@ struct MonthlyReport: Decodable, Sendable {
     private enum CodingKeys: String, CodingKey { case monthly }
 }
 
+// MARK: - 한도 창 길이
+
+/// 한도 창의 길이 — 페이스(균등 소진) 기준선을 그리려면 리셋 시각만으론 부족하고 창 길이가 있어야 한다.
+/// 프로바이더마다 길이를 알리는 방식이 다르므로(Codex=명시 분 수, Antigravity=창 이름, Claude=kind·필드명)
+/// 변환을 여기 한 곳에 모은다 — 프로바이더 분기가 UI 로 새지 않게 하는 확장 규약.
+enum LimitWindowSpan {
+    static let fiveHour: TimeInterval = 5 * 3600
+    static let sevenDay: TimeInterval = 7 * 24 * 3600
+
+    /// 분 단위 창 길이. 0 이하는 길이로 쓸 수 없어 nil.
+    static func fromMinutes(_ minutes: Int?) -> TimeInterval? {
+        guard let minutes, minutes > 0 else { return nil }
+        return TimeInterval(minutes) * 60
+    }
+
+    /// oauth `limits[]` 의 kind. weekly_scoped(모델별 주간)도 창 길이는 주간과 같다.
+    static func fromKind(_ kind: String?) -> TimeInterval? {
+        switch kind {
+        case "session": return fiveHour
+        case "weekly_all", "weekly_scoped": return sevenDay
+        default: return nil
+        }
+    }
+}
+
 // MARK: - OAuth limits (api.anthropic.com/api/oauth/usage)
 
 struct LimitWindow: Decodable, Sendable {
@@ -208,6 +233,9 @@ struct LimitWindow: Decodable, Sendable {
         guard let resetsAt else { return nil }
         return ISO8601Parser.date(from: resetsAt)
     }
+
+    /// No running window: the API sends 0% without a reset date until the account's next message.
+    var hasNotStarted: Bool { utilization == 0 && resetDate == nil }
 
     private enum CodingKeys: String, CodingKey {
         case utilization
@@ -307,6 +335,8 @@ struct OAuthLimitEntry: Decodable, Sendable {
         return ISO8601Parser.date(from: resetsAt)
     }
 
+    var windowSpan: TimeInterval? { LimitWindowSpan.fromKind(kind) }
+
     private enum CodingKeys: String, CodingKey {
         case kind, group, percent, severity, scope
         case resetsAt = "resets_at"
@@ -325,6 +355,8 @@ struct CodexRateLimitWindow: Decodable, Sendable {
         guard let resetsAt else { return nil }
         return Date(timeIntervalSince1970: TimeInterval(resetsAt))
     }
+
+    var windowSpan: TimeInterval? { LimitWindowSpan.fromMinutes(windowDurationMins) }
 
     var displayName: String {
         switch windowDurationMins {
@@ -434,6 +466,13 @@ public struct AntigravityQuotaBucket: Decodable, Sendable {
         window == "weekly" || bucketId.contains("weekly")
     }
 
+    /// 행 제목(`L.antigravityWindow`)과 같은 판정을 쓴다 — 이름과 마커가 다른 창을 가리키면 안 된다.
+    public var windowSpan: TimeInterval? {
+        if is5HourWindow { return LimitWindowSpan.fiveHour }
+        if isWeeklyWindow { return LimitWindowSpan.sevenDay }
+        return nil
+    }
+
     public init(
         bucketId: String,
         displayName: String,
@@ -503,6 +542,92 @@ public struct AntigravityRateLimitStatus: Decodable, Sendable {
     public init(groups: [AntigravityQuotaGroup] = [], description: String? = nil) {
         self.groups = groups
         self.description = description
+    }
+}
+
+// MARK: - Cursor dashboard limits (api2.cursor.sh Connect RPC)
+
+public struct CursorPlanUsage: Decodable, Sendable {
+    public var totalSpend: Int?
+    public var includedSpend: Int?
+    public var bonusSpend: Int?
+    public var remaining: Int?
+    public var limit: Int?
+    public var autoPercentUsed: Double?
+    public var apiPercentUsed: Double?
+    public var totalPercentUsed: Double?
+
+    public var usedPercent: Double? {
+        if let totalPercentUsed { return totalPercentUsed }
+        guard let limit, limit > 0, let includedSpend else { return nil }
+        return Double(includedSpend) / Double(limit) * 100
+    }
+
+    public var remainingDollars: Double? {
+        guard let remaining else { return nil }
+        return Double(remaining) / 100
+    }
+
+    public var limitDollars: Double? {
+        guard let limit else { return nil }
+        return Double(limit) / 100
+    }
+
+    public init(
+        totalSpend: Int? = nil,
+        includedSpend: Int? = nil,
+        bonusSpend: Int? = nil,
+        remaining: Int? = nil,
+        limit: Int? = nil,
+        autoPercentUsed: Double? = nil,
+        apiPercentUsed: Double? = nil,
+        totalPercentUsed: Double? = nil
+    ) {
+        self.totalSpend = totalSpend
+        self.includedSpend = includedSpend
+        self.bonusSpend = bonusSpend
+        self.remaining = remaining
+        self.limit = limit
+        self.autoPercentUsed = autoPercentUsed
+        self.apiPercentUsed = apiPercentUsed
+        self.totalPercentUsed = totalPercentUsed
+    }
+}
+
+public struct CursorRateLimitStatus: Decodable, Sendable {
+    public var billingCycleStart: String?
+    public var billingCycleEnd: String?
+    public var planUsage: CursorPlanUsage?
+    public var displayMessage: String?
+
+    public var hasVisibleLimit: Bool {
+        guard let usage = planUsage else { return false }
+        if let limit = usage.limit, limit > 0 { return true }
+        return usage.totalPercentUsed != nil
+    }
+
+    public var billingCycleEndDate: Date? {
+        guard let billingCycleEnd else { return nil }
+        return Self.epochDate(billingCycleEnd)
+    }
+
+    public init(
+        billingCycleStart: String? = nil,
+        billingCycleEnd: String? = nil,
+        planUsage: CursorPlanUsage? = nil,
+        displayMessage: String? = nil
+    ) {
+        self.billingCycleStart = billingCycleStart
+        self.billingCycleEnd = billingCycleEnd
+        self.planUsage = planUsage
+        self.displayMessage = displayMessage
+    }
+
+    static func epochDate(_ raw: String) -> Date? {
+        guard let epoch = Double(raw) else { return nil }
+        if epoch > 1e12 { return Date(timeIntervalSince1970: epoch / 1000) }
+        if epoch > 1e9 { return Date(timeIntervalSince1970: epoch) }
+        return nil
     }
 }
 
