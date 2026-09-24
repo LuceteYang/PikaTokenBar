@@ -599,6 +599,9 @@ struct PopoverView: View {
                           span: TimeInterval? = nil, detail: String? = nil,
                           idleHint: String? = nil) -> some View {
         let pace = paceFraction(reset: reset, span: span)
+        // 페이스가 있으면 페이스 대비 단계색, 없거나 창 초반 보류 중이면 기존 절대 임계색.
+        let tier = PaceTier.tier(utilization: utilization, pace: pace, critThreshold: store.critThreshold)
+        let tint = tier?.color ?? limitColor(utilization)
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(name).font(.callout)
@@ -621,9 +624,12 @@ struct PopoverView: View {
                 Text(limitPercentText(utilization))
                     .font(.callout)
                     .monospacedDigit()
-                    .foregroundStyle(limitColor(utilization))
+                    .foregroundStyle(tint)
             }
-            LimitProgressBar(usedPercent: utilization, tint: limitColor(utilization), pace: pace)
+            LimitProgressBar(usedPercent: utilization, tint: tint, pace: pace)
+            if let tier, let pace {
+                paceTierLine(tier, delta: PaceTier.roundedDelta(utilization: utilization, pace: pace))
+            }
         }
         .helpIfPresent(paceHelp(pace))
     }
@@ -927,6 +933,19 @@ struct PopoverView: View {
         f.dateFormat = "HH:mm"
         return f
     }()
+
+    /// 게이지 아래 단계 줄 — 색만으로 정보를 전하지 않도록 단계 이름과 차이를 글로 함께 낸다.
+    /// 점만 단계색이고 글자는 secondary — 노랑 글자는 라이트 모드 배경에서 읽기 어렵다.
+    private func paceTierLine(_ tier: PaceTier, delta: Int) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(tier.color).frame(width: 5, height: 5)
+            Text(l.paceTier(tier)).foregroundStyle(.secondary)
+            if let text = l.paceDelta(delta) {
+                Text("· \(text)").foregroundStyle(.tertiary).monospacedDigit()
+            }
+        }
+        .font(.caption2)
+    }
 
     private func limitColor(_ utilization: Double) -> Color {
         if utilization >= store.critThreshold { return .red }
@@ -1309,4 +1328,19 @@ struct LimitProgressBar: View {
     private static let trackHeight: CGFloat = 6
     private static let markerOverhang: CGFloat = 2
     private static let markerHeight: CGFloat = trackHeight + markerOverhang * 2
+}
+
+/// 단계색은 시스템 색 — 라이트/다크에서 각각 조정된 값으로 바뀌고, 최상위(.red)는
+/// `limitColor` 의 crit 색과 같아 "crit 이면 항상 빨강"이 두 경로에서 같은 색으로 보인다.
+extension PaceTier {
+    var color: Color {
+        switch self {
+        case .wayUnder: return .blue
+        case .under: return .teal
+        case .onPace: return .green
+        case .slightlyOver: return .yellow
+        case .over: return .orange
+        case .wayOver: return .red
+        }
+    }
 }
