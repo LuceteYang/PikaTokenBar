@@ -159,6 +159,13 @@ A compact daily chart below the weekly and monthly totals shows the current mont
 Reset countdowns include the clock time, and the colored percentage stays aligned at the right edge across all quota rows. Choose used or remaining in Settings: both the number and the bar follow that choice.
 </td>
 </tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-pace-marker.png" width="300" alt="See the pace, not just the total"></td>
+<td width="55%" valign="middle">
+<h3>See the pace, not just the total</h3>
+Each quota bar carries a thin tick where an even burn would be by now. Fill past the tick means the window runs out before it resets — the difference between 62% with four hours left and 62% with twenty minutes left. Rows whose window length is unknown simply have no tick.
+</td>
+</tr>
 </table>
 
 ## Also in the box
@@ -173,6 +180,8 @@ Reset countdowns include the clock time, and the colored percentage stays aligne
 - **This month, day by day** — one bar per day of the current month under the week/month totals, with a date axis, weekend ticks, and the day you point at named in the caption (today by default). Derived from the logs already on disk, so it is complete on the first refresh after updating.
 - **Additional scan folders** — per-provider extra scan roots for logs kept outside the built-in paths (Settings → Advanced).
 - **Several Claude accounts** — Claude Code logins kept in their own config folder (`CLAUDE_CONFIG_DIR`) each get a tab under the official limits, with their own gauges, Rare Candy, alerts, and today/month tokens. `~/.claude-*` folders and an exported `CLAUDE_CONFIG_DIR` are found automatically; add others in Settings → Advanced. The menu bar percentage, companion mood, and forecast follow the account you used last (Settings → General → Tracked Claude account).
+- **Cursor included usage** — when you are signed into Cursor, the official limits show this month's included usage: percent used, dollars remaining, and the auto/API split.
+- **Bulk Rare Candy** — use several Rare Candies at once, with a preview of how far the companion will grow before you confirm.
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
 - **In-app updates** — one-click update check; current version shown in Settings.
 

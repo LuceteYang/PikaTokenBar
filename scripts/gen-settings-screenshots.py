@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.7.0"
+VERSION = "1.8.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -98,6 +98,13 @@ S = {
                    "Attaching the log file to the issue helps a lot with diagnosis.",
                    "イシューにログファイルを添付していただくと原因の特定に役立ちます。"),
  "showLog":       ("로그 파일 보기", "Show log file", "ログファイルを表示"),
+ "acctLabel":     ("추가 Claude 계정", "Additional Claude accounts", "追加のClaudeアカウント"),
+ "acctHint":      ("다른 Claude Code 로그인(CLAUDE_CONFIG_DIR)은 ~/.claude-* 폴더와 export 된 CLAUDE_CONFIG_DIR 에서 자동으로 찾습니다. 다른 위치의 설정 폴더만 여기 추가하세요(콤마·줄바꿈 구분). 공식 한도에 계정마다 탭이 생기며, 수동 갱신 때 폴더마다 Keychain 접근을 물을 수 있습니다.",
+                   "Other Claude Code logins (CLAUDE_CONFIG_DIR) are detected in ~/.claude-* folders and from an exported CLAUDE_CONFIG_DIR. Add config folders stored elsewhere here, comma/newline separated. Each account gets its own tab in the official limits; a manual refresh may ask for Keychain access for each folder.",
+                   "他のClaude Codeログイン(CLAUDE_CONFIG_DIR)は ~/.claude-* フォルダと、エクスポートされた CLAUDE_CONFIG_DIR から自動検出されます。別の場所にある設定フォルダだけをここに追加してください(カンマ・改行区切り)。公式上限にアカウントごとのタブが追加され、手動更新時にフォルダごとにKeychainへのアクセスを確認することがあります。"),
+ "acctDetected":  ("자동 감지: ~/.claude-work", "Detected: ~/.claude-work", "自動検出: ~/.claude-work"),
+ "acctValue":     ("~/work/claude-config", "~/work/claude-config", "~/work/claude-config"),
+ "acctFound":     ("계정 폴더 1개 찾음", "1 account folder(s) found", "アカウントフォルダが1個見つかりました"),
  "sessionKey":    ("claude.ai 세션 키", "claude.ai session key", "claude.ai セッションキー"),
  "sessionKeyHint": ("Keychain 팝업 없이 공식 한도를 조회합니다. 브라우저 개발자도구 → Application → Cookies → claude.ai → sessionKey 값을 붙여넣으세요.",
                    "Fetches official limits with no Keychain pop-up. Paste the value from DevTools → Application → Cookies → claude.ai → sessionKey.",
@@ -220,6 +227,14 @@ def html(lang, advanced=False):
         f'<div class="note" style="padding:6px 14px 8px">{s("sessionKeyNote")}</div>',
         row(s("keychainOff"), tog(False), s("keychainOffHint")),
         row(s("refreshToken"), f'<div class="btn">{s("refreshToken")}</div>', s("refreshTokenHint")),
+        # 추가 Claude 계정 — ~/.claude-* 는 자동 감지, 다른 위치의 설정 폴더만 여기 적는다.
+        f'<div class="row" style="display:block">'
+        f'<div style="margin-bottom:4px">{s("acctLabel")}</div>'
+        f'<div class="h" style="font-size:10.5px;color:#8b8b90;margin-bottom:5px">{s("acctHint")}</div>'
+        f'<div class="h" style="font-size:10.5px;color:#b0b0b5;margin-bottom:7px">{s("acctDetected")}</div>'
+        f'<div class="area">{s("acctValue")}</div>'
+        f'<div class="h" style="font-size:10.5px;color:#8b8b90;margin-top:6px">{s("acctFound")}</div>'
+        f'</div>',
         # 추가 스캔 폴더 — 프로바이더를 먼저 고르고, 그 프로바이더에만 붙는 경로를 넣는다.
         f'<div class="row" style="display:block">'
         f'<div style="margin-bottom:4px">{s("scanLabel")}</div>'
