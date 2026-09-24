@@ -602,6 +602,7 @@ struct PopoverView: View {
         // 페이스가 있으면 페이스 대비 단계색, 없거나 창 초반 보류 중이면 기존 절대 임계색.
         let tier = PaceTier.tier(utilization: utilization, pace: pace, critThreshold: store.critThreshold)
         let tint = tier?.color ?? limitColor(utilization)
+        let percentTint = tier?.percentColor ?? limitColor(utilization)
         return VStack(alignment: .leading, spacing: 2) {
             HStack {
                 Text(name).font(.callout)
@@ -624,7 +625,7 @@ struct PopoverView: View {
                 Text(limitPercentText(utilization))
                     .font(.callout)
                     .monospacedDigit()
-                    .foregroundStyle(tint)
+                    .foregroundStyle(percentTint)
             }
             LimitProgressBar(usedPercent: utilization, tint: tint, pace: pace)
             if let tier, let pace {
@@ -1343,4 +1344,8 @@ extension PaceTier {
         case .wayOver: return .red
         }
     }
+
+    /// % 숫자색. 노랑 글자는 라이트 모드 배경에서 거의 안 읽혀 그 단계만 기본 글자색으로 둔다 —
+    /// 단계는 채움·점·아래 줄이 여전히 말해 준다.
+    var percentColor: Color { self == .slightlyOver ? .primary : color }
 }

@@ -84,17 +84,18 @@ struct L {
     }
     /// 페이스 대비 차이(%p). **쓴 양**으로 말한다 — "앞섬/위" 같은 위치 표현은 잔량 모드에서
     /// 채움이 마커보다 짧게 그려질 때 방향이 반대로 읽힌다(#286 부류). 0 이면 문구 없음.
+    /// 유럽어는 단계 이름("Under pace")이 이미 "페이스"를 말하므로 여기선 반복하지 않는다.
     func paceDelta(_ points: Int) -> String? {
         if points > 0 {
-            return t("페이스보다 \(points)%p 더 씀", "\(points) pts over pace", "ペースより\(points)pt多く使用",
-                     "\(points) pts más que el ritmo", "\(points) pts de plus que le rythme",
-                     "\(points) p.p. acima do ritmo", "\(points) Pkt. mehr als im Tempo")
+            return t("페이스보다 \(points)%p 더 씀", "\(points) pts more used", "ペースより\(points)pt多く使用",
+                     "\(points) pts más de uso", "\(points) pts de plus utilisés",
+                     "\(points) p.p. a mais de uso", "\(points) Pkt. mehr verbraucht")
         }
         if points < 0 {
             let n = -points
-            return t("페이스보다 \(n)%p 덜 씀", "\(n) pts under pace", "ペースより\(n)pt少なく使用",
-                     "\(n) pts menos que el ritmo", "\(n) pts de moins que le rythme",
-                     "\(n) p.p. abaixo do ritmo", "\(n) Pkt. weniger als im Tempo")
+            return t("페이스보다 \(n)%p 덜 씀", "\(n) pts less used", "ペースより\(n)pt少なく使用",
+                     "\(n) pts menos de uso", "\(n) pts de moins utilisés",
+                     "\(n) p.p. a menos de uso", "\(n) Pkt. weniger verbraucht")
         }
         return nil
     }
