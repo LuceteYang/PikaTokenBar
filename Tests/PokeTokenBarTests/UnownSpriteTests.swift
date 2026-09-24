@@ -111,9 +111,12 @@ final class UnownSpriteCacheTests: XCTestCase {
         let store = SpriteStore(directory: directory)
         var images: [NSImage] = []
 
+        // Animated sprites exist only inside `PokemonAssets.animatedSpeciesIDs` — a fork can
+        // narrow that range below 201, and then only the static formats are servable.
+        let animatedFormats = PokemonAssets.hasAnimatedSprite(speciesID: 201) ? [false, true] : [false]
         for (index, entry) in forms.enumerated() {
             let (form, stem) = entry
-            for animated in [false, true] {
+            for animated in animatedFormats {
                 for shiny in [false, true] {
                     let expectedSize = NSSize(width: 4 + index, height: shiny ? 9 : 6)
                     let bitmap = try pixels(width: Int(expectedSize.width), height: Int(expectedSize.height))
