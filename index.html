@@ -956,6 +956,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul>
         <li data-i18n="info.ivLi1">도감에서 종을 열면 그 개체의 레벨·성별·성격·특성·개체값(IV)·실제 능력치·배운 기술까지 한 화면에서 볼 수 있습니다.</li>
         <li data-i18n="info.ivLi2">종 설명·특성·기술 이름은 선택한 언어로 표시되고, PokéAPI에 번역이 없는 항목만 영어로 남습니다.</li>
+        <li data-i18n="info.ivLi3">도감과 포획 기록은 이름이나 번호로 검색하고, 정렬하고, 희귀도·이로치로 거를 수 있습니다. 도감 번호는 희귀도 색으로 표시됩니다.</li>
       </ul>
     </div>
 
@@ -972,6 +973,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul>
         <li data-i18n="info.accountsLi1">설정 폴더(CLAUDE_CONFIG_DIR)마다 로그인한 Claude Code 계정은 공식 한도 아래에 각자의 탭이 생기고, 게이지·이상한 사탕·알림·오늘/이번 달 토큰을 따로 보여 줍니다.</li>
         <li data-i18n="info.accountsLi2">~/.claude-* 폴더와 export 된 CLAUDE_CONFIG_DIR 은 자동으로 찾고, 다른 위치는 설정 → 고급에서 추가합니다. 메뉴바 한도 %와 컴패니언 기분은 마지막으로 쓴 계정을 따릅니다.</li>
+        <li data-i18n="info.accountsLi3">계정마다 claude.ai 세션 키를 따로 넣을 수 있어(설정 → 고급), Keychain 없이도 그 계정의 한도가 계속 갱신됩니다.</li>
       </ul>
     </div>
 
@@ -980,6 +982,23 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul>
         <li data-i18n="info.burnLi1">각 한도 막대에 고르게 썼다면 지금쯤 도달했을 지점을 얇은 눈금으로 표시합니다. 채움이 눈금을 넘으면 리셋 전에 바닥난다는 뜻입니다.</li>
         <li data-i18n="info.burnLi2">Cursor 에 로그인돼 있으면 이번 달 포함 사용량(사용률·남은 금액·auto/API 구분)도 공식 한도에 나옵니다.</li>
+        <li data-i18n="info.burnLi3">막대와 퍼센트는 페이스에 따라 6단계로 색이 바뀝니다 — 한참 여유로우면 파랑, 페이스대로면 초록, 한참 빠르면 빨강.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
+      <h3 data-i18n="info.recapH3">지난 한 주·한 달·한 해를 돌아봅니다</h3>
+      <ul>
+        <li data-i18n="info.recapLi1">팝오버의 돌아보기 버튼을 누르면 이번 주·달·해를 포켓몬 도감 스타일 카드로 보여 주고, 화살표로 이전 기간으로 넘길 수 있습니다.</li>
+        <li data-i18n="info.recapLi2">합계, 날마다의 게이지, 이전 기간 대비 변화, 최고의 날, 최장 연속, 그 기간에 졸업한 포켓몬이 나옵니다. 기록은 올해와 작년분을 로컬에 보관합니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
+      <h3 data-i18n="info.saveH3">세이브는 알아서 백업됩니다</h3>
+      <ul>
+        <li data-i18n="info.saveLi1">최소 12시간마다 로컬 스냅샷을 남기고 최근 10개를 보존합니다. 설정 → 백업 & 이전에서 골라 바로 복원할 수 있습니다.</li>
+        <li data-i18n="info.saveLi2">세이브 파일이 깨져 불러오지 못하면 따로 보관한 뒤 최신 스냅샷에서 복구합니다 — 빈 상태로 다시 시작하지 않습니다.</li>
       </ul>
     </div>
 
@@ -1145,6 +1164,15 @@ var I18N = {
     "info.burnH3": "한도는 총량이 아니라 페이스로 읽습니다",
     "info.burnLi1": "각 한도 막대에 고르게 썼다면 지금쯤 도달했을 지점을 얇은 눈금으로 표시합니다. 채움이 눈금을 넘으면 리셋 전에 바닥난다는 뜻입니다.",
     "info.burnLi2": "Cursor 에 로그인돼 있으면 이번 달 포함 사용량(사용률·남은 금액·auto/API 구분)도 공식 한도에 나옵니다.",
+    "info.burnLi3": "막대와 퍼센트는 페이스에 따라 6단계로 색이 바뀝니다 — 한참 여유로우면 파랑, 페이스대로면 초록, 한참 빠르면 빨강.",
+    "info.accountsLi3": "계정마다 claude.ai 세션 키를 따로 넣을 수 있어(설정 → 고급), Keychain 없이도 그 계정의 한도가 계속 갱신됩니다.",
+    "info.ivLi3": "도감과 포획 기록은 이름이나 번호로 검색하고, 정렬하고, 희귀도·이로치로 거를 수 있습니다. 도감 번호는 희귀도 색으로 표시됩니다.",
+    "info.recapH3": "지난 한 주·한 달·한 해를 돌아봅니다",
+    "info.recapLi1": "팝오버의 돌아보기 버튼을 누르면 이번 주·달·해를 포켓몬 도감 스타일 카드로 보여 주고, 화살표로 이전 기간으로 넘길 수 있습니다.",
+    "info.recapLi2": "합계, 날마다의 게이지, 이전 기간 대비 변화, 최고의 날, 최장 연속, 그 기간에 졸업한 포켓몬이 나옵니다. 기록은 올해와 작년분을 로컬에 보관합니다.",
+    "info.saveH3": "세이브는 알아서 백업됩니다",
+    "info.saveLi1": "최소 12시간마다 로컬 스냅샷을 남기고 최근 10개를 보존합니다. 설정 → 백업 & 이전에서 골라 바로 복원할 수 있습니다.",
+    "info.saveLi2": "세이브 파일이 깨져 불러오지 못하면 따로 보관한 뒤 최신 스냅샷에서 복구합니다 — 빈 상태로 다시 시작하지 않습니다.",
     "info.coexistH3": "원본과 함께 쓸 수 있습니다",
     "info.coexistLi1": "별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.",
     "info.coexistLi2": "데이터도 분리되어 있어 서로 영향을 주지 않습니다.",
@@ -1227,6 +1255,15 @@ var I18N = {
     "info.burnH3": "Read limits by pace, not just total",
     "info.burnLi1": "Every quota bar carries a thin tick where an even burn would be by now. Fill past the tick means the window runs out before it resets.",
     "info.burnLi2": "Signed into Cursor? The official limits also show this month's included usage — percent used, dollars remaining, and the auto/API split.",
+    "info.burnLi3": "The bar and percentage are colored by pace in six tiers — blue well under, green on pace, red well over.",
+    "info.accountsLi3": "Each account can take its own claude.ai session key (Settings → Advanced), so its limits keep refreshing without the Keychain.",
+    "info.ivLi3": "Search the Pokédex and Catch Log by name or number, sort them, and filter by rarity or shiny. Dex numbers are colored by rarity.",
+    "info.recapH3": "Look back on any week, month or year",
+    "info.recapLi1": "The recap button in the popover opens a Pokédex-style card for this week, month or year; the arrows step back to earlier periods.",
+    "info.recapLi2": "It shows the total, a meter per day, the change from the previous period, your best day, best streak, and the Pokémon you graduated. History stays local for this year and the last.",
+    "info.saveH3": "Your save backs itself up",
+    "info.saveLi1": "A local snapshot is taken at least every 12 hours and the newest 10 are kept. Pick one in Settings → Backup & Transfer to restore it.",
+    "info.saveLi2": "If the save file is damaged and cannot load, it is set aside and the latest snapshot is restored — you do not start over from scratch.",
     "info.coexistH3": "Runs alongside the original",
     "info.coexistLi1": "Installs as a separate app — runs side-by-side with the original PokeTokenBar.",
     "info.coexistLi2": "Its data is separate too, so neither one affects the other.",
@@ -1309,6 +1346,15 @@ var I18N = {
     "info.burnH3": "上限は合計ではなくペースで読む",
     "info.burnLi1": "各上限バーには、均等に使っていれば今ごろ届いている位置に細い目盛りがあります。塗りが目盛りを越えていれば、リセット前に使い切るという意味です。",
     "info.burnLi2": "Cursor にログインしていれば、今月の included usage（使用率・残り金額・auto/API の内訳）も公式上限に表示されます。",
+    "info.burnLi3": "バーとパーセントはペースに応じて6段階で色が変わります — かなり余裕なら青、ペースどおりなら緑、かなり速ければ赤。",
+    "info.accountsLi3": "アカウントごとに claude.ai セッションキーを設定でき（設定 → 詳細）、Keychain なしでもそのアカウントの上限が更新され続けます。",
+    "info.ivLi3": "図鑑と捕獲記録は名前や番号で検索し、並べ替え、レア度・色違いで絞り込めます。図鑑番号はレア度の色で表示されます。",
+    "info.recapH3": "週・月・年をふりかえる",
+    "info.recapLi1": "ポップオーバーのふりかえりボタンで、今週・今月・今年をポケモン図鑑風のカードで表示し、矢印で過去の期間にさかのぼれます。",
+    "info.recapLi2": "合計、日ごとのゲージ、前の期間との比較、最高の日、最長連続、その期間に卒業したポケモンが出ます。記録は今年と昨年分をローカルに保存します。",
+    "info.saveH3": "セーブは自動でバックアップ",
+    "info.saveLi1": "少なくとも12時間ごとにローカルのスナップショットを残し、最新10件を保持します。設定 → バックアップと移行から選んですぐ復元できます。",
+    "info.saveLi2": "セーブファイルが壊れて読み込めない場合は別に退避し、最新のスナップショットから復旧します — ゼロからやり直すことはありません。",
     "info.coexistH3": "オリジナルと併用できます",
     "info.coexistLi1": "別のアプリとしてインストールされます — オリジナルのPokeTokenBarと並行して起動できます。",
     "info.coexistLi2": "データも分離されているため、互いに影響しません。",
