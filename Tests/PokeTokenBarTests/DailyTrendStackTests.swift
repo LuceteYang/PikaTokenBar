@@ -157,13 +157,13 @@ final class DailyTrendStackTests: XCTestCase {
         XCTAssertEqual(Set(crowded.values), Set(0..<8))
     }
 
-    // MARK: 분해 줄
+    // MARK: Legend
 
-    /// 쌓기가 켜지면 분해 줄 한 줄이 더해지고, 그 줄은 프로바이더 수·언어와 무관하게 **한 줄**이다.
-    /// 억 단위·네 자리 비용이면 이름을 넣은 줄은 2개부터, 이름을 뺀 줄도 4개부터 폭을 넘는다 —
-    /// 이름 → 비용 순으로 빼는 폴백이 있어야 한다. 5개까지 잰다.
+    /// The legend sits in the caption line, so stacking adds no line: same height as the unstacked
+    /// row at any provider count and language, and never wider than the popover. Long names and
+    /// several providers exercise the fallbacks (caption dropped, then names dropped).
     @MainActor
-    func testBreakdownAddsExactlyOneLineAtAnyProviderCountAndLanguage() {
+    func testTheLegendAddsNoLineAtAnyProviderCountAndLanguage() {
         let values = (1...31).map { (String(format: "2026-08-%02d", $0), 888_888_888) }
         func series(_ count: Int) -> [DailyTrendStack.ProviderSeries] {
             (0..<count).map { index in
@@ -180,23 +180,54 @@ final class DailyTrendStackTests: XCTestCase {
             return NSHostingController(rootView: view)
                 .sizeThatFits(in: CGSize(width: PopoverMetrics.contentWidth, height: 600))
         }
-        // 조각마다 `fixedSize` 라 넘쳐도 줄바꿈 대신 **옆으로** 삐져나간다 — 높이만 보면 못 잡으므로 폭도 잰다.
-        func height(_ providers: [DailyTrendStack.ProviderSeries], _ language: AppLanguage) -> CGFloat {
-            let measured = size(providers, language)
-            XCTAssertLessThanOrEqual(measured.width, PopoverMetrics.contentWidth + 0.5,
-                                     "\(language) · 프로바이더 \(providers.count)개에서 분해 줄이 팝오버 폭을 넘었다")
-            return measured.height
-        }
 
-        let unstacked = height(series(1), .en)
-        let stacked = height(series(2), .en)
-        XCTAssertGreaterThan(stacked, unstacked, "쌓기가 켜지면 분해 줄이 보여야 한다")
+        let unstacked = size(series(1), .en).height
         for language in AppLanguage.allCases {
-            for count in 2...5 {
-                XCTAssertEqual(height(series(count), language), stacked, accuracy: 0.5,
-                               "\(language) · 프로바이더 \(count)개에서 분해 줄이 줄바꿈됐다")
+            for count in 2...8 {
+                let measured = size(series(count), language)
+                XCTAssertEqual(measured.height, unstacked, accuracy: 0.5,
+                               "\(language) · \(count) providers: the legend wrapped or added a line")
+                XCTAssertLessThanOrEqual(measured.width, PopoverMetrics.contentWidth + 0.5,
+                                         "\(language) · \(count) providers: the caption line overflowed")
             }
         }
+    }
+
+    // MARK: Hover tooltip
+
+    func testTheTooltipNamesTheDayTotalAndEachProviderThatUsedIt() throws {
+        let claude = DailyTrendStack.ProviderSeries(
+            id: "claude_code", name: "Claude Code",
+            days: days([("2026-08-23", 3_000_000), ("2026-08-24", 2_000_000)], cost: 5), reportsCost: true)
+        let codex = DailyTrendStack.ProviderSeries(
+            id: "codex", name: "Codex",
+            days: days([("2026-08-23", 1_000_000), ("2026-08-24", 0)], cost: 2), reportsCost: false)
+        let total = days([("2026-08-23", 4_000_000), ("2026-08-24", 2_000_000)], cost: 7)
+        let stack = DailyTrendStack.ordered([claude, codex])
+        let l = L(.en)
+
+        let info = try XCTUnwrap(DailyTrendHover.info(day: "2026-08-23", series: total, stack: stack,
+                                                      showsCost: true, l: l))
+        XCTAssertEqual(info.stamp, DailyTrendMetrics.dayStamp("2026-08-23", language: .en))
+        XCTAssertEqual(info.tokens, TokenFormatter.compact(4_000_000))
+        XCTAssertEqual(info.cost, total[0].usageCost.text(l))
+        XCTAssertEqual(info.providers.map(\.name), ["Claude Code", "Codex"])
+        XCTAssertNotNil(info.providers[0].cost)
+        XCTAssertNil(info.providers[1].cost, "a provider that does not bill shows no cost")
+
+        let quiet = try XCTUnwrap(DailyTrendHover.info(day: "2026-08-24", series: total, stack: stack,
+                                                       showsCost: false, l: l))
+        XCTAssertEqual(quiet.providers.map(\.id), ["claude_code"], "a provider idle that day is left out")
+        XCTAssertNil(quiet.cost)
+        XCTAssertNil(quiet.providers[0].cost, "no cost anywhere when costs are hidden")
+    }
+
+    func testASingleProviderTooltipHasNoSplit() throws {
+        let only = provider("claude_code", [("2026-08-24", 1_000)])
+        let info = try XCTUnwrap(DailyTrendHover.info(day: "2026-08-24", series: days([("2026-08-24", 1_000)]),
+                                                      stack: DailyTrendStack.ordered([only]),
+                                                      showsCost: true, l: L(.en)))
+        XCTAssertEqual(info.providers, [])
     }
 
     // MARK: 렌더 헬퍼

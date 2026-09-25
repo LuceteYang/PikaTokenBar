@@ -1060,7 +1060,7 @@ struct PopoverView: View {
 struct MonthDailyTrend: View {
     let series: [DailyUsage]
     /// Each provider's own month series. With two or more providers used this month the bars
-    /// stack by provider and a legend/breakdown line appears; otherwise the row is unchanged.
+    /// stack by provider and the caption names each provider's color; otherwise the row is unchanged.
     var providers: [DailyTrendStack.ProviderSeries] = []
     /// `UsageStore.providerOrder` — what keeps a provider's color fixed (see `DailyTrendStack.colorIndices`).
     var providerOrder: [String] = []
@@ -1069,9 +1069,8 @@ struct MonthDailyTrend: View {
     let today: String
     let l: L
 
-    /// 마우스가 올라간 막대. 캡션의 리드아웃이 이걸 따라가고, 벗어나면 오늘로 돌아온다.
-    /// 툴팁(`.help`)과 달리 **지연이 없고, 안 올려도 오늘 값이 항상 보인다** — 날짜를 알려면
-    /// 반드시 호버해야 했던 게 첫 버전의 불만이었다.
+    /// The hovered bar. Its day's numbers show in a tooltip above the bars, without the `.help` delay;
+    /// the row itself only names the providers (colors) and the peak.
     @State private var hovered: String?
 
     /// Segment colors, indexed by `DailyTrendStack.colorIndices`. Muted enough to sit next to
@@ -1094,11 +1093,10 @@ struct MonthDailyTrend: View {
             let colors = DailyTrendStack.colorIndices(for: stack.map(\.id), registry: providerOrder,
                                                       paletteCount: Self.providerPalette.count)
             VStack(alignment: .leading, spacing: 3) {
-                captionRow(peak: peak)
-                if DailyTrendStack.isStacked(stack) {
-                    breakdownRow(stack: stack, colors: colors)
-                }
+                captionRow(peak: peak, stack: stack, colors: colors)
                 barRow(peak: peak, stack: stack, colors: colors)
+                    .overlay(alignment: .bottomLeading) { hoverTooltip(stack: stack, colors: colors) }
+                    .zIndex(1)   // the tooltip rises over the caption and the rows above
                 weekendTickRow
                 axisRow
             }
@@ -1106,26 +1104,110 @@ struct MonthDailyTrend: View {
         }
     }
 
-    /// 캡션 + 리드아웃(호버 중인 날, 없으면 오늘) + 최댓값.
-    /// 최댓값을 남기는 이유: 막대 높이가 상대값이라 어딘가 한 곳은 절대 스케일을 적어야 한다.
-    private func captionRow(peak: Int) -> some View {
+    /// Caption, the provider legend when the bars stack, and the peak — one line in every case,
+    /// so the popover height does not depend on how many providers were used.
+    /// The peak stays because bar heights are relative: one absolute scale has to be written somewhere.
+    /// When the legend does not fit, the caption goes first, then the names (the tooltip still names them).
+    private func captionRow(peak: Int, stack: [DailyTrendStack.ProviderSeries],
+                            colors: [String: Int]) -> some View {
+        let stacked = DailyTrendStack.isStacked(stack)
+        return ViewThatFits(in: .horizontal) {
+            captionLine(peak: peak, legend: stacked ? stack : [], colors: colors,
+                        showsCaption: true, showsNames: true)
+            if stacked {
+                captionLine(peak: peak, legend: stack, colors: colors, showsCaption: false, showsNames: true)
+                captionLine(peak: peak, legend: stack, colors: colors, showsCaption: false, showsNames: false)
+            }
+        }
+    }
+
+    private func captionLine(peak: Int, legend: [DailyTrendStack.ProviderSeries], colors: [String: Int],
+                             showsCaption: Bool, showsNames: Bool) -> some View {
         HStack(spacing: 5) {
-            Text(l.dailyTrend)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-            Text(readout)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-            Spacer()
+            if showsCaption {
+                Text(l.dailyTrend)
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize()
+            }
+            ForEach(legend, id: \.id) { provider in
+                HStack(spacing: 3) {
+                    swatch(provider.id, colors)
+                    if showsNames {
+                        Text(provider.name).font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
+                .lineLimit(1)
+                .fixedSize()
+                .padding(.leading, 3)
+            }
+            Spacer(minLength: 4)
             Text(l.peakDay)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
+                .fixedSize()
             Text(TokenFormatter.compact(peak))
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+                .fixedSize()
         }
+    }
+
+    private func swatch(_ providerID: String, _ colors: [String: Int]) -> some View {
+        RoundedRectangle(cornerRadius: 1)
+            .fill(color(for: providerID, in: colors))
+            .frame(width: 6, height: 6)
+    }
+
+    /// The hovered day's date, total and (when stacked) per-provider split, floating just above
+    /// the bars and centered on the column, clamped to the row's edges.
+    @ViewBuilder
+    private func hoverTooltip(stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
+        if let hovered, let index = series.firstIndex(where: { $0.date == hovered }),
+           let info = DailyTrendHover.info(day: hovered, series: series, stack: stack, showsCost: showsCost, l: l) {
+            GeometryReader { geometry in
+                let width = geometry.size.width
+                let column = (width + DailyTrendMetrics.spacing) / CGFloat(series.count)
+                let center = column * (CGFloat(index) + 0.5)
+                tooltipCard(info, colors: colors)
+                    .fixedSize()
+                    .alignmentGuide(.leading) { d in -min(max(center - d.width / 2, 0), max(0, width - d.width)) }
+                    .alignmentGuide(.bottom) { d in d.height + geometry.size.height + 4 }
+                    .frame(width: width, height: geometry.size.height, alignment: .bottomLeading)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
+    private func tooltipCard(_ info: DailyTrendHover.Info, colors: [String: Int]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Text(info.stamp).fontWeight(.semibold)
+                Text(info.tokens)
+                if let cost = info.cost { Text(cost).foregroundStyle(.secondary) }
+            }
+            .font(.caption)
+            ForEach(info.providers, id: \.id) { row in
+                HStack(spacing: 4) {
+                    swatch(row.id, colors)
+                    Text(row.name).foregroundStyle(.secondary)
+                    Spacer(minLength: 8)
+                    Text(row.tokens)
+                    if let cost = row.cost { Text(cost).foregroundStyle(.secondary) }
+                }
+                .font(.caption2)
+            }
+        }
+        .monospacedDigit()
+        .lineLimit(1)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color(nsColor: .windowBackgroundColor)))
+        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .strokeBorder(Color.secondary.opacity(0.35), lineWidth: 0.5))
+        .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
     }
 
     private func barRow(peak: Int, stack: [DailyTrendStack.ProviderSeries],
@@ -1143,7 +1225,8 @@ struct MonthDailyTrend: View {
                     if segments.isEmpty {
                         RoundedRectangle(cornerRadius: 1, style: .continuous)
                             .fill(isToday ? Color.accentColor
-                                          : Color.secondary.opacity(isEmptyDay ? 0.18 : 0.45))
+                                          : Color.secondary.opacity(hovered == day.date ? 0.8
+                                                                    : isEmptyDay ? 0.18 : 0.45))
                             .frame(height: height)
                     } else {
                         stackedBar(segments, height: height, colors: colors,
@@ -1172,48 +1255,6 @@ struct MonthDailyTrend: View {
         }
         .frame(height: height)
         .clipShape(RoundedRectangle(cornerRadius: 1, style: .continuous))
-    }
-
-    /// Legend and per-provider split of the day the caption reads out (hovered, else today).
-    /// Cost appears only for providers that bill (`reportsCost`), same rule as the totals.
-    ///
-    /// Narrows in steps when the full line would not fit — first without names, then without
-    /// cost. Nine-digit days with four-digit costs overflow the popover from two providers with
-    /// names and from four without, and wrapping would change the popover's height day to day.
-    private func breakdownRow(stack: [DailyTrendStack.ProviderSeries],
-                              colors: [String: Int]) -> some View {
-        let target = hovered ?? today
-        return ViewThatFits(in: .horizontal) {
-            breakdownLine(stack: stack, colors: colors, day: target, showsNames: true, showsCost: showsCost)
-            breakdownLine(stack: stack, colors: colors, day: target, showsNames: false, showsCost: showsCost)
-            breakdownLine(stack: stack, colors: colors, day: target, showsNames: false, showsCost: false)
-        }
-        .font(.caption2)
-        .monospacedDigit()
-    }
-
-    private func breakdownLine(stack: [DailyTrendStack.ProviderSeries], colors: [String: Int],
-                               day target: String, showsNames: Bool, showsCost: Bool) -> some View {
-        HStack(spacing: 8) {
-            ForEach(stack, id: \.id) { provider in
-                let day = provider.days.first { $0.date == target }
-                HStack(spacing: 3) {
-                    RoundedRectangle(cornerRadius: 1)
-                        .fill(color(for: provider.id, in: colors))
-                        .frame(width: 6, height: 6)
-                    if showsNames {
-                        Text(provider.name).foregroundStyle(.tertiary)
-                    }
-                    Text(TokenFormatter.compact(day?.totalTokens ?? 0)).foregroundStyle(.secondary)
-                    if showsCost, provider.reportsCost, let day {
-                        Text(day.usageCost.text(l)).foregroundStyle(.secondary)
-                    }
-                }
-                .lineLimit(1)
-                .fixedSize()
-            }
-            Spacer(minLength: 0)
-        }
     }
 
     private func color(for providerID: String, in colors: [String: Int]) -> Color {
@@ -1254,18 +1295,6 @@ struct MonthDailyTrend: View {
                 .frame(maxWidth: .infinity)
             }
         }
-    }
-
-    /// 호버 중인 날(없으면 오늘)의 "8/24 (월) 5.2M". 시리즈에 없는 날짜면 빈 문자열 —
-    /// 프로덕션에선 시리즈가 항상 오늘로 끝나므로 조회 실패는 일어나지 않는다(배열 조회가
-    /// 옵셔널이라 생기는 분기일 뿐, 테스트할 분기가 아니다).
-    private var readout: String {
-        let target = hovered ?? today
-        guard let day = series.first(where: { $0.date == target }) else { return "" }
-        let stamp = DailyTrendMetrics.dayStamp(day.date, language: l.lang)
-        let tokens = TokenFormatter.compact(day.totalTokens)
-        guard showsCost else { return "\(stamp) \(tokens)" }
-        return "\(stamp) \(tokens) \(day.usageCost.text(l))"
     }
 }
 
@@ -1338,6 +1367,41 @@ enum DailyTrendMetrics {
         formatter.locale = language.displayLocale
         formatter.setLocalizedDateFormatFromTemplate("MdE")
         return formatter.string(from: parsed)
+    }
+}
+
+/// What the trend tooltip says for one day — pure, so the wording rules can be checked without hovering.
+enum DailyTrendHover {
+    struct Row: Equatable {
+        var id: String
+        var name: String
+        var tokens: String
+        var cost: String?
+    }
+
+    struct Info: Equatable {
+        var stamp: String
+        var tokens: String
+        var cost: String?
+        /// Per-provider split, in stack order; only when the bars stack, and only providers that used
+        /// something that day.
+        var providers: [Row]
+    }
+
+    /// Cost follows the totals' rule: shown only with `showsCost`, and per provider only for those that
+    /// bill (`reportsCost`). Nil for a day outside the series.
+    static func info(day: String, series: [DailyUsage], stack: [DailyTrendStack.ProviderSeries],
+                     showsCost: Bool, l: L) -> Info? {
+        guard let total = series.first(where: { $0.date == day }) else { return nil }
+        let rows: [Row] = DailyTrendStack.isStacked(stack) ? stack.compactMap { provider in
+            guard let usage = provider.days.first(where: { $0.date == day }), usage.totalTokens > 0 else { return nil }
+            return Row(id: provider.id, name: provider.name, tokens: TokenFormatter.compact(usage.totalTokens),
+                       cost: showsCost && provider.reportsCost ? usage.usageCost.text(l) : nil)
+        } : []
+        return Info(stamp: DailyTrendMetrics.dayStamp(day, language: l.lang),
+                    tokens: TokenFormatter.compact(total.totalTokens),
+                    cost: showsCost ? total.usageCost.text(l) : nil,
+                    providers: rows)
     }
 }
 
