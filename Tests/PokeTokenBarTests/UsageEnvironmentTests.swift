@@ -126,12 +126,14 @@ final class UsageEnvironmentTests: XCTestCase {
     ///   직독하면 격리가 반쪽만 걸린다
     /// - `OAuthLimitsProvider`: 의도적으로 프로세스 환경만 본다(자동 폴링 경로에서 셸 spawn 금지 —
     ///   해당 함수 주석 참조). 값이 필요한 사용량 스캔 쪽이 이미 셸 조회를 한다.
+    /// - `AppEnv`: the `PTB_PARITY` live-check flag — the same QA class as `PTB_STATE_DIR` above.
     func testNoProviderReadsUsageLocationEnvDirectly() throws {
         let allowed: Set<String> = [
             "UsageEnvironment.swift",
             "BinaryLocator.swift",
             "AppIdentity.swift",
             "OAuthLimitsProvider.swift",
+            "AppEnv.swift",
         ]
         let sources = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()    // PokeTokenBarTests

@@ -179,11 +179,12 @@ Each quota bar carries a thin tick where an even burn would be by now. Fill past
 - **Official limits** — Claude, Codex & Antigravity 5-hour / weekly utilization with reset countdowns, right under today's numbers.
 - **This month, day by day** — one bar per day of the current month under the week/month totals, with a date axis, weekend ticks, and the day you point at named in the caption (today by default). Derived from the logs already on disk, so it is complete on the first refresh after updating.
 - **Additional scan folders** — per-provider extra scan roots for logs kept outside the built-in paths (Settings → Advanced).
-- **Several Claude accounts** — Claude Code logins kept in their own config folder (`CLAUDE_CONFIG_DIR`) each get a tab under the official limits, with their own gauges, Rare Candy, alerts, and today/month tokens. `~/.claude-*` folders and an exported `CLAUDE_CONFIG_DIR` are found automatically; add others in Settings → Advanced. The menu bar percentage, companion mood, and forecast follow the account you used last (Settings → General → Tracked Claude account).
+- **Several Claude accounts** — Claude Code logins kept in their own config folder (`CLAUDE_CONFIG_DIR`) each get a tab under the official limits, with their own gauges, Rare Candy, alerts, and today/month tokens. `~/.claude-*` folders and an exported `CLAUDE_CONFIG_DIR` are found automatically; add others in Settings → Advanced. The menu bar percentage, companion mood, and forecast follow the account you used last (Settings → General → Tracked Claude account). Each account can take its own claude.ai session key (Settings → Advanced), so its limits keep refreshing without the Keychain.
 - **Cursor included usage** — when you are signed into Cursor, the official limits show this month's included usage: percent used, dollars remaining, and the auto/API split.
 - **Bulk Rare Candy** — use several Rare Candies at once, with a preview of how far the companion will grow before you confirm.
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
 - **In-app updates** — one-click update check; current version shown in Settings.
+- **Usage recap** — a Pokédex-style recap of any week, month or year you step back to (total, meters, comparison with the previous period, day for day while it is still running, best day, best streak, graduations). History is kept locally for this year and the last.
 
 ## Works with
 
