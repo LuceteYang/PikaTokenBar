@@ -163,7 +163,14 @@ Reset countdowns include the clock time, and the colored percentage stays aligne
 <td width="45%" align="center"><img src="assets/screenshot-pace-marker.png" width="300" alt="See the pace, not just the total"></td>
 <td width="55%" valign="middle">
 <h3>See the pace, not just the total</h3>
-Each quota bar carries a thin tick where an even burn would be by now. Fill past the tick means the window runs out before it resets — the difference between 62% with four hours left and 62% with twenty minutes left. Rows whose window length is unknown simply have no tick.
+Each quota bar carries a thin tick where an even burn would be by now. Fill past the tick means the window runs out before it resets — the difference between 62% with four hours left and 62% with twenty minutes left. Rows whose window length is unknown simply have no tick. The bar and percentage are colored by pace in six tiers — blue well under, green on pace, through yellow and orange to red well over — so you can tell at a glance which window needs slowing down.
+</td>
+</tr>
+<tr>
+<td width="45%" align="center"><img src="assets/screenshot-usage-recap.png" width="300" alt="Usage recap for a week"></td>
+<td width="55%" valign="middle">
+<h3>Look back on any week, month or year</h3>
+The recap button in the popover opens a Pokédex-style card for this week, month or year — step back to earlier periods with the arrows. It shows the total, a meter per day or month, the change from the previous period (day for day while the current one is still running), your best day, best streak, and the Pokémon you graduated. History is kept locally for this year and the last.
 </td>
 </tr>
 </table>
@@ -184,7 +191,8 @@ Each quota bar carries a thin tick where an even burn would be by now. Fill past
 - **Bulk Rare Candy** — use several Rare Candies at once, with a preview of how far the companion will grow before you confirm.
 - **Burn-rate forecast** — projects when the current 5h window hits 100%.
 - **In-app updates** — one-click update check; current version shown in Settings.
-- **Usage recap** — a Pokédex-style recap of any week, month or year you step back to (total, meters, comparison with the previous period, day for day while it is still running, best day, best streak, graduations). History is kept locally for this year and the last.
+- **Pokédex search and filters** — search by name or number, sort, and filter the Pokédex and Catch Log by rarity or shiny. Dex numbers are colored by rarity.
+- **Automatic save backups** — the save is snapshotted locally at least every 12 hours (newest 10 kept). A save that fails to load is set aside and restored from the latest snapshot, and Settings → Backup & Transfer lists the snapshots for a one-click restore.
 
 ## Works with
 

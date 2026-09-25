@@ -148,6 +148,10 @@ final class ScreenshotGenTests: XCTestCase {
             let formatter = DateFormatter()
             formatter.locale = language.displayLocale
             formatter.setLocalizedDateFormatFromTemplate(resetIn <= 6 * 3600 ? "HHmm" : "EEEEdHHmm")
+            // quotaRow 와 같은 규칙으로 단계색을 고른다(#349) — 초록 고정이면 실제 UI 와 갈라진다.
+            let tier = PaceTier.tier(utilization: used, pace: pace, critThreshold: store.critThreshold)
+            let tint = tier?.color ?? .green
+            let percentTint = tier?.percentColor ?? .green
             return VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(name).font(.callout)
@@ -155,9 +159,9 @@ final class ScreenshotGenTests: XCTestCase {
                     (Text("\(reset, style: .relative)") + Text(" (\(formatter.string(from: reset)))"))
                         .font(.caption).foregroundStyle(.tertiary)
                     Text(TokenFormatter.percent(used))
-                        .font(.callout).monospacedDigit().foregroundStyle(Color.green)
+                        .font(.callout).monospacedDigit().foregroundStyle(percentTint)
                 }
-                LimitProgressBar(usedPercent: used, tint: .green, pace: pace)
+                LimitProgressBar(usedPercent: used, tint: tint, pace: pace)
             }
         }
 
@@ -194,6 +198,84 @@ final class ScreenshotGenTests: XCTestCase {
         rep.size = bounds.size
         host.view.cacheDisplay(in: bounds, to: rep)
         return try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+    }
+
+    // MARK: 사용량 리캡
+
+    /// 끝난 한 주를 보여준다(일요일 저녁 기준) — 진행 중인 주는 "지금까지" 비교라 막대가 비어 보인다.
+    /// 졸업 칩은 1세대 진화 끝 종으로 채운다: 포크 풀 밖의 종을 보여주면 안 나오는 걸 광고하게 된다.
+    /// 리캡 카드는 AppKit 컨트롤이 없는 순수 SwiftUI 라 `ImageRenderer` 로 색까지 그대로 나온다.
+    @MainActor
+    func testGenerateUsageRecapScreenshots() throws {
+        guard let directory = ProcessInfo.processInfo.environment["PTB_SCREENSHOT_DIR"] else {
+            throw XCTSkip("PTB_SCREENSHOT_DIR 미지정 — 에셋 생성은 릴리스 때만 실행한다")
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.firstWeekday = 2
+        func day(_ month: Int, _ day: Int, hour: Int = 12) -> Date {
+            calendar.date(from: DateComponents(year: 2026, month: month, day: day, hour: hour))!
+        }
+        let dayKey = LocalUsageReader.localDayFormatter(timeZone: calendar.timeZone)
+        // 이번 주(9/14 월–9/20 일)와 지난주 — 전주 대비 칩이 오르는 쪽으로 읽히게 이번 주를 더 크게 둔다.
+        let thisWeek = [4_200_000, 6_800_000, 3_100_000, 7_400_000, 5_200_000, 900_000, 1_600_000]
+        let lastWeek = [3_000_000, 4_100_000, 2_600_000, 5_000_000, 3_900_000, 0, 700_000]
+        var series = [DailyUsage]()
+        for (offset, tokens) in (lastWeek + thisWeek).enumerated() {
+            let key = dayKey.string(from: day(9, 7 + offset))
+            series.append(DailyUsage(date: key, inputTokens: 0, outputTokens: 0, cacheCreationTokens: 0,
+                                     cacheReadTokens: 0, totalTokens: tokens, totalCost: 0, costCoverage: .source))
+        }
+        var ledger = UsageLedger()
+        ledger.merge([DailyUsage(date: dayKey.string(from: day(9, 1)), inputTokens: 0, outputTokens: 0,
+                                 cacheCreationTokens: 0, cacheReadTokens: 0, totalTokens: 0, totalCost: 0,
+                                 costCoverage: .source)] + series)
+
+        func graduate(_ id: String, chain: [Int], names: [String: String], on date: Date,
+                      rarity: Rarity = .common, shiny: Bool = false) -> DexEntry {
+            DexEntry(id: id, baseID: chain[0], finalID: chain.last!, chainOrder: chain, rarity: rarity,
+                     caughtAt: date, isShiny: shiny, names: [chain.last!: names], releasedAt: nil)
+        }
+        let dex = [
+            graduate("lapras", chain: [131], names: ["en": "Lapras", "ko": "라프라스", "ja": "ラプラス"],
+                     on: day(9, 17), rarity: .rare),
+            graduate("gyarados", chain: [129, 130], names: ["en": "Gyarados", "ko": "갸라도스", "ja": "ギャラドス"],
+                     on: day(9, 15), shiny: true),
+            graduate("raichu", chain: [25, 26],
+                     names: ["en": "Raichu", "ko": "라이츄", "ja": "ライチュウ"], on: day(9, 18)),
+        ]
+        let dexJSON = String(decoding: try JSONEncoder().encode(dex), as: UTF8.self)
+
+        for (language, suffix) in [(AppLanguage.en, ""), (.ko, "-ko"), (.ja, "-ja")] {
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent("recap-shot-\(UUID().uuidString).json")
+            defer { try? FileManager.default.removeItem(at: url) }
+            try Data(#"{"installBaselineSet":true,"usedSinceInstall":1000,"lastDate":"d","dex":\#(dexJSON)}"#.utf8)
+                .write(to: url)
+            let suite = "RecapShot-\(UUID().uuidString)"
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            ledger.save(to: defaults)
+            let store = UsageStore(providers: [], autoRefresh: false, defaults: defaults)
+            let companion = CompanionStore(fileURL: url, defaults: defaults)
+            companion.setLanguage(language)
+            let content = RecapContent(store: store, companion: companion, scope: .week, offset: 0,
+                                       now: day(9, 20, hour: 21), calendar: calendar)
+            let view = RecapCard(content: content)
+                .padding(.horizontal, PopoverMetrics.padding)
+                .padding(.vertical, 16)
+                .frame(width: PopoverMetrics.width)
+                .background(Color(red: 41 / 255, green: 41 / 255, blue: 42 / 255))
+                .environment(\.colorScheme, .dark)
+                .environment(\.locale, language.displayLocale)
+            let renderer = ImageRenderer(content: view)
+            renderer.scale = 2
+            let image = try XCTUnwrap(renderer.nsImage)
+            let rep = try XCTUnwrap(image.tiffRepresentation.flatMap(NSBitmapImageRep.init(data:)))
+            let data = try XCTUnwrap(rep.representation(using: .png, properties: [:]))
+            let out = URL(fileURLWithPath: directory).appendingPathComponent("screenshot-usage-recap\(suffix).png")
+            try data.write(to: out)
+            print("wrote \(out.path) (\(data.count) bytes)")
+        }
     }
 
     @MainActor

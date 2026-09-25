@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.8.0"
+VERSION = "1.9.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -114,6 +114,21 @@ S = {
                    "The key is stored in this Mac's app folder as an owner-only file (not encrypted). Logging out in your browser invalidates it immediately.",
                    "キーはこの Mac のアプリフォルダに本人のみ読み取り可能なファイルとして保存されます(暗号化なし)。ブラウザでログアウトすると即時無効になります。"),
  "orgLabel":      ("조직", "Organization", "組織"),
+ "perAcctNote":   ("기본 Claude 계정(~/.claude)에 적용됩니다. 다른 계정은 아래에서 각자 키를 넣을 수 있어요.",
+                   "Applies to the default Claude account (~/.claude). Each other account can have its own key below.",
+                   "デフォルトの Claude アカウント（~/.claude）に適用されます。ほかのアカウントは下でそれぞれキーを設定できます。"),
+ "acctKey":       ("work@example.com 세션 키", "Session key for work@example.com", "work@example.com のセッションキー"),
+ "acctKeyFolder": ("~/.claude-work", "~/.claude-work", "~/.claude-work"),
+ "snapTitle":     ("자동 백업 (스냅샷)", "Automatic Backups (Snapshots)", "自動バックアップ（スナップショット）"),
+ "snapHint":      ("진행 상태의 로컬 복원 지점을 즉시 저장해요 (최근 10개 보존)",
+                   "Saves an instant local restore point of your progress (keeps up to 10)",
+                   "現在の進行状況の復元ポイントを即座に保存します（最新10件を保持）"),
+ "snapBtn":       ("스냅샷 만들기", "Create snapshot", "スナップショットを作成"),
+ "restoreBtn":    ("복원", "Restore", "復元"),
+ "snap1Date":     ("2026. 9. 25. 오전 9:12", "Sep 25, 2026 at 9:12 AM", "2026/09/25 9:12"),
+ "snap1Meta":     ("도감 64마리 · 누적 1.2B", "Pokédex 64 · 1.2B lifetime", "図鑑 64匹 · 累計 1.2B"),
+ "snap2Date":     ("2026. 9. 24. 오후 8:40", "Sep 24, 2026 at 8:40 PM", "2026/09/24 20:40"),
+ "snap2Meta":     ("도감 63마리 · 누적 1.1B", "Pokédex 63 · 1.1B lifetime", "図鑑 63匹 · 累計 1.1B"),
  "orgValue":      ("회사 Team Plan", "Company Team Plan", "会社 Team Plan"),
  "save":          ("저장", "Save", "保存"),
  "delete":        ("삭제", "Delete", "削除"),
@@ -213,6 +228,14 @@ def html(lang, advanced=False):
     def sec(title):
         return f'<div class="sec">{title}</div>'
 
+    # 스냅샷 행의 컴패니언 썸네일 — 앱이 받아 둔 스프라이트 캐시를 그대로 쓴다(없으면 빈 칸).
+    def sprite(species_id):
+        path = os.path.expanduser(
+            f"~/Library/Application Support/PikaTokenBar/sprites/{species_id}-s.png")
+        img = f'<img src="file://{path}" style="width:28px;height:28px;image-rendering:pixelated">' \
+            if os.path.exists(path) else '<span style="width:28px"></span>'
+        return img
+
     slider = lambda pct: f'<div class="sld"><i style="left:calc({pct}% - 7px)"></i></div>'
 
     # 고급 섹션을 펼친 모습 — 세션 키 행이 여기 산다(앱에서도 이 disclosure 안에 있다).
@@ -220,11 +243,16 @@ def html(lang, advanced=False):
         f'<div class="row"><div class="lbl">{s("advancedRow")}</div><span class="chev">⌄</span></div>',
         row(f'<div class="ttl"><span>{s("sessionKey")}</span>'
             f'<span class="badge">{s("sessionKeySaved")}</span></div>',
-            "", s("sessionKeyHint")),
+            "", s("sessionKeyHint") + " " + s("perAcctNote")),
         f'<div class="row"><div class="field">••••••••</div>'
         f'<div class="btn">{s("save")}</div><div class="btn">{s("delete")}</div></div>',
         row(s("orgLabel"), pill(s("orgValue"))),
         f'<div class="note" style="padding:6px 14px 8px">{s("sessionKeyNote")}</div>',
+        # 추가 계정마다 자기 세션 키(#346) — 제목은 계정 이메일, 폴더는 두 로그인을 구분하는 보조 줄.
+        row(f'<div class="ttl"><span>{s("acctKey")}</span>'
+            f'<span class="badge">{s("sessionKeySaved")}</span></div>', "", s("acctKeyFolder")),
+        f'<div class="row"><div class="field">••••••••</div>'
+        f'<div class="btn">{s("save")}</div><div class="btn">{s("delete")}</div></div>',
         row(s("keychainOff"), tog(False), s("keychainOffHint")),
         row(s("refreshToken"), f'<div class="btn">{s("refreshToken")}</div>', s("refreshTokenHint")),
         # 추가 Claude 계정 — ~/.claude-* 는 자동 감지, 다른 위치의 설정 폴더만 여기 적는다.
@@ -310,6 +338,13 @@ def html(lang, advanced=False):
         card(
             row(s("exportLabel"), f'<div class="btn">{s("exportBtn")}</div>', s("exportHint")),
             row(s("importLabel"), f'<div class="btn">{s("importBtn")}</div>', s("importHint")),
+            row(s("snapTitle"), f'<div class="btn">{s("snapBtn")}</div>', s("snapHint")),
+            row(f'<div style="display:flex;align-items:center;gap:8px">{sprite(25)}'
+                f'<div><div>{s("snap1Date")}</div><div class="h">{s("snap1Meta")}</div></div></div>',
+                f'<div class="btn">{s("restoreBtn")}</div>'),
+            row(f'<div style="display:flex;align-items:center;gap:8px">{sprite(25)}'
+                f'<div><div>{s("snap2Date")}</div><div class="h">{s("snap2Meta")}</div></div></div>',
+                f'<div class="btn">{s("restoreBtn")}</div>'),
         ),
         sec(s("advanced")),
         card(row(f'<span class="chev">›</span>&nbsp; {s("advancedRow")}', "")),
