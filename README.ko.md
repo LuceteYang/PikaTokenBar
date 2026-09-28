@@ -72,9 +72,9 @@ PikaTokenBar는 당신이 이미 태우고 있는 AI 코딩 토큰(Claude Code �
 <tr>
 <td width="55%" valign="middle">
 <h3>채우고 싶어지는 도감</h3>
-<b>도감</b>은 보유한 종을 한 칸으로 접어 도감 번호순으로 보여줍니다 — 한 페이지 24칸, 이로치로 잡은 종에는 ✨가 붙어요. <b>포획 로그</b>는 개체를 그대로 남깁니다: 최신순으로 전체 진화 라인·희귀도·성격·획득일까지.
+<b>도감</b>은 보유한 종을 한 칸으로 접어 도감 번호순으로 보여줍니다 — 이미지와 이름을 키운 4×4 배치로 한 페이지 16칸, 이로치로 잡은 종에는 ✨가 붙어요. 두 화면 모두 이름·번호 검색, 희귀도·이로치 필터와 정렬을 지원합니다. <b>포획 로그</b>는 개체를 그대로 남깁니다: 최신순으로 전체 진화 라인·희귀도·성격·획득일까지.
 </td>
-<td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="도감 — 종 하나가 한 칸"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="포획 로그 — 키운 개체 하나가 한 행"></td>
+<td width="45%" align="center"><img src="assets/screenshot-collection-pokedex-ko.png" width="300" alt="도감 — 종 하나가 한 칸"><br><br><img src="assets/screenshot-collection-catchlog-ko.png" width="300" alt="포획 로그 — 키운 개체 하나가 한 행"></td>
 </tr>
 <tr>
 <td width="45%" align="center"><img src="assets/settings-ko.png" width="300" alt="설정"><br><br><img src="assets/settings-advanced-ko.png" width="300" alt="고급 — 프롬프트 없는 공식 한도 조회용 claude.ai 세션 키"></td>
@@ -194,6 +194,13 @@ Pi는 모델 여러 개를 세션 로그 하나로 흘려보낼 수 있습니다
 - **인앱 업데이트** — 원클릭 업데이트 확인, 설정에 현재 버전 표시.
 - **도감 검색·필터** — 이름이나 번호로 검색하고, 도감과 포획 기록을 정렬하고 희귀도·이로치로 거를 수 있습니다. 도감 번호는 희귀도 색으로 표시됩니다.
 - **세이브 자동 백업** — 세이브를 최소 12시간마다 로컬 스냅샷으로 남깁니다(최근 10개 보존). 불러오지 못하는 세이브는 따로 보관하고 최신 스냅샷에서 복구하며, 설정 → 백업 & 이전에서 스냅샷을 골라 바로 복원할 수 있습니다.
+
+- **로컬 저장 백업** — 자동 스냅샷과 손상 복구를 지원하며 설정에서 이전 저장 상태를 복원할 수 있습니다.
+- **안농 폼 수집** — 28종 문자 폼을 수집하고 도감에서 보유한 폼을 확인하세요.
+- **이상한 사탕 일괄 사용** — 여러 사탕을 한 번에 사용하고, 사용 전 성장 결과를 미리 볼 수 있습니다.
+- **한도 사용 페이스** — 게이지의 경과 시간 표식과 6단계 색상으로 사용 속도를 확인합니다. 메뉴바 한도 비율도 같은 색상을 사용합니다.
+
+<img src="assets/screenshot-usage-recap-ko.png" width="360" alt="선택한 기간의 사용량 돌아보기">
 
 ## 지원 도구
 

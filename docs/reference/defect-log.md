@@ -42,6 +42,14 @@ read_when:
   sprite's independent SwiftUI `.task(id:)` had not finished rendering. Keep transition-index
   diagnostics and prove a permanently stale sprite still fails after the readiness deadline.
 
+- **Bundled CLI discovery must cover the shipped app layout.** ChatGPT moved Codex from
+  `Contents/Resources/codex` into `Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex`.
+  After an update removed the cached executable, GUI discovery returned nil and hid the limits.
+  Fake-response tests bypassed the production candidate list. `CodexRateLimitsProviderTests`
+  now checks both bundle layouts in the default candidates and preserves dedicated-install
+  precedence; removing the new candidate must fail the regression. The source sweep found
+  this provider is the only owner of ChatGPT CLI bundle paths.
+
 - **Localized metadata names must not replace persistent API identifiers.** The dex rendered
   ability, move, and type slugs directly, while existing tests covered species names and profile
   metadata rather than these visible labels. All five detail-view name sites now use a shared
@@ -261,8 +269,16 @@ read_when:
   실사용은 0 을 표시한다(#133: 봉투 래퍼 키를 `update` 로 봤으나 실제는 `params`, `timestamp` 는 ISO 문자열이
   아니라 Unix `u64` 초 — 실제 라인은 한 건도 안 잡혔다). 순서: ① 업스트림에서 *쓰는* 코드(직렬화 구조체·serde
   계약 테스트)를 열어 키·타입·의미를 확정 ② 그 계약으로 픽스처 작성 ③ 가능하면 실파일 1건 캡처. 특히
-  **같은 스펠링이 표면마다 의미가 다를 수 있다**(Grok `inputTokens`=캐시 포함 durable wire vs `input_tokens`=캐시
-  제외 헤드리스 투영) — 별칭으로 합치면 캐시분을 두 번 빼거나 두 번 더한다.
+   **같은 스펠링이 표면마다 의미가 다를 수 있다**(Grok `inputTokens`=캐시 포함 durable wire vs `input_tokens`=캐시
+   제외 헤드리스 투영) — 별칭으로 합치면 캐시분을 두 번 빼거나 두 번 더한다.
+- **외부 도구의 새 저장 테이블은 기존 테이블과 공존할 수 있다 — V2 writer 를 확인한다.** OpenCode V2 는
+  assistant 사용량을 `session_message` 에 쓰고, 이전 `message` projection 만 읽던 PokeTokenBar 는 업데이트 뒤
+  새 세션 사용량을 놓쳤다. 예전 테스트는 `message` 만 만든 fixture 였기 때문에 파서 회귀로 보이지 않았다.
+  V2 에선 indexed `time_created` 로 최근 assistant 행을 읽고, nested `model` 과 분리된 `reasoning` 을 매핑하며,
+  두 세대 테이블을 합쳐도 message ID 로 dedup 한다. 외부 도구의 저장 형식이 바뀌면 예전 projection 이 남아
+  있다는 이유로 새 writer 도 계속 그 테이블을 채운다고 가정하지 않는다. 가드:
+  `testOpenCodeReadsV2SessionMessagesAndMergesLegacyUsage` — 두 테이블 동시 존재, 새 V2 assistant 형식,
+  비사용자 데이터 행 제외, reasoning 합산, V1 이력 병합을 함께 고정한다.
 - **스토리지 컷오버는 옛 파일명만 보면 커스텀 루트도 0이다.** 업스트림이 `data.sqlite3` 에 쓰기를
   멈추고 `~/.kiro/sessions` JSONL 로 옮겼는데, 리더가 루트마다 sqlite 만 열면 Settings 의
   `~/.kiro` 추가 폴더가 no-op 가 되고 최근 사용량이 0 으로 보인다(#236). 규칙: ① 기본 루트 목록에
@@ -987,6 +1003,15 @@ read_when:
   all-spaces/`.floating` 펫이 실제로 거의 안 가려져 메뉴바와 동일 수확체감으로 미도입. (#102 리뷰 지적 반영, 2026-07-22.)
 
 ## 알림
+
+- **사탕 재무장도 util dip 만 믿지 마라 — 창 epoch 를 같이 보라.** 지급 key 는 안정
+  (`claude.fiveHour`)이어야 알림 dedup 과 같은 이유로 `resets_at` 을 key 에 넣으면 안 된다. 그런데
+  재무장을 *오직* utilization&lt;100 관측에만 걸면, Mac 이 리셋 구간을 잠자거나 앱이 꺼져 있는 동안
+  창이 바뀌고 다음 poll 이 다시 100%면 `candyGrantTier` 가 영원히 1 로 남아 "한도를 여러 번
+  찍었는데 사탕이 안 온다"가 된다(#326). 해결: `candyWindowEpoch[key]=resets_at` 을 영속하고, 같은
+  key 에서 epoch 가 바뀌면 util 과 무관하게 tier 를 비운 뒤 100%면 재지급. nil→첫 epoch 는 재무장이
+  아니다(구세이브 업그레이드 폭탄 방지). 회귀: `testRearmWhenWindowEpochAdvancesWhileStillAt100`·
+  `testGrantAfterSeedWhenEpochAdvancesWithoutUtilDip`·`testLearningEpochForFirstTimeDoesNotRegrant`.
 
 - **휘발성 필드를 dedup/identity 키에 쓰지 마라.** 매 fetch/refresh 마다 값이 변하는 필드(예: rolling
   한도 창의 `resets_at`)를 알림 중복방지 키에 넣으면 매번 새 키가 되어 dedup 이 무력화된다 — 주간 한도

@@ -306,22 +306,72 @@ final class UsageStore {
     /// %는 limitDisplayMode 를 따르되 접미사 없음 — 좁은 표면이고 방향은 사용자가 고른 설정이 말해 준다
     /// (배터리 메뉴바 % 관례). 자기설명 접미사("남음")는 팝오버 행에서만.
     private var menuLimitLine: String? {
-        guard showLimitInMenu else { return nil }
+        let parts = menuLimitParts()
+        return parts.isEmpty ? nil : parts.map(\.text).joined(separator: " · ")
+    }
+
+    /// One menu bar limit item: its text plus what its color is judged from.
+    struct MenuLimitPart: Equatable {
+        var text: String
+        var utilization: Double
+        /// Elapsed fraction of the window; nil when its reset time or length is unknown.
+        var pace: Double?
+    }
+
+    func menuLimitParts(now: Date = Date()) -> [MenuLimitPart] {
+        guard showLimitInMenu else { return [] }
         let usedToday = Set(snapshots.filter { $0.todayTotalTokens > 0 }.map(\.providerID))
-        var parts: [String] = []
-        if let utilization = menuClaudeAccount?.status.fiveHour?.utilization {
-            parts.append("Claude \(TokenFormatter.percent(limitDisplayPercent(utilization)))")
+        var parts: [MenuLimitPart] = []
+        func add(_ label: String, _ utilization: Double, reset: Date? = nil, span: TimeInterval? = nil) {
+            let pace = reset.flatMap { reset in span.flatMap { Self.paceFraction(resetsAt: reset, span: $0, now: now) } }
+            parts.append(MenuLimitPart(text: "\(label) \(TokenFormatter.percent(limitDisplayPercent(utilization)))",
+                                       utilization: utilization, pace: pace))
+        }
+        if let window = menuClaudeAccount?.status.fiveHour, let utilization = window.utilization {
+            add("Claude", utilization, reset: window.resetDate, span: LimitWindowSpan.fiveHour)
         }
         if usedToday.contains("codex"), let usedPercent = codexLimits?.maxPrimaryUsedPercent {
-            parts.append("Codex \(TokenFormatter.percent(limitDisplayPercent(Double(usedPercent))))")
+            // The window the percentage came from, so the pace belongs to the same bucket.
+            let window = codexLimits?.visibleSnapshots.compactMap(\.primary).first { $0.usedPercent == usedPercent }
+            add("Codex", Double(usedPercent), reset: window?.resetDate, span: window?.windowSpan)
         }
         if usedToday.contains("antigravity"), let usedPercent = antigravityLimits?.maxPrimaryUsedPercent {
-            parts.append("AGY \(TokenFormatter.percent(limitDisplayPercent(usedPercent)))")
+            add("AGY", usedPercent)
         }
         if usedToday.contains("cursor"), let usedPercent = cursorLimits?.planUsage?.usedPercent {
-            parts.append("Cursor \(TokenFormatter.percent(limitDisplayPercent(usedPercent)))")
+            add("Cursor", usedPercent)
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        return parts
+    }
+
+    /// Which menu bar limit items are drawn in their gauge color.
+    enum MenuLimitColorMode: String, CaseIterable {
+        /// Every item, in all six tiers (the default).
+        case gauge
+        /// Only items running faster than pace; calm items keep the system text color.
+        case attention
+        /// None — the system text color, as before.
+        case off
+    }
+    var menuLimitColorMode: MenuLimitColorMode {
+        didSet { defaults.set(menuLimitColorMode.rawValue, forKey: "menuLimitColorMode") }
+    }
+
+    /// A menu bar limit item and the tier its whole text is colored in.
+    struct MenuLimitColorRun: Equatable {
+        var text: String
+        var tier: PaceTier
+    }
+
+    /// The colored items, left to right. Separators and the token/cost line are never included.
+    func menuLimitColorRuns(now: Date = Date()) -> [MenuLimitColorRun] {
+        guard menuLimitColorMode != .off else { return [] }
+        return menuLimitParts(now: now).compactMap { part in
+            let tier = PaceTier.gauge(utilization: part.utilization, pace: part.pace,
+                                      warnThreshold: warnThreshold, critThreshold: critThreshold)
+            if menuLimitColorMode == .attention && tier.isCalm { return nil }
+            return MenuLimitColorRun(text: part.text, tier: tier)
+        }
     }
 
     /// The account whose 5h percentage the menu bar shows, nil when it shows none.
@@ -568,14 +618,16 @@ final class UsageStore {
                     key: "codex.\(bucketKey).primary",
                     name: "\(bucketName) \(l.codexWindow(primary.windowDurationMins))",
                     kind: Self.windowClass(minutes: primary.windowDurationMins),
-                    utilization: Double(primary.usedPercent)))
+                    utilization: Double(primary.usedPercent),
+                    epoch: primary.resetsAt.map(String.init)))
             }
             if let secondary = bucket.secondary {
                 windows.append(CandyWindow(
                     key: "codex.\(bucketKey).secondary",
                     name: "\(bucketName) \(l.codexWindow(secondary.windowDurationMins))",
                     kind: Self.windowClass(minutes: secondary.windowDurationMins),
-                    utilization: Double(secondary.usedPercent)))
+                    utilization: Double(secondary.usedPercent),
+                    epoch: secondary.resetsAt.map(String.init)))
             }
         }
         for group in antigravityLimits?.groups ?? [] {
@@ -586,14 +638,16 @@ final class UsageStore {
                     key: "antigravity.\(groupKey).5h",
                     name: "\(groupTitle) \(l.fiveHourSession)",
                     kind: .session,
-                    utilization: fiveHour.usedPercent))
+                    utilization: fiveHour.usedPercent,
+                    epoch: fiveHour.resetTime))
             }
             if let weekly = group.weeklyBucket {
                 windows.append(CandyWindow(
                     key: "antigravity.\(groupKey).weekly",
                     name: "\(groupTitle) \(l.weekly)",
                     kind: .weekly,
-                    utilization: weekly.usedPercent))
+                    utilization: weekly.usedPercent,
+                    epoch: weekly.resetTime))
             }
         }
         return windows
@@ -603,13 +657,15 @@ final class UsageStore {
     private func claudeCandyWindows(_ account: ClaudeAccountLimits, named: Bool, _ l: L) -> [CandyWindow] {
         let suffix = named ? " (\(account.title))" : ""
         var windows: [CandyWindow] = []
-        if let u = account.status.fiveHour?.utilization {
+        if let fiveHour = account.status.fiveHour, let u = fiveHour.utilization {
             windows.append(CandyWindow(key: "\(account.windowKeyPrefix).fiveHour",
-                                       name: l.claudeFiveHour + suffix, kind: .session, utilization: u))
+                                       name: l.claudeFiveHour + suffix, kind: .session,
+                                       utilization: u, epoch: fiveHour.resetsAt))
         }
-        if let u = account.status.sevenDay?.utilization {
+        if let sevenDay = account.status.sevenDay, let u = sevenDay.utilization {
             windows.append(CandyWindow(key: "\(account.windowKeyPrefix).sevenDay",
-                                       name: l.claudeWeekly + suffix, kind: .weekly, utilization: u))
+                                       name: l.claudeWeekly + suffix, kind: .weekly,
+                                       utilization: u, epoch: sevenDay.resetsAt))
         }
         return windows
     }
@@ -716,6 +772,7 @@ final class UsageStore {
         showCostInMenu = d.object(forKey: "showCostInMenu") as? Bool ?? false
         showLimitInMenu = d.object(forKey: "showLimitInMenu") as? Bool ?? false
         limitDisplayMode = LimitDisplayMode(rawValue: d.string(forKey: "limitDisplayMode") ?? "") ?? .used
+        menuLimitColorMode = MenuLimitColorMode(rawValue: d.string(forKey: "menuLimitColorMode") ?? "") ?? .gauge
         limitNotifications = d.object(forKey: "limitNotifications") as? Bool ?? true
         companionNotifications = d.object(forKey: "companionNotifications") as? Bool ?? true
         updateNotificationsEnabled = d.object(forKey: "updateNotificationsEnabled") as? Bool ?? true
@@ -855,7 +912,7 @@ final class UsageStore {
                 }
             }
             for await outcome in group {
-                AppLog.write("phase1 recv id=\(outcome.id) today=\(outcome.today?.totalTokens.description ?? "nil") err=\(outcome.errorDescription ?? "none")")
+                AppLog.writeIfChanged("phase1-recv-\(outcome.id)", "phase1 recv id=\(outcome.id) today=\(outcome.today?.totalTokens.description ?? "nil") err=\(outcome.errorDescription ?? "none")")
                 if let today = outcome.today { dailyByID[outcome.id] = today }
                 if let err = outcome.errorDescription {
                     failedIDs.insert(outcome.id)
@@ -965,7 +1022,7 @@ final class UsageStore {
             limits = nil
             limitsAvailable = false
             limitsAuthExpiry = nil   // 조회 자체를 안 하므로 "세션 만료" 안내는 무의미 → 해제
-            AppLog.write("claude limits skipped: keychain access disabled")
+            AppLog.writeIfChanged("claude-limits", "claude limits skipped: keychain access disabled")
         } else if let until = claudeLimitsBackoffUntil, Date() < until {
             // 429 백오프 중 — 폴링을 쉬어 rate limit 악화 방지 (버그 리포트 실측: 매분 429 재시도)
             AppLog.write("claude limits backoff: skipping (\(Int(until.timeIntervalSinceNow))s left)")
@@ -983,7 +1040,7 @@ final class UsageStore {
                 if limits == nil { limitsAvailable = false }
                 updateAuthExpired(from: error)
                 applyLimitsBackoffIfRateLimited(error)
-                AppLog.write("limits unavailable: \(error)")
+                AppLog.writeIfChanged("claude-limits", "limits unavailable: \(error)")
             }
         }
         await refreshAdditionalClaudeLimits(allowKeychainPrompt: false)
@@ -1541,7 +1598,7 @@ final class UsageStore {
             if case LimitsError.httpStatus(let code) = error, code == 401 || code == 403 {
                 cursorLimitsAuthExpired = true
             }
-            AppLog.write("cursor limits unavailable: \(error)")
+            AppLog.writeIfChanged("cursor-limits", "cursor limits unavailable: \(error)")
         }
     }
 
@@ -1570,7 +1627,7 @@ final class UsageStore {
             if case LimitsError.httpStatus(let code) = error, code == 401 || code == 403 {
                 antigravityLimitsAuthExpired = true
             }
-            AppLog.write("antigravity limits unavailable: \(error)")
+            AppLog.writeIfChanged("antigravity-limits", "antigravity limits unavailable: \(error)")
         }
     }
 
@@ -1650,7 +1707,7 @@ final class UsageStore {
                 }.joined(separator: " | ")
                 AppLog.write("codex limits refreshed [\(buckets)] plan=\(status.rateLimits.planType ?? "nil")")
             } else {
-                AppLog.write("codex limits skipped: codex binary not found")
+                AppLog.writeIfChanged("codex-limits", "codex limits skipped: codex binary not found")
             }
         } catch {
             AppLog.write("codex limits unavailable: \(error)")
@@ -1677,7 +1734,7 @@ final class UsageStore {
         let fresh = await statusProvider.fetch()
         for (id, status) in fresh { statuses[id] = status }
         if !fresh.isEmpty {
-            AppLog.write("provider status: "
+            AppLog.writeIfChanged("provider-status", "provider status: "
                 + fresh.map { "\($0.key)=\($0.value.indicator.rawValue)" }.sorted().joined(separator: " "))
         }
     }

@@ -71,7 +71,7 @@ Shiny hatches keep their distinct colors through every evolution — menu bar, h
 <tr>
 <td width="55%" valign="middle">
 <h3>A Pokédex worth filling</h3>
-The <b>Pokédex</b> folds every species you've owned into one cell — 24 per page in dex-number order, and a ✨ on the ones you own shiny. The <b>Catch log</b> keeps the individuals: newest first, each with its full evolution line, rarity, nature, and capture date.
+The <b>Pokédex</b> folds every species you've owned into one cell — 16 per page in a 4×4 grid, with larger sprites and names, and a ✨ on the ones you own shiny. Search by name or number, filter by rarity or shiny appearance, and change the sort order in both views. The <b>Catch log</b> keeps the individuals: newest first, each with its full evolution line, rarity, nature, and capture date.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="Pokédex — one cell per species"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="Catch log — one row per Pokémon raised"></td>
 </tr>
@@ -194,6 +194,13 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 - **Pokédex search and filters** — search by name or number, sort, and filter the Pokédex and Catch Log by rarity or shiny. Dex numbers are colored by rarity.
 - **Automatic save backups** — the save is snapshotted locally at least every 12 hours (newest 10 kept). A save that fails to load is set aside and restored from the latest snapshot, and Settings → Backup & Transfer lists the snapshots for a one-click restore.
 
+- **Local save backups** — automatic snapshots and corruption recovery, with a restore screen in Settings.
+- **Unown forms** — collect all 28 letter forms and inspect the forms you own in the Pokédex.
+- **Bulk Rare Candy** — use several candies at once and preview the growth before spending.
+- **Quota pace** — gauge markers show the elapsed share of a limit window; six color tiers indicate usage pace, and menu-bar limit percentages use the same colors.
+
+<img src="assets/screenshot-usage-recap.png" width="360" alt="Usage recap for a selected period">
+
 ## Works with
 
 | Tool | Tracked | Official limits |
@@ -265,7 +272,7 @@ swift test                   # unit tests
 | `~/.gemini/tmp/**/chats/*.json(l)` | Gemini CLI daily/monthly | session records (`tokens` per message); weekly = daily sum |
 | `~/.gemini/antigravity/conversations/*.db`<br>`~/.gemini/antigravity-cli/conversations/*.db`<br>`~/.gemini/antigravity-ide/conversations/*.db` | Antigravity daily/blocks/weekly/monthly | SQLite read-only; per-call usage from the Cascade protobuf blob; supports Antigravity 2.0/Core, CLI & IDE; its own provider, not folded into Gemini; a subscription, so no cost is estimated |
 | `~/.codex/sessions/**/*.jsonl` | Codex daily/monthly | `token_count` events; weekly = daily sum |
-| `~/.local/share/opencode/opencode.db` | OpenCode daily/blocks/weekly/monthly | SQLite read-only; legacy `storage/message` JSON is also supported |
+| `~/.local/share/opencode/opencode.db` | OpenCode daily/blocks/weekly/monthly | SQLite read-only (`message` on V1, `session_message` on V2); legacy `storage/message` JSON is also supported |
 | `~/.hermes/state.db` | Hermes Agent daily/blocks/weekly/monthly | SQLite read-only; session token totals and persisted cost |
 | `~/Library/Application Support/Cursor/User/globalStorage/state.vscdb` | Cursor daily/blocks/weekly/monthly | SQLite read-only fallback (`cursorDiskKV` bubble `tokenCount`); when signed in, primary source is `cursor.com` dashboard API (see Privacy) |
 | `cursor.com` (dashboard API) | Cursor daily/blocks/weekly/monthly | unofficial JSON endpoint (`get-filtered-usage-events`); session from `cursorAuth/accessToken` in `state.vscdb` or `CURSOR_SESSION_TOKEN`; refetches when the provider reloads; on network error falls back to an account-scoped disk cache up to 6 h old; disable with `CURSOR_USAGE_API=0` |
