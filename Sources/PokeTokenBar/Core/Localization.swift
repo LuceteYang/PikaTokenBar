@@ -219,6 +219,13 @@ struct L {
                       "Comparado com os mesmos dias do ano passado", "Verglichen mit denselben Tagen des Vorjahres")
         }
     }
+    func recapCurrentPeriod(_ scope: RecapScope) -> String {
+        switch scope {
+        case .week: thisWeek
+        case .month: thisMonth
+        case .year: t("올해", "This year", "今年", "Este año", "Cette année", "Este ano", "Dieses Jahr")
+        }
+    }
     var recapPrevious: String { t("이전", "Previous", "前へ", "Anterior", "Précédent", "Anterior", "Vorherige") }
     var recapNext: String { t("다음", "Next", "次へ", "Siguiente", "Suivant", "Próximo", "Nächste") }
     var recapBestDay: String { t("최고의 날", "Best day", "最高の日", "Mejor día", "Meilleur jour", "Melhor dia", "Bester Tag") }
@@ -258,6 +265,28 @@ struct L {
     var todayTokensShort: String { t("오늘 토큰", "Today's tokens", "本日のトークン", "Tokens de hoy", "Tokens du jour", "Tokens de hoje", "Heutige Tokens") }
     var todayCost: String { t("오늘 비용 ($)", "Today's cost ($)", "本日のコスト ($)", "Coste de hoy ($)", "Coût du jour ($)", "Custo de hoje ($)", "Heutige Kosten ($)") }
     var limitPercent: String { t("한도 %", "Limit %", "上限 %", "Límite %", "Limite %", "Limite %", "Limit %") }
+    var menuLimitColor: String {
+        t("퍼센트 색상", "Percent color", "パーセントの色", "Color del porcentaje", "Couleur du pourcentage",
+          "Cor da porcentagem", "Prozentfarbe")
+    }
+    var menuLimitColorHint: String {
+        t("팝오버 한도 게이지와 같은 색", "Same colors as the popover limit gauges",
+          "ポップオーバーの上限ゲージと同じ色", "Los mismos colores que los medidores de límite",
+          "Les mêmes couleurs que les jauges de limite", "As mesmas cores dos medidores de limite",
+          "Dieselben Farben wie die Limit-Balken")
+    }
+    func menuLimitColorMode(_ mode: UsageStore.MenuLimitColorMode) -> String {
+        switch mode {
+        case .gauge:
+            return t("게이지와 같게", "Match gauges", "ゲージと同じ", "Como los medidores",
+                     "Comme les jauges", "Como os medidores", "Wie die Balken")
+        case .attention:
+            return t("주의 단계만", "Only when fast", "速いときだけ", "Solo si va rápido",
+                     "Seulement si rapide", "Só quando rápido", "Nur wenn schnell")
+        case .off:
+            return t("끔", "Off", "オフ", "Desactivado", "Désactivé", "Desligado", "Aus")
+        }
+    }
     var animationQualityLabel: String { t("애니메이션", "Animation", "アニメーション", "Animación", "Animation", "Animação", "Animation") }
     var animationQualityHint: String {
         t("부드러울수록 배터리를 더 씁니다", "Smoother uses more battery",
@@ -294,14 +323,14 @@ struct L {
     var difficultySectionTitle: String { t("난이도", "Difficulty", "難易度", "Dificultad", "Difficulté", "Dificuldade", "Schwierigkeit") }
     var difficultyGrowthLabel: String { t("성장", "Growth", "成長", "Crecimiento", "Croissance", "Crescimento", "Wachstum") }
     var difficultyShopLabel: String { t("상점 가격", "Shop prices", "ショップ価格", "Precios de la tienda", "Prix de la boutique", "Preços da loja", "Shop-Preise") }
-    var difficultyHint: String {
-        t("기본값 100% 기준이에요 — 낮추면 빨리 자라고 싸지고, 높이면 그 반대예요",
-          "Percentages of the default balance — lower grows faster and costs less, higher does the opposite",
-          "標準バランスに対する割合です — 下げると早く育ち安くなり、上げるとその逆になります",
-          "Porcentajes del balance predeterminado: si los bajas, crece más rápido y cuesta menos; si los subes, al revés",
-          "Pourcentages de l'équilibrage par défaut — plus bas, la croissance est plus rapide et les prix baissent ; plus haut, l'inverse",
-          "Porcentagens do balanceamento padrão — reduzir faz crescer mais rápido e custar menos; aumentar faz o contrário",
-          "Prozentwerte der Standardbalance — niedriger wächst schneller und kostet weniger, höher bewirkt das Gegenteil")
+    var difficultyGrowthLowLabel: String { t("쉬움", "Easy", "やさしい", "Fácil", "Facile", "Fácil", "Leicht") }
+    var difficultyGrowthHighLabel: String { t("어려움", "Hard", "難しい", "Difícil", "Difficile", "Difícil", "Schwer") }
+    var difficultyShopLowLabel: String { t("저렴", "Cheap", "安い", "Barato", "Pas cher", "Barato", "Günstig") }
+    var difficultyShopHighLabel: String { t("비쌈", "Expensive", "高い", "Caro", "Cher", "Caro", "Teuer") }
+    func difficultyScaleHint(low: String, high: String) -> String {
+        t("낮추면 \(low), 높이면 \(high)", "Lower: \(low), higher: \(high)", "下げると\(low)、上げると\(high)",
+          "Más bajo: \(low); más alto: \(high)", "Plus bas : \(low) ; plus haut : \(high)",
+          "Mais baixo: \(low); mais alto: \(high)", "Niedriger: \(low), höher: \(high)")
     }
     /// 슬라이더 옆 현재 배율 — 10%~200%, 1.0 = 100%.
     func difficultyValue(_ value: Double) -> String {
@@ -937,7 +966,7 @@ struct L {
     // MARK: 컴패니언
     var finalForm: String { t("최종 진화체", "Final form", "最終進化", "Forma final", "Forme finale", "Forma final", "Letzte Entwicklungsstufe") }
     func stage(_ i: Int, _ k: Int) -> String { t("진화 단계 \(i) / \(k)", "Stage \(i) / \(k)", "進化段階 \(i) / \(k)", "Etapa \(i) / \(k)", "Stade \(i) / \(k)", "Estágio \(i) / \(k)", "Entwicklungsstufe \(i) / \(k)") }
-    var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolución desconhecida", "Nächste Entwicklung unbekannt") }
+    var unknownNextEvolution: String { t("알 수 없는 다음 진화", "Unknown next evolution", "次の進化先は不明", "Próxima evolución desconocida", "Prochaine évolution inconnue", "Próxima evolução desconhecida", "Nächste Entwicklung unbekannt") }
     var eggIncubating: String { t("🥚 부화 준비 중", "🥚 Incubating", "🥚 孵化の準備中", "🥚 Incubando", "🥚 En incubation", "🥚 Incubando", "🥚 Wird ausgebrütet") }
     func eggToHatch(_ amount: String) -> String { t("부화까지 \(amount)", "\(amount) to hatch", "孵化まで \(amount)", "\(amount) para eclosionar", "\(amount) avant l'éclosion", "\(amount) para chocar", "\(amount) bis zum Schlüpfen") }
     /// 알 부화 임계 도달 후 외부 데이터 요청이 실패한 동안의 다음 새로고침 안내.
@@ -950,7 +979,7 @@ struct L {
           "⏳ A eclosão está atrasada — nova tentativa na próxima atualização",
           "⏳ Das Schlüpfen verzögert sich — neuer Versuch bei der nächsten Aktualisierung")
     }
-    func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolución", "\(amount) bis zur nächsten Entwicklung") }
+    func toNextEvolution(_ amount: String) -> String { t("다음 진화까지 \(amount)", "\(amount) to next evolution", "次の進化まで \(amount)", "\(amount) para la siguiente evolución", "\(amount) avant la prochaine évolution", "\(amount) para a próxima evolução", "\(amount) bis zur nächsten Entwicklung") }
     func toGraduation(_ amount: String) -> String { t("졸업까지 \(amount)", "\(amount) to graduation", "卒業まで \(amount)", "\(amount) para graduarse", "\(amount) avant le diplôme", "\(amount) para se formar", "\(amount) bis zum Abschied") }
     func growthBoost(_ multiplier: Int) -> String { t("\(multiplier)× 성장", "\(multiplier)× growth", "成長 \(multiplier)倍", "Crecimiento ×\(multiplier)", "Croissance ×\(multiplier)", "Crescimento ×\(multiplier)", "\(multiplier)× Wachstum") }
     func graduated(_ name: String) -> String {
@@ -996,6 +1025,8 @@ struct L {
     var rarityRare: String { t("희귀", "Rare", "レア", "Raro", "Rare", "Raro", "Selten") }
     var rarityLegendary: String { t("전설", "Legendary", "伝説", "Legendario", "Légendaire", "Lendário", "Legendär") }
     var dexFilterHint: String { t("탭하면 이 희귀도만 보기 · 다시 탭하면 전체", "Tap to show only this rarity · tap again to clear", "タップでこの希少度のみ表示・再タップで全体", "Toca para ver solo esta rareza · toca de nuevo para ver todo", "Touche pour n'afficher que cette rareté · touche à nouveau pour tout afficher", "Toque para ver só esta raridade · toque de novo para ver tudo", "Tippe, um nur diese Seltenheit zu sehen · tippe erneut für alle") }
+    /// 스프라이트 클릭 → 그 종의 도감 상세. 툴팁·접근성 라벨 공용.
+    var dexOpenEntryHint: String { t("컬렉션에서 도감 항목 보기", "View entry in collection", "コレクションで図鑑を見る", "Ver entrada en la colección", "Voir la fiche dans la collection", "Ver registro na coleção", "Eintrag in der Sammlung ansehen") }
     /// 도감 칸의 ✨ 를 읽어주는 명사 — 이모지는 스크린리더가 일관되게 읽지 못한다.
     var dexShinyLabel: String { t("이로치", "Shiny", "色違い", "Variocolor", "Chromatique", "Shiny", "Schillernd") }
     var dexSearchPlaceholder: String { t("이름 또는 #번호 검색…", "Search name or #…", "名前または#番号で検索…", "Buscar por nombre o #…", "Rechercher par nom ou #…", "Buscar por nome ou #…", "Nach Name oder # suchen…") }

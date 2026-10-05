@@ -68,7 +68,7 @@ enum CursorUsageAPI {
             return UsageResult(entries: [], isAuthoritative: false)
         }
         guard let token = sessionToken() else {
-            AppLog.write("cursor api: no session token — \(LocalAdditionalUsageReader.cursorAuthDiagnostics())")
+            AppLog.writeIfChanged("cursor-api-session", "cursor api: no session token — \(LocalAdditionalUsageReader.cursorAuthDiagnostics())")
             return UsageResult(entries: [], isAuthoritative: false)
         }
         AppLog.write("cursor api: session token ready (\(token.count) chars)")
@@ -205,7 +205,7 @@ enum CursorUsageAPI {
             }
 
             let hasNext = hasNextPage(pagination: object["pagination"] as? [String: Any],
-                                      totalCount: intValue(object["totalUsageEventsCount"]),
+                                      totalCount: optionalIntValue(object["totalUsageEventsCount"]),
                                       page: page,
                                       eventCount: events.count)
             guard hasNext else {
@@ -431,6 +431,16 @@ enum CursorUsageAPI {
         switch value {
         case let string as String where !string.isEmpty: return string
         case let number as NSNumber: return number.stringValue
+        default: return nil
+        }
+    }
+
+    /// `nil` when the field is absent or unreadable — `intValue`'s `0` would read as "no events left".
+    private static func optionalIntValue(_ value: Any?) -> Int? {
+        switch value {
+        case let number as NSNumber where !(value is NSNull): return intValue(number)
+        case let string as String where Int(string.replacingOccurrences(of: ",", with: "")) != nil:
+            return intValue(string)
         default: return nil
         }
     }

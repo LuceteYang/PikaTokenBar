@@ -76,6 +76,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         CrashReporter.install(
             version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?")
         NSApp.setActivationPolicy(.accessory)
+        // Tooltips show 40% sooner than AppKit's 1 s default; the app's hover hints are short and
+        // the popover closes quickly. Registration domain only, so a user `defaults write` still wins.
+        UserDefaults.standard.register(defaults: ["NSInitialToolTipDelay": 600])
         Self.migrateLegacyStorageIfNeeded()   // TokenMac → PokeTokenBar 리네임: 기존 companion/캐시 보존
         LoginItem.migrateFromLegacyLoginItemIfNeeded()   // 로그인아이템 → KeepAlive 에이전트(크래시 자동 재실행)
         store = UsageStore()
@@ -96,8 +99,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.imagePosition = .imageLeading
             button.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
             button.cell?.usesSingleLineMode = false   // 사용량/한도를 2줄로 세로 스택 가능하게
-            button.action = #selector(togglePopover)
+            button.action = #selector(statusItemClicked)
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])   // right click opens StatusItemMenu
             prepareSpriteLayer(on: button)   // 프레임 교체를 레이어 contents 로 — 설정이 먼저다
             let egg = Self.eggImage(up: false)
             setStatusImage(egg, cgFrame: Self.cgFrame(from: egg))   // 초기 알도 같은 경로로(불변식)
@@ -119,6 +123,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         withObservationTracking {
             _ = store.menuTitle
             _ = store.menuToolTip
+            // The mode and thresholds can change the colors while the text stays the same.
+            _ = store.menuLimitColorRuns()
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
@@ -168,7 +174,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func applyState() {
         guard let button = statusItem.button else { return }
-        Self.applyMenuText(store.menuLines, to: button)
+        // Recomputed on every refresh, so a tier that moves with the clock redraws even when the text doesn't.
+        Self.applyMenuText(store.menuLines, to: button, colors: store.menuLimitColorRuns())
         button.toolTip = store.menuToolTip
         needsSpriteLayout = true   // 텍스트 길이가 바뀌면 버튼 폭이 변해 이미지 자리도 움직인다
         // stale 시각 dim 제거 — 슬립/런치 직후 refresh 완료 전 몇 초간 회색으로 보여 '고장/비활성'
@@ -184,9 +191,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     /// 메뉴바 버튼 텍스트 반영 — 1줄이면 기본 title(13pt), 2줄 이상이면 세로 스택.
-    /// 줄 수에 맞춰 폰트를 자동 축소해 N줄이 메뉴바 높이에 클리핑 없이 들어오게 한다. 색을 지정하지
-    /// 않아 메뉴바 명암(라이트/다크)·비활성(appearsDisabled) 상태에 자동 적응한다.
-    private static func applyMenuText(_ lines: [String], to button: NSStatusBarButton) {
+    /// 줄 수에 맞춰 폰트를 자동 축소해 N줄이 메뉴바 높이에 클리핑 없이 들어오게 한다. 한도 항목 색
+    /// (`colors`) 외에는 색을 지정하지 않아 메뉴바 명암(라이트/다크)·비활성(appearsDisabled) 상태에 자동 적응한다.
+    private static func applyMenuText(_ lines: [String], to button: NSStatusBarButton,
+                                      colors: [UsageStore.MenuLimitColorRun]) {
         if lines.count >= 2 {
             // NSStatusBarButton 은 멀티라인 title 을 세로 중앙에 두지 않고 위로 치우쳐 그린다(측정:
             // titleRect.y 가 음수 → 상단 클리핑 + 하단 여백, 사용자 지적). 그래서 baselineOffset 을
@@ -203,9 +211,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 para.alignment = .center
                 para.minimumLineHeight = effLH
                 para.maximumLineHeight = effLH
-                return NSAttributedString(
+                let title = NSMutableAttributedString(
                     string: lines.joined(separator: "\n"),
                     attributes: [.font: font, .paragraphStyle: para, .baselineOffset: offset])
+                MenuLimitColoring.apply(colors, to: title)
+                return title
             }
             let bounds = button.bounds
             if bounds.height > 1 {
@@ -221,7 +231,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             // 1줄로 되돌릴 때 이전 attributedTitle 이 남지 않게 먼저 비운다.
             button.attributedTitle = NSAttributedString(string: "")
             let title = lines.first ?? ""
-            button.title = title.isEmpty ? "" : " " + title
+            if !colors.isEmpty, !title.isEmpty {
+                let colored = NSMutableAttributedString(
+                    string: " " + title,
+                    attributes: [.font: button.font ?? NSFont.menuBarFont(ofSize: 0)])
+                MenuLimitColoring.apply(colors, to: colored)
+                button.attributedTitle = colored
+            } else {
+                button.title = title.isEmpty ? "" : " " + title
+            }
         }
     }
 
@@ -465,6 +483,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: 프레임 합성 (22px)
 
+    /// Widest the menu bar sprite may get, so a wide species does not push the usage text too far.
+    /// At 36pt, 645 of the 649 species reach the full 20pt height. The rest: Swanna, Linoone and
+    /// Gorebyss at ~18pt, Tynamo (57×19) at 12pt, which would need 60pt to fill the height.
+    nonisolated static let menuBarSpriteMaxWidth: CGFloat = 36
+
     /// 스프라이트 정적 + 가벼운 상하 bob 2프레임 (animated 미지원/로딩 폴백).
     private static func bobFrames(from sprite: NSImage) -> [(image: NSImage, delay: TimeInterval)] {
         [(menuBarImage(from: sprite, up: false), 0.5), (menuBarImage(from: sprite, up: true), 0.5)]
@@ -481,9 +504,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// + 좌우 1pt 만큼만. 정사각 22 고정으로 두면 세로로 긴 종(잭키 36×66 → 폭 10.9)의 좌우에 죽은
     /// 여백이 5pt 씩 생겨 사용량 숫자와 사이가 벌어진다. 세로 기준선은 바닥 정렬 유지 — GIF 캔버스는
     /// 스프라이트에 딱 맞게 크롭돼 있어 바닥이 곧 발밑이고, 정사각 원본은 예전과 픽셀 단위로 같다.
+    ///
+    /// The sprite fits the 20pt height and may grow wider than it, up to `menuBarSpriteMaxWidth`.
+    /// Fitting a 20pt square instead let the width decide for wide canvases: Swanna's spread wings
+    /// (137×69) came out 10pt tall, Tynamo (57×19) under 7pt.
     nonisolated static func menuBarLayout(for pixelSize: CGSize, height h: CGFloat = 22,
                                           up: Bool) -> (canvas: NSSize, rect: NSRect) {
-        let fit = SpriteFit.size(for: pixelSize, box: h - 2)
+        let fit = SpriteFit.size(for: pixelSize, width: menuBarSpriteMaxWidth, height: h - 2)
         return (NSSize(width: fit.width + 2, height: h),
                 NSRect(x: 1, y: up ? 1 : 0, width: fit.width, height: fit.height))
     }
@@ -538,21 +565,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
                 .environment(store).environment(companion).environment(updater).environment(navigation))
     }
 
-    @objc private func togglePopover() {
+    @objc private func statusItemClicked() {
+        let event = NSApp.currentEvent
+        if StatusItemMenu.opensMenu(eventType: event?.type, modifiers: event?.modifierFlags ?? []) {
+            showStatusMenu()
+        } else {
+            togglePopover()
+        }
+    }
+
+    private func showStatusMenu() {
         guard let button = statusItem.button else { return }
+        if popover.isShown { popover.performClose(nil) }
+        let entries = StatusItemMenu.entries(
+            l: companion.l, todayTokens: store.todayTotalTokens,
+            todayCost: store.showsCost ? store.todayUsageCost : nil,
+            floatingPetEnabled: store.floatingPetEnabled)
+        // Attaching the menu only for this click keeps left click on the popover. performClick
+        // tracks the menu synchronously, with the button highlighted like any other status menu.
+        statusItem.menu = StatusItemMenu.build(entries, target: self, selector: #selector(handleStatusMenu(_:)))
+        button.performClick(nil)
+        statusItem.menu = nil
+    }
+
+    @objc private func handleStatusMenu(_ item: NSMenuItem) {
+        switch StatusItemMenu.action(of: item) {
+        case .refresh: Task { await store.refresh() }
+        case .openDex: showPopover { $0.openRepresentativeDex() }
+        case .openSettings: showPopover { $0.showSettings = true }
+        case .toggleFloatingPet: store.floatingPetEnabled.toggle()
+        case .quit: NSApp.terminate(nil)
+        case nil: break
+        }
+    }
+
+    @objc private func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)   // 해제·메뉴 애니메이션 재개는 popoverDidClose 에서
         } else {
-            navigation.reset()   // 닫혔다 열리면 항상 Home 으로 (설정 화면 잔류 방지)
-            buildPopoverContent()   // 열 때 호스팅 트리 생성(닫힐 때 해제)
-            // LSUIElement 앱이 비활성이면 팝오버 내부 버튼 클릭이 무시됨 — show 전에 활성화 보장
-            NSApp.activate(ignoringOtherApps: true)
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-            popover.contentViewController?.view.window?.makeKeyAndOrderFront(nil)
-            syncMenuAnimation()   // 팝오버 열림 → 메뉴바 애니메이션 정지(중복 + WindowServer 부하 회피)
-            store.requestNotificationAuthorizationIfNeeded()   // 알림 권한은 사용자가 앱을 처음 열 때 요청
-            Task { await updater.check() }   // 팝오버 열 때 재확인(내부 minInterval 디바운스)
+            showPopover()
         }
+    }
+
+    /// `route` runs after the reset to Home, so a menu item can land on a specific screen.
+    private func showPopover(route: (PopoverNavigation) -> Void = { _ in }) {
+        guard let button = statusItem.button, !popover.isShown else { return }
+        navigation.reset()   // 닫혔다 열리면 항상 Home 으로 (설정 화면 잔류 방지)
+        route(navigation)
+        buildPopoverContent()   // 열 때 호스팅 트리 생성(닫힐 때 해제)
+        // LSUIElement 앱이 비활성이면 팝오버 내부 버튼 클릭이 무시됨 — show 전에 활성화 보장
+        NSApp.activate(ignoringOtherApps: true)
+        popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        popover.contentViewController?.view.window?.makeKeyAndOrderFront(nil)
+        syncMenuAnimation()   // 팝오버 열림 → 메뉴바 애니메이션 정지(중복 + WindowServer 부하 회피)
+        store.requestNotificationAuthorizationIfNeeded()   // 알림 권한은 사용자가 앱을 처음 열 때 요청
+        Task { await updater.check() }   // 팝오버 열 때 재확인(내부 minInterval 디바운스)
     }
 
     /// Start and stop are both delegate-driven so a second `show` path cannot

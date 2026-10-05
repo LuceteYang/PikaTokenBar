@@ -161,15 +161,29 @@ enum SaveTransfer {
         // load() 의 .corrupt 복구도 안 걸려 파일을 손으로 지우기 전엔 앱을 못 쓴다.
         // 관대 디코딩은 모르는 rawValue 만 걸러낼 뿐 **아는데 만족 불가능한 값**은 그대로 통과시킨다.
         if s.eggTier?.captureRateCeiling == nil { s.eggTier = nil }
+        // 진화 체인에 같은 종이 두 번 들어오면(손편집) 도감 이름 조회·놓아주기·졸업의
+        // `Dictionary(uniqueKeysWithValues:)` 가 트랩한다. 첫 등장만 남긴다.
+        func deduped(_ ids: [Int]) -> [Int] {
+            var seen = Set<Int>()
+            return ids.filter { seen.insert($0).inserted }
+        }
         if var active = s.active {
             active.usedAtStage = clampToken(active.usedAtStage)
             // totalForms 는 `kk * (kk + 1)` 형태로 쓰여(PokemonBalance.phaseThreshold) 큰 값이 그 자체로 트랩이다.
             active.totalForms = min(max(1, active.totalForms), 12)
             active.stageIndex = min(max(0, active.stageIndex), max(0, active.pathIDs.count - 1))
+            let currentID = active.currentID
+            active.pathIDs = deduped(active.pathIDs)
+            active.plannedPathIDs = deduped(active.plannedPathIDs)
+            active.stageIndex = active.pathIDs.firstIndex(of: currentID) ?? active.stageIndex
+            active.stageIndex = min(active.stageIndex, max(0, active.pathIDs.count - 1))
             active.profile?.sanitize()
             s.active = active
         }
-        for index in s.dex.indices { s.dex[index].profile?.sanitize() }
+        for index in s.dex.indices {
+            s.dex[index].chainOrder = deduped(s.dex[index].chainOrder)
+            s.dex[index].profile?.sanitize()
+        }
         s.reconcileRepresentativeSelection()
         return s
     }
@@ -187,7 +201,7 @@ enum SaveTransfer {
     ///  - **기기 환경설정**: 진행이 아니라 이 기기에서 보는 방식(`language`) → **현재 기기 값을 지킨다**.
     ///    일본어 Mac 의 세이브가 영어 Mac 의 UI 언어를 바꾸면 안 된다.
     ///
-    /// 계정 전역 원장(`candyGrantTier`)은 교체가 아니라 **key 별 max 병합**이다. 한도 창 key 는 계정
+    /// 계정 전역 원장(`candyGrantTier`·`candyWindowEpoch`)은 교체가 아니라 **key 별 병합**이다. 한도 창 key 는 계정
     /// 단위라 두 기기가 같은 창을 본다 — 더 오래된 세이브로 통째 교체하면 이미 지급한 창의 기록이
     /// 사라져 같은 창에서 사탕이 재지급된다(보존만으로는 이 역방향을 못 막는다).
     static func rebasedForThisDevice(_ imported: CompanionState,
@@ -198,6 +212,9 @@ enum SaveTransfer {
         var state = imported
         state.language = current.language
         state.candyGrantTier = mergedGrantTier(imported.candyGrantTier, current.candyGrantTier)
+        state.candyWindowEpoch = mergedWindowEpochs(
+            imported.candyWindowEpoch, imported.candyGrantTier,
+            current.candyWindowEpoch, current.candyGrantTier)
         state.candyFeatureSeeded = imported.candyFeatureSeeded || current.candyFeatureSeeded
         let hasCurrentProviderData = hasUsageData && !todayTokensByProvider.isEmpty
         if hasCurrentProviderData {
@@ -220,5 +237,29 @@ enum SaveTransfer {
     /// 창 key 별로 더 높은 tier 를 남긴다 — 어느 쪽에서든 이미 지급했으면 지급한 것으로 본다.
     static func mergedGrantTier(_ a: [String: Int], _ b: [String: Int]) -> [String: Int] {
         a.merging(b) { max($0, $1) }
+    }
+
+    /// epoch 병합 — 양쪽이 이미 지급(tier≥1)한 창은 더 늦은 epoch 를 남겨 현재 창에서 재지급을 막고,
+    /// 한쪽만 지급했으면 그쪽 epoch 를 쓴다(다른 기기가 못 본 창은 이후 live epoch 교체로 재무장 가능).
+    static func mergedWindowEpochs(
+        _ epochsA: [String: String], _ tiersA: [String: Int],
+        _ epochsB: [String: String], _ tiersB: [String: Int]
+    ) -> [String: String] {
+        let keys = Set(epochsA.keys).union(epochsB.keys).union(tiersA.keys).union(tiersB.keys)
+        var out: [String: String] = [:]
+        for key in keys {
+            let tierA = tiersA[key] ?? 0
+            let tierB = tiersB[key] ?? 0
+            if tierA > 0, tierB > 0 {
+                out[key] = [epochsA[key], epochsB[key]].compactMap { $0 }.max()
+            } else if tierA > 0 {
+                out[key] = epochsA[key]
+            } else if tierB > 0 {
+                out[key] = epochsB[key]
+            } else {
+                out[key] = [epochsA[key], epochsB[key]].compactMap { $0 }.max()
+            }
+        }
+        return out.compactMapValues { $0 }
     }
 }

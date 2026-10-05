@@ -166,7 +166,7 @@ final class UsageEnvironmentTests: XCTestCase {
             "CLOUD_CODE_URL", "PI_CODING_AGENT_DIR", "PI_CODING_AGENT_SESSION_DIR",
             "CURSOR_SESSION_TOKEN", "CURSOR_USAGE_API",
             "KIRO_CLI_HOME", "KIRO_HOME", "CURSOR_DATA_DIR",
-            "OMP_CODING_AGENT_DIR", "ANTIGRAVITY_TOKEN_FILE",
+            "OMP_CODING_AGENT_DIR", "ANTIGRAVITY_TOKEN_FILE", "KIMI_CODE_HOME",
         ] {
             XCTAssertTrue(UsageEnvironment.names.contains(name), "\(name) 이 조회 대상에서 빠졌다")
         }
@@ -200,5 +200,24 @@ final class UsageEnvironmentTests: XCTestCase {
             }
         }
         XCTAssertTrue(missing.isEmpty, "names 에 없는 조회: \(missing.joined(separator: ", "))")
+    }
+}
+
+/// The single rule for whether a store may touch its default (user) file.
+final class UserLocationGateTests: XCTestCase {
+    func testInjectedPathIsAlwaysLive() {
+        let tmp = URL(fileURLWithPath: "/tmp/whatever.json")
+        XCTAssertTrue(AppEnv.persistsToUserLocation(injectedFileURL: tmp, isBundledApp: false))
+        XCTAssertTrue(AppEnv.persistsToUserLocation(injectedFileURL: tmp, isBundledApp: true))
+    }
+
+    func testDefaultPathIsInertUnlessBundled() {
+        XCTAssertFalse(AppEnv.persistsToUserLocation(injectedFileURL: nil, isBundledApp: false))
+        XCTAssertTrue(AppEnv.persistsToUserLocation(injectedFileURL: nil, isBundledApp: true))
+    }
+
+    /// `swift test` is not an app bundle; if that ever changes, the gate above protects nothing.
+    func testTestBinaryIsNotABundledApp() {
+        XCTAssertFalse(AppEnv.isBundledApp)
     }
 }
