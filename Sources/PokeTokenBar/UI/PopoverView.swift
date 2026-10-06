@@ -1055,7 +1055,8 @@ struct PopoverView: View {
 struct MonthDailyTrend: View {
     let series: [DailyUsage]
     /// Each provider's own month series. With two or more providers used this month the bars
-    /// stack by provider and the caption names each provider's color; otherwise the row is unchanged.
+    /// stack by provider and a legend under the axis names each provider's color; otherwise the
+    /// row is unchanged.
     var providers: [DailyTrendStack.ProviderSeries] = []
     /// `UsageStore.providerOrder` — what keeps a provider's color fixed (see `DailyTrendStack.colorIndices`).
     var providerOrder: [String] = []
@@ -1064,11 +1065,13 @@ struct MonthDailyTrend: View {
     let today: String
     let l: L
 
-    /// The hovered bar. Its day's numbers show in a tooltip above the bars, without the `.help` delay;
-    /// the row itself only names the providers (colors) and the peak.
+    /// The hovered bar. Its day's numbers show in a tooltip above the bars, without the `.help` delay.
+    /// The caption keeps today's combined readout either way — opening the popover shows today's
+    /// total without hovering anything.
     @State private var hovered: String?
 
-    /// Segment colors, indexed by `DailyTrendStack.colorIndices`. Muted enough to sit next to
+    /// Segment colors, indexed by `DailyTrendStack.colorIndices`. Fewer than the registered
+    /// providers, so two can share a color — the legend and the tooltip name them. Muted enough to sit next to
     /// the accent-colored today bar of the single-provider row without competing with it.
     static let providerPalette: [Color] = [
         Color(red: 0.85, green: 0.47, blue: 0.34),
@@ -1091,64 +1094,69 @@ struct MonthDailyTrend: View {
             let colors = DailyTrendStack.colorIndices(for: stack.map(\.id), registry: providerOrder,
                                                       paletteCount: Self.providerPalette.count)
             VStack(alignment: .leading, spacing: 3) {
-                captionRow(peak: peak, stack: stack, colors: colors)
+                captionRow(peak: peak, showsPeak: DailyTrendMetrics.showsPeak(columns))
                 barRow(columns, peak: peak, stack: stack, colors: colors)
                     .overlay(alignment: .bottomLeading) { hoverTooltip(columns, stack: stack, colors: colors) }
                     .zIndex(1)   // the tooltip rises over the caption and the rows above
                 weekendTickRow(columns)
                 axisRow(columns)
+                if DailyTrendStack.isStacked(stack) {
+                    legend(stack, colors: colors)
+                        .padding(.top, 2)
+                }
             }
             .padding(.top, 4)
         }
     }
 
-    /// Caption, the provider legend when the bars stack, and the peak — one line in every case,
-    /// so the popover height does not depend on how many providers were used.
-    /// The peak stays because bar heights are relative: one absolute scale has to be written somewhere.
-    /// When the legend does not fit, the caption goes first, then the names (the tooltip still names them).
-    private func captionRow(peak: Int, stack: [DailyTrendStack.ProviderSeries],
-                            colors: [String: Int]) -> some View {
-        let stacked = DailyTrendStack.isStacked(stack)
-        return ViewThatFits(in: .horizontal) {
-            captionLine(peak: peak, legend: stacked ? stack : [], colors: colors,
-                        showsCaption: true, showsNames: true)
-            if stacked {
-                captionLine(peak: peak, legend: stack, colors: colors, showsCaption: false, showsNames: true)
-                captionLine(peak: peak, legend: stack, colors: colors, showsCaption: false, showsNames: false)
+    /// 캡션 + 오늘의 합산 리드아웃 + 최댓값. 리드아웃은 호버를 따라가지 않는다 — 다른 날은
+    /// 툴팁이 보여주고, 여기는 팝오버를 열자마자 오늘 합계(모든 프로바이더)가 보이는 자리다.
+    /// 최댓값을 남기는 이유: 막대 높이가 상대값이라 어딘가 한 곳은 절대 스케일을 적어야 한다.
+    /// 쓴 날이 하루뿐이면 최댓값이 리드아웃과 같은 숫자라 생략한다.
+    private func captionRow(peak: Int, showsPeak: Bool) -> some View {
+        HStack(spacing: 5) {
+            Text(l.dailyTrend)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+            Text(Self.readout(series: series, today: today, showsCost: showsCost, l: l))
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
+            Spacer()
+            if showsPeak {
+                Text(l.peakDay)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                Text(TokenFormatter.compact(peak))
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
         }
     }
 
-    private func captionLine(peak: Int, legend: [DailyTrendStack.ProviderSeries], colors: [String: Int],
-                             showsCaption: Bool, showsNames: Bool) -> some View {
-        HStack(spacing: 5) {
-            if showsCaption {
-                Text(l.dailyTrend)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .fixedSize()
-            }
-            ForEach(legend, id: \.id) { provider in
+    /// Today's "8/24 (Mon) 5.2M $3.10", summed across providers. Empty for a day outside the
+    /// series — in production the series always ends today, so the lookup cannot miss.
+    nonisolated static func readout(series: [DailyUsage], today: String, showsCost: Bool, l: L) -> String {
+        guard let day = series.first(where: { $0.date == today }) else { return "" }
+        let stamp = DailyTrendMetrics.dayStamp(day.date, language: l.lang)
+        let tokens = TokenFormatter.compact(day.totalTokens)
+        guard showsCost else { return "\(stamp) \(tokens)" }
+        return "\(stamp) \(tokens) \(day.usageCost.text(l))"
+    }
+
+    /// Swatch + name per provider, wrapping onto more lines rather than truncating — names are
+    /// what tells providers apart once colors repeat.
+    private func legend(_ stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
+        WrappingHStack(spacing: 8, lineSpacing: 2) {
+            ForEach(stack, id: \.id) { provider in
                 HStack(spacing: 3) {
                     swatch(provider.id, colors)
-                    if showsNames {
-                        Text(provider.name).font(.caption2).foregroundStyle(.tertiary)
-                    }
+                    Text(provider.name).font(.caption2).foregroundStyle(.tertiary)
                 }
                 .lineLimit(1)
                 .fixedSize()
-                .padding(.leading, 3)
             }
-            Spacer(minLength: 4)
-            Text(l.peakDay)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .fixedSize()
-            Text(TokenFormatter.compact(peak))
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .monospacedDigit()
-                .fixedSize()
         }
     }
 
@@ -1524,28 +1532,56 @@ enum DailyTrendStack {
         return segments
     }
 
-    /// Palette slot per provider id. The slot follows the provider's registration order
-    /// (`UsageStore.providerOrder`), not its usage rank — rank changes as the month goes on, and
-    /// a provider that changes color when it overtakes another reads as a different provider.
-    /// Registration order also needs no per-provider branch.
-    ///
-    /// The palette is smaller than the provider list, so two ids can want the same slot; among
-    /// the ids actually shown, a later one moves to the next free slot. Every snapshot comes from
-    /// a registered provider, so `ids` is always a subset of `registry`.
+    /// Palette slot per provider id: its registration index (`UsageStore.providerOrder`) modulo the
+    /// palette. It depends on nothing but that index, so a provider keeps its color as others become
+    /// active or idle and as usage rank shifts during the month. Past the palette size colors repeat;
+    /// the legend and tooltip name the providers, so a shared color stays readable.
     static func colorIndices(for ids: [String], registry: [String],
                              paletteCount: Int) -> [String: Int] {
-        let shown = Set(ids)
         var slots: [String: Int] = [:]
-        var taken = Set<Int>()
-        for (rank, id) in registry.enumerated() where shown.contains(id) {
-            var slot = rank % paletteCount
-            if taken.count < paletteCount {
-                while taken.contains(slot) { slot = (slot + 1) % paletteCount }
-            }
-            slots[id] = slot
-            taken.insert(slot)
+        for id in ids {
+            slots[id] = (registry.firstIndex(of: id) ?? 0) % paletteCount
         }
         return slots
+    }
+}
+
+/// Lays children left to right, starting a new line when the next one would not fit the width.
+struct WrappingHStack: Layout {
+    var spacing: CGFloat
+    var lineSpacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let frames = arrange(subviews, width: proposal.width ?? .infinity)
+        let width = frames.map(\.maxX).max() ?? 0
+        let height = frames.map(\.maxY).max() ?? 0
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (subview, frame) in zip(subviews, arrange(subviews, width: bounds.width)) {
+            subview.place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                          proposal: ProposedViewSize(frame.size))
+        }
+    }
+
+    private func arrange(_ subviews: Subviews, width: CGFloat) -> [CGRect] {
+        var frames: [CGRect] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x > 0, x + size.width > width {
+                x = 0
+                y += lineHeight + lineSpacing
+                lineHeight = 0
+            }
+            frames.append(CGRect(origin: CGPoint(x: x, y: y), size: size))
+            x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+        return frames
     }
 }
 

@@ -140,30 +140,40 @@ final class DailyTrendStackTests: XCTestCase {
                        ["first": 0, "third": 2])
     }
 
-    /// 팔레트보다 프로바이더가 많아 같은 칸을 원해도, 화면에 함께 나오는 프로바이더끼리는 겹치지 않는다.
-    func testProvidersThatWrapOntoTheSameSlotStillGetDistinctColors() {
-        let registry = (0..<13).map { "p\($0)" }
-        let slots = DailyTrendStack.colorIndices(for: ["p8", "p0"], registry: registry, paletteCount: 8)
-        XCTAssertEqual(slots["p0"], 0)
-        XCTAssertEqual(slots["p8"], 1, "p8 은 0 칸을 원하지만 p0 이 먼저 차지했다")
-
-        let all = DailyTrendStack.colorIndices(for: Array(registry.prefix(8)).reversed(),
-                                               registry: registry, paletteCount: 8)
-        XCTAssertEqual(Set(all.values).count, 8, "팔레트 크기까지는 전부 다른 색")
-
-        // 팔레트보다 많이 쓰면(등록 13개) 겹침은 피할 수 없다 — 그래도 전부 칸을 받고 멈추지 않는다.
+    /// 다른 프로바이더가 이번 달 쓰기 시작하거나 멈춰도 기존 프로바이더 색은 그대로다. 화면에 보이는
+    /// 집합으로 빈 칸을 골라 주면 새 프로바이더 하나에 기존 색이 밀린다(#348 리뷰).
+    func testAProvidersColorDoesNotDependOnWhichOthersAreActive() {
+        let registry = (0..<14).map { "p\($0)" }
+        let alone = DailyTrendStack.colorIndices(for: ["p8"], registry: registry, paletteCount: 8)
+        let withFirst = DailyTrendStack.colorIndices(for: ["p0", "p8"], registry: registry, paletteCount: 8)
         let crowded = DailyTrendStack.colorIndices(for: registry, registry: registry, paletteCount: 8)
-        XCTAssertEqual(crowded.count, 13)
-        XCTAssertEqual(Set(crowded.values), Set(0..<8))
+        XCTAssertEqual(alone["p8"], 0)
+        XCTAssertEqual(withFirst["p8"], 0, "p0 이 활성화돼도 p8 의 색은 그대로 — 겹치면 이름이 가른다")
+        XCTAssertEqual(crowded["p8"], 0)
+        XCTAssertEqual(crowded["p13"], 5)
+        XCTAssertEqual(crowded.count, 14, "팔레트보다 많아도 전부 칸을 받는다")
+    }
+
+    // MARK: Caption readout
+
+    /// Opening the popover shows today's combined total and cost without hovering — the stacked
+    /// row keeps the same caption as the single-provider row.
+    func testTheCaptionReadsTodaysCombinedTotalAndCost() {
+        let total = days([("2026-08-23", 4_000_000), ("2026-08-24", 2_500_000)], cost: 7)
+        let l = L(.en)
+        let stamp = DailyTrendMetrics.dayStamp("2026-08-24", language: .en)
+        XCTAssertEqual(MonthDailyTrend.readout(series: total, today: "2026-08-24", showsCost: true, l: l),
+                       "\(stamp) \(TokenFormatter.compact(2_500_000)) \(total[1].usageCost.text(l))")
+        XCTAssertEqual(MonthDailyTrend.readout(series: total, today: "2026-08-24", showsCost: false, l: l),
+                       "\(stamp) \(TokenFormatter.compact(2_500_000))")
     }
 
     // MARK: Legend
 
-    /// The legend sits in the caption line, so stacking adds no line: same height as the unstacked
-    /// row at any provider count and language, and never wider than the popover. Long names and
-    /// several providers exercise the fallbacks (caption dropped, then names dropped).
+    /// The legend is its own block under the axis: absent for one provider, and with many providers
+    /// and long names it wraps onto more lines instead of overflowing the popover.
     @MainActor
-    func testTheLegendAddsNoLineAtAnyProviderCountAndLanguage() {
+    func testTheLegendWrapsWithinThePopoverWidth() {
         let values = (1...31).map { (String(format: "2026-08-%02d", $0), 888_888_888) }
         func series(_ count: Int) -> [DailyTrendStack.ProviderSeries] {
             (0..<count).map { index in
@@ -182,13 +192,14 @@ final class DailyTrendStackTests: XCTestCase {
         }
 
         let unstacked = size(series(1), .en).height
+        XCTAssertGreaterThan(size(series(2), .en).height, unstacked, "two providers show a legend")
+        XCTAssertGreaterThan(size(series(14), .en).height, size(series(2), .en).height,
+                             "fourteen long names wrap onto more lines")
         for language in AppLanguage.allCases {
-            for count in 2...8 {
-                let measured = size(series(count), language)
-                XCTAssertEqual(measured.height, unstacked, accuracy: 0.5,
-                               "\(language) · \(count) providers: the legend wrapped or added a line")
-                XCTAssertLessThanOrEqual(measured.width, PopoverMetrics.contentWidth + 0.5,
-                                         "\(language) · \(count) providers: the caption line overflowed")
+            for count in [2, 8, 14] {
+                XCTAssertLessThanOrEqual(size(series(count), language).width,
+                                         PopoverMetrics.contentWidth + 0.5,
+                                         "\(language) · \(count) providers: the trend overflowed")
             }
         }
     }

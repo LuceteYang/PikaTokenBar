@@ -464,6 +464,11 @@ final class UsageStore {
     var monthTotalTokens: Int { snapshots.reduce(0) { $0 + ($1.monthTotal?.totalTokens ?? 0) } }
     var monthCostTotal: Double { monthUsageCost.amount }
 
+    /// Every registered provider's id, in registration order. Unlike `snapshots` (only the
+    /// providers active today, so membership and position change day to day), this never moves
+    /// at runtime — the daily trend keys its per-provider colors off it.
+    var providerOrder: [String] { providers.map(\.id) }
+
     /// This month's day-by-day totals summed across providers, in date order.
     ///
     /// A provider that reports no series is simply absent from the sum — the remaining providers
@@ -473,11 +478,6 @@ final class UsageStore {
     /// The date axis is the union of the providers' own axes. In practice they agree (all built
     /// from the same `startOfMonth(now)`), but taking the union rather than one provider's array
     /// means a provider whose scan straddled midnight cannot truncate everyone else's last day.
-    /// Every registered provider's id, in registration order. Unlike `snapshots` (only the
-    /// providers active today, so membership and position change day to day), this never moves
-    /// at runtime — the daily trend keys its per-provider colors off it.
-    var providerOrder: [String] { providers.map(\.id) }
-
     var monthDailyTotals: [DailyUsage] {
         var byDay: [String: DailyUsage] = [:]
         for snapshot in snapshots {
