@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.9.0"
+VERSION = "1.10.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -47,9 +47,14 @@ S = {
  "difficulty":    ("난이도", "Difficulty", "難易度"),
  "diffGrowth":    ("성장", "Growth", "成長"),
  "diffShop":      ("상점 가격", "Shop prices", "ショップ価格"),
- "diffHint":      ("10%–200% · 기본값 100% 기준이에요 — 낮추면 빨리 자라고 싸지고, 높이면 그 반대예요",
-                   "10%–200% · Percentages of the default balance — lower grows faster and costs less, higher does the opposite",
-                   "10%–200% · 標準バランスに対する割合です — 下げると早く育ち安くなり、上げるとその逆になります"),
+ "diffGrowthLow": ("쉬움", "Easy", "やさしい"),
+ "diffGrowthHigh":("어려움", "Hard", "難しい"),
+ "diffShopLow":   ("저렴", "Cheap", "安い"),
+ "diffShopHigh":  ("비쌈", "Expensive", "高い"),
+ "limitColor":    ("퍼센트 색상", "Percent color", "パーセントの色"),
+ "limitColorHint":("팝오버 한도 게이지와 같은 색", "Same colors as the popover limit gauges",
+                   "ポップオーバーの上限ゲージと同じ色"),
+ "limitColorVal": ("게이지와 같게", "Match gauges", "ゲージと同じ"),
  "web":           ("웹사이트", "Website", "ウェブサイト"),
  "sponsorLink":   ("후원", "Sponsor", "支援"),
  "menuBar":       ("메뉴바에 표시", "Show in menu bar", "メニューバーに表示"),
@@ -238,6 +243,15 @@ def html(lang, advanced=False):
 
     slider = lambda pct: f'<div class="sld"><i style="left:calc({pct}% - 7px)"></i></div>'
 
+    # 난이도 행 — 슬라이더 양 끝 라벨(DifficultySettingsSection.row 의 low/high)이 슬라이더 바로 아래에 붙는다.
+    def diff_row(label, low, high):
+        ends = (f'<div style="display:flex;justify-content:space-between;font-size:10px;color:#8b8b90;'
+                f'padding:2px 52px 0 94px"><span>{low}</span><span>{high}</span></div>')
+        return ('<div class="row" style="flex-direction:column;align-items:stretch;gap:0">'
+                f'<div style="display:flex;align-items:center;gap:10px">'
+                f'<span style="display:inline-block;width:84px">{label}</span>'
+                f'{slider(50)}<div class="val">100%</div></div>{ends}</div>')
+
     # 고급 섹션을 펼친 모습 — 세션 키 행이 여기 산다(앱에서도 이 disclosure 안에 있다).
     advanced_rows = card(
         f'<div class="row"><div class="lbl">{s("advancedRow")}</div><span class="chev">⌄</span></div>',
@@ -301,18 +315,14 @@ def html(lang, advanced=False):
             row(s("launch"), tog(True)),
         ),
         sec(s("difficulty")),
-        card(
-            row(f'<span style="display:inline-block;width:84px">{s("diffGrowth")}</span>',
-                slider(50) + '<div class="val">100%</div>'),
-            row(f'<span style="display:inline-block;width:84px">{s("diffShop")}</span>',
-                slider(50) + '<div class="val">100%</div>'),
-        ),
-        f'<div class="note">{s("diffHint")}</div>',
+        card(diff_row(s("diffGrowth"), s("diffGrowthLow"), s("diffGrowthHigh")),
+             diff_row(s("diffShop"), s("diffShopLow"), s("diffShopHigh"))),
         sec(s("menuBar")),
         card(
             row(s("todayTokens"), tog(True)),
             row(s("todayCost"), tog(False)),
             row(s("limitPct"), tog(True)),
+            row(s("limitColor"), pill(s("limitColorVal")), s("limitColorHint")),
         ),
         f'<div class="note">{s("allOff")}</div>',
         sec(s("pet")),

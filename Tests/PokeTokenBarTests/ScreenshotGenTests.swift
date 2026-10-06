@@ -55,6 +55,33 @@ final class ScreenshotGenTests: XCTestCase {
         }
     }
 
+    /// 합계 시리즈를 세 도구로 나눈다 — 막대가 도구별로 쌓이고 범례가 나오는 모습(#348)을 보여주려면
+    /// 둘 이상이 필요하다. 비율을 날마다 조금씩 흔들어 구간 높이가 막대마다 같아 보이지 않게 했다.
+    /// 나머지는 Claude 에 몰아 세 구간의 합이 합계 막대와 정확히 같다.
+    private static func demoProviders(_ series: [DailyUsage]) -> [DailyTrendStack.ProviderSeries] {
+        func split(_ share: (Int) -> Double) -> [DailyUsage] {
+            series.enumerated().map { index, day in
+                let value = Int(Double(day.totalTokens) * share(index))
+                return DailyUsage(date: day.date, inputTokens: value / 4, outputTokens: value / 4,
+                                  cacheCreationTokens: value / 4, cacheReadTokens: value / 4,
+                                  totalTokens: value, totalCost: Double(value) / 1_000_000 * 3.2)
+            }
+        }
+        let codex = split { 0.22 + Double($0 % 4) * 0.05 }
+        let gemini = split { $0 % 3 == 0 ? 0.0 : 0.12 }
+        let claude = series.indices.map { index -> DailyUsage in
+            let value = series[index].totalTokens - codex[index].totalTokens - gemini[index].totalTokens
+            return DailyUsage(date: series[index].date, inputTokens: value / 4, outputTokens: value / 4,
+                              cacheCreationTokens: value / 4, cacheReadTokens: value / 4,
+                              totalTokens: value, totalCost: Double(value) / 1_000_000 * 3.2)
+        }
+        return [
+            .init(id: "claude_code", name: "Claude Code", days: claude, reportsCost: true),
+            .init(id: "codex", name: "Codex", days: codex, reportsCost: true),
+            .init(id: "gemini", name: "Gemini CLI", days: gemini, reportsCost: true),
+        ]
+    }
+
     @MainActor
     private func render(language: AppLanguage) throws -> Data {
         let l = L(language)
@@ -96,7 +123,9 @@ final class ScreenshotGenTests: XCTestCase {
             }
             .padding(.top, 2)
 
-            MonthDailyTrend(series: series, showsCost: true, today: today, l: l)
+            MonthDailyTrend(series: series, providers: Self.demoProviders(series),
+                            providerOrder: ["claude_code", "codex", "gemini"],
+                            showsCost: true, today: today, l: l)
 
         }
         .padding(.horizontal, PopoverMetrics.padding)

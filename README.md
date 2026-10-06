@@ -149,7 +149,7 @@ Set growth thresholds and shop prices independently from <b>10% to 200%</b>. Dra
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Your month, day by day"></td>
 <td width="55%" valign="middle">
 <h3>Your month, day by day</h3>
-A compact daily chart below the weekly and monthly totals shows the current month through today. The chart combines all tools; hover a bar for that day’s tokens and, when enabled, cost.
+A compact daily chart below the weekly and monthly totals shows the current month through today. With two or more tools, each bar stacks one segment per tool — every tool keeps its own color, named in a legend under the axis — and hovering a bar breaks the day down per tool. The caption keeps the combined total for the day; cost shows when enabled.
 </td>
 </tr>
 <tr>
@@ -198,6 +198,11 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 - **Unown forms** — collect all 28 letter forms and inspect the forms you own in the Pokédex.
 - **Bulk Rare Candy** — use several candies at once and preview the growth before spending.
 - **Quota pace** — gauge markers show the elapsed share of a limit window; six color tiers indicate usage pace, and menu-bar limit percentages use the same colors.
+- **Menu bar right-click menu** — right-click (or Control-click) the menu bar item for today's total, a refresh, the Pokédex, Settings, the floating pet toggle and Quit — without opening the popover.
+- **Buy in bulk** — buy several of a shop item at once; an empty Bag links straight to the Shop.
+- **Type badges and a quicker Pokédex** — game-colored type badges on Home and in each Pokédex entry; page the Pokédex grid with the scroll wheel, and click the companion's sprite to open its entry.
+- **Exact numbers on hover** — the Home growth bars and the recap charts show exact token counts in their tooltips.
+- **Russian UI** — Русский joins Korean, English, Japanese, Spanish, French, Portuguese and German.
 
 <img src="assets/screenshot-usage-recap.png" width="360" alt="Usage recap for a selected period">
 
