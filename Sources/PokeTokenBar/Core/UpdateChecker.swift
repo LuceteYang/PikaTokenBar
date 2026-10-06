@@ -58,9 +58,9 @@ final class UpdateChecker {
     init(currentVersion: String? = nil,
          clock: @escaping () -> Date = Date.init,
          defaults: UserDefaults = .standard,
+         fetchLatest: (() async -> LatestRelease?)? = nil,   // before resolveBrewCask: a bare trailing closure binds here
          resolveBrewCask: @escaping @Sendable () -> String? = { UpdateChecker.brewCaskPath() },
-         effects: Effects = Effects(),
-         fetchLatest: (() async -> LatestRelease?)? = nil) {
+         effects: Effects = Effects()) {
         self.currentVersion = currentVersion
             ?? (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "0"
         self.clock = clock

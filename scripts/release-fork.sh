@@ -126,7 +126,7 @@ if [[ "${1:-}" == "--check-only" ]]; then
     LIPO_INFO=$(lipo -info "build/$APP_NAME.app/Contents/MacOS/$APP_NAME" 2>&1 || true)
     [[ "$LIPO_INFO" == *"x86_64"* ]] \
       && ok "build/$APP_NAME.app universal(x86_64 포함)" \
-      || bad "build/$APP_NAME.app 이 universal 이 아닙니다(현재 build/ 는 참고용 — 실제 릴리스는 PTB_UNIVERSAL=1 로 새로 빌드함)"
+      || bad "build/$APP_NAME.app 이 universal 이 아닙니다(현재 build/ 는 참고용 — 실제 릴리스는 build-app.sh 기본값인 universal 로 새로 빌드함)"
   else
     echo "  ℹ build/$APP_NAME.app 없음 — 아티팩트 게이트(서명 Authority·버전·universal)는 지금 확인할 산출물이 없습니다."
     echo "    release-fork.sh <version> 을 실제로 실행하면 5/7 에서 새로 빌드해 이 게이트들을 통과시켜야 합니다."
@@ -220,7 +220,7 @@ echo "▶ 5/7 universal 빌드 + zip (push 전 검증)"
 # build-app.sh 는 codesign 직후 /Applications 에 곧바로 설치한다(pkill+rm+cp) — 아래 검증들이
 # 실패해도 이미 로컬 앱은 이 빌드로 바뀌어 있다. 복구 안내에 그 사실을 명시한다.
 RECOVER="복구: git checkout scripts/build-app.sh — 그리고 /Applications 의 $APP_NAME 도 이전 릴리스로 되돌리세요(curl -fsSL https://github.com/$REPO/releases/latest/download/install.sh | bash)"
-PTB_UNIVERSAL=1 ./scripts/build-app.sh >/dev/null
+./scripts/build-app.sh >/dev/null   # 기본이 universal(arm64+x86_64, lipo) — PTB_NATIVE_ARCH_ONLY 는 STABLE_SIGN 하에서 거부됨
 # leaf 는 keychain 신원을 확인했을 뿐 실제로 이 아티팩트에 서명됐는지는 보증하지 않는다 —
 # codesign -s 는 이름으로 고르므로(3/7), 빌드물 자체의 Authority 를 다시 확인한다.
 #

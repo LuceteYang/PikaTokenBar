@@ -77,7 +77,7 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
 | `Core/CompanionModel.swift` | `animatedSpeciesIDs = 1...151`, `EvoLine.init` 의 re-root |
 | `Core/PokeAPIClient.swift` | `baseIndexQuery` 의 `_or`/`_gt` 가지, `isRESTIndexUsable` |
 | `PokeTokenBarApp.swift` | 레거시 저장소 이전이 **없어야** 한다 |
-| `scripts/build-app.sh` | 정체성 변수·`PTB_UNIVERSAL`. **손으로 값을 적지 않는다** — `read_identity()` 가
+| `scripts/build-app.sh` | 정체성 변수, 그리고 lipo 슬라이스 경로가 `$APP_NAME` 이 아니라 **`$PRODUCT`(SPM 산출물명 `PokeTokenBar`)** 인 것 — upstream 은 둘이 같아 `$APP_NAME` 을 쓴다(2.5.5+ 동기화에서 universal 기본화와 함께 들어옴, 포크의 `PTB_UNIVERSAL` 은 폐기). **손으로 값을 적지 않는다** — `read_identity()` 가
   `AppIdentity.swift` 를 `sed` 로 파싱해 `APP_NAME`/`BUNDLE_ID`/`AGENT_LABEL` 을 끌어온다. 즉 `AppIdentity.swift`
   를 리포맷(줄바꿈·따옴표 스타일 변경 등)하면 이 파싱이 조용히 빈 문자열을 돌릴 수 있는데, 스크립트가 값이
   비면 즉시 `exit 1` 로 죽으므로 실패는 시끄럽게 난다(의도된 설계). |
@@ -108,6 +108,14 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
 `testCaptionStaysOnOneLineInEveryLanguageAtWorstCaseNumbers` 가 빨개졌다("Täglich im Monat" 로 줄여 해소).
 그 테스트가 `AppLanguage.allCases` 를 도니 새 언어는 자동으로 사정권에 들어온다 — 문서가 아니라
 그 순회가 재발 방지 메커니즘이다.
+
+**3. 포크가 init 에 추가한 클로저 파라미터가 upstream 테스트의 trailing closure 를 가로챈다**
+(2026-10-06 동기화에서 확인). 포크 `UpdateChecker.init` 에는 `resolveBrewCask:` 클로저가 있고, upstream
+은 마지막 파라미터로 `fetchLatest:` 를 추가해 테스트에서 `UpdateChecker(...) { ... }` 로 넘긴다. Swift 의
+forward-scan 규칙은 **기본값이 있는 첫 함수형 파라미터**에 trailing closure 를 묶으므로, 포크 쪽이 앞에
+있으면 upstream 의 클로저가 `resolveBrewCask` 로 들어가 테스트 타깃만 컴파일이 깨진다(`swift build` 는
+통과 — 테스트 빌드에서만 보인다). upstream 이 추가한 클로저 파라미터는 **포크 파라미터보다 앞에** 둔다.
+머지 후엔 `swift build` 가 아니라 `swift build --build-tests` 로 확인한다.
 
 ## 범위를 바꿀 때 (1세대 → 다른 범위)
 
