@@ -948,6 +948,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
         <li data-i18n="info.trendLi1">주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 그 아래 날짜 축과 주말 밑줄이 붙어, 마우스를 올리지 않아도 어느 막대가 어느 날인지 읽힙니다. 캡션은 가리킨 날의 날짜·요일·사용량을 보여주고, 아무것도 가리키지 않으면 오늘을 보여줍니다.</li>
         <li data-i18n="info.trendLi2">도구가 이미 써 놓은 로그에서 파생되므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다. 오늘부터 새로 쌓기 시작하지 않습니다.</li>
         <li data-i18n="info.trendLi3">감지된 모든 도구의 사용량을 합산합니다. 일별을 못 주는 도구가 섞여 있어도 나머지는 그대로 표시됩니다.</li>
+        <li data-i18n="info.trendLi4">도구가 둘 이상이면 막대가 도구별로 쌓입니다 — 도구마다 색이 고정되고 축 아래 범례에 이름이 나오며, 막대에 마우스를 올리면 그날의 도구별 내역이 보입니다.</li>
       </ul>
     </div>
 
@@ -1003,6 +1004,15 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
     </div>
 
     <div class="panel info">
+      <h3 data-i18n="info.handyH3">손이 덜 가게</h3>
+      <ul>
+        <li data-i18n="info.handyLi1">메뉴바 아이콘을 우클릭(또는 Control-클릭)하면 팝오버를 열지 않고 오늘 합계를 보고, 새로고침·도감·설정·플로팅 펫·종료를 고릅니다.</li>
+        <li data-i18n="info.handyLi2">상점 아이템을 여러 개 한꺼번에 사고, 가방이 비어 있으면 상점으로 바로 갑니다. 홈과 도감 상세엔 게임 색상의 타입 배지가 붙습니다.</li>
+        <li data-i18n="info.handyLi3">도감은 스크롤 휠로 넘기고, 컴패니언 스프라이트를 클릭하면 그 도감 항목이 열립니다. UI 언어에 러시아어가 더해졌습니다.</li>
+      </ul>
+    </div>
+
+    <div class="panel info">
       <h3 data-i18n="info.coexistH3">원본과 함께 쓸 수 있습니다</h3>
       <ul>
         <li data-i18n="info.coexistLi1">별도의 앱으로 설치됩니다 — 원본 PokeTokenBar와 나란히 실행할 수 있습니다.</li>
@@ -1024,7 +1034,7 @@ footer .links { margin-top: .7rem; display: flex; gap: 1.1rem; flex-wrap: wrap; 
       <ul class="chips">
         <li>Claude Code</li><li>Codex</li><li>Gemini CLI</li><li>Antigravity</li>
         <li>OpenCode</li><li>Hermes Agent</li><li>Cursor</li><li>Grok CLI</li>
-        <li>Copilot CLI</li><li>Kiro CLI</li><li>Pi Agent</li><li>omp</li><li>Aside</li>
+        <li>Copilot CLI</li><li>Kiro CLI</li><li>Pi Agent</li><li>omp</li><li>Aside</li><li>Kimi Code</li>
       </ul>
       <p data-i18n="info.toolsNote">전부 로컬에서 읽으며 외부 CLI가 필요 없습니다.</p>
       <p data-i18n="info.toolsScan">로그가 기본 위치 밖에 있다면 설정 → 고급에서 프로바이더별로 스캔 폴더를 추가할 수 있습니다.</p>
@@ -1152,6 +1162,11 @@ var I18N = {
     "info.trendLi1": "주간·월간 합계 아래에 이번 달 하루당 막대 하나 — 그 아래 날짜 축과 주말 밑줄이 붙어, 마우스를 올리지 않아도 어느 막대가 어느 날인지 읽힙니다. 캡션은 가리킨 날의 날짜·요일·사용량을 보여주고, 아무것도 가리키지 않으면 오늘을 보여줍니다.",
     "info.trendLi2": "도구가 이미 써 놓은 로그에서 파생되므로, 업데이트 직후 첫 갱신에 이번 달이 채워집니다. 오늘부터 새로 쌓기 시작하지 않습니다.",
     "info.trendLi3": "감지된 모든 도구의 사용량을 합산합니다. 일별을 못 주는 도구가 섞여 있어도 나머지는 그대로 표시됩니다.",
+    "info.trendLi4": "도구가 둘 이상이면 막대가 도구별로 쌓입니다 — 도구마다 색이 고정되고 축 아래 범례에 이름이 나오며, 막대에 마우스를 올리면 그날의 도구별 내역이 보입니다.",
+    "info.handyH3": "손이 덜 가게",
+    "info.handyLi1": "메뉴바 아이콘을 우클릭(또는 Control-클릭)하면 팝오버를 열지 않고 오늘 합계를 보고, 새로고침·도감·설정·플로팅 펫·종료를 고릅니다.",
+    "info.handyLi2": "상점 아이템을 여러 개 한꺼번에 사고, 가방이 비어 있으면 상점으로 바로 갑니다. 홈과 도감 상세엔 게임 색상의 타입 배지가 붙습니다.",
+    "info.handyLi3": "도감은 스크롤 휠로 넘기고, 컴패니언 스프라이트를 클릭하면 그 도감 항목이 열립니다. UI 언어에 러시아어가 더해졌습니다.",
     "info.ivH3": "포켓몬마다 개체가 다릅니다",
     "info.ivLi1": "도감에서 종을 열면 그 개체의 레벨·성별·성격·특성·개체값(IV)·실제 능력치·배운 기술까지 한 화면에서 볼 수 있습니다.",
     "info.ivLi2": "종 설명·특성·기술 이름은 선택한 언어로 표시되고, PokéAPI에 번역이 없는 항목만 영어로 남습니다.",
@@ -1243,6 +1258,11 @@ var I18N = {
     "info.trendLi1": "One bar per day of the current month, right under the week and month totals, with a date axis beneath it and a short tick under weekends \u2014 so you can read which bar is which day without hovering. The caption names the day you point at, and shows today when you point at nothing.",
     "info.trendLi2": "Derived from the logs your tools already wrote, so the month is filled in on the first refresh after updating. It does not start counting from today.",
     "info.trendLi3": "Totals are summed across every detected tool. A tool that cannot report per-day usage simply drops out, and the rest still show.",
+    "info.trendLi4": "With two or more tools, each bar stacks by tool — every tool keeps its own color, named in a legend under the axis, and hovering a bar breaks the day down per tool.",
+    "info.handyH3": "Fewer clicks",
+    "info.handyLi1": "Right-click (or Control-click) the menu bar item for today's total, a refresh, the Pokédex, Settings, the floating pet and Quit — without opening the popover.",
+    "info.handyLi2": "Buy several of a shop item at once, and jump from an empty Bag straight to the Shop. Home and each Pokédex entry show game-colored type badges.",
+    "info.handyLi3": "Page the Pokédex with the scroll wheel, and click the companion's sprite to open its entry. Russian joins the UI languages.",
     "info.ivH3": "Every Pokémon is its own individual",
     "info.ivLi1": "Open a species in the Pokédex to see that individual's level, gender, nature, ability, IVs, calculated stats, and learned moves on one screen.",
     "info.ivLi2": "Species descriptions, abilities, and move names follow your selected language; only entries PokéAPI has no translation for stay in English.",
@@ -1334,6 +1354,11 @@ var I18N = {
     "info.trendLi1": "週間・月間の合計のすぐ下に、今月の1日ごとのバーを1本ずつ。その下に日付軸と週末の下線を添えたので、ホバーしなくてもどのバーがどの日かが読めます。キャプションは指した日を示し、どこも指していなければ今日を表示します。",
     "info.trendLi2": "ツールがすでに書き出したログから導出するため、更新直後の最初のリフレッシュで今月分が埋まります。今日から数え直しにはなりません。",
     "info.trendLi3": "検出されたすべてのツールの使用量を合算します。日別を報告できないツールが混ざっていても、残りはそのまま表示されます。",
+    "info.trendLi4": "ツールが2つ以上あると、バーはツールごとに積み上がります — 各ツールは固定の色を持ち、軸の下の凡例に名前が出て、バーにポインタを重ねるとその日のツール別内訳が表示されます。",
+    "info.handyH3": "手間を減らす",
+    "info.handyLi1": "メニューバーのアイコンを右クリック（または Control-クリック）すると、ポップオーバーを開かずに今日の合計を確認し、更新・図鑑・設定・フローティングペット・終了を選べます。",
+    "info.handyLi2": "ショップのアイテムを一度に複数購入でき、空のバッグからショップへすぐ移動できます。ホームと図鑑の詳細にはゲームカラーのタイプバッジが付きます。",
+    "info.handyLi3": "図鑑はスクロールホイールでページ送りでき、パートナーのスプライトをクリックするとその図鑑項目が開きます。UI 言語にロシア語が加わりました。",
     "info.ivH3": "ポケモンごとに個体が違います",
     "info.ivLi1": "図鑑で種を開くと、その個体のレベル・性別・性格・特性・個体値(IV)・実際の能力値・覚えた技まで1画面で確認できます。",
     "info.ivLi2": "種の説明・特性・技名は選択した言語で表示され、PokéAPI に翻訳がない項目だけ英語のまま残ります。",
