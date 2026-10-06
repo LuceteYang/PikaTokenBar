@@ -235,7 +235,7 @@ struct PopoverView: View {
                                         days: $0, reportsCost: snap.reportsCost)
                                 }
                             },
-                            providerOrder: store.providerOrder,
+                            providerOrder: store.registeredProviderIDs,
                             showsCost: store.showsCost,
                             today: LocalUsageReader.todayKey(),
                             l: l)
@@ -1058,7 +1058,7 @@ struct MonthDailyTrend: View {
     /// stack by provider and a legend under the axis names each provider's color; otherwise the
     /// row is unchanged.
     var providers: [DailyTrendStack.ProviderSeries] = []
-    /// `UsageStore.providerOrder` — what keeps a provider's color fixed (see `DailyTrendStack.colorIndices`).
+    /// `UsageStore.registeredProviderIDs` — what keeps a provider's color fixed (see `DailyTrendStack.colorIndices`).
     var providerOrder: [String] = []
     let showsCost: Bool
     /// 오늘의 `localDay` 키 — 강조할 막대를 뷰가 시계를 다시 읽어 고르지 않게 주입한다.
@@ -1070,8 +1070,9 @@ struct MonthDailyTrend: View {
     /// total without hovering anything.
     @State private var hovered: String?
 
-    /// Segment colors, indexed by `DailyTrendStack.colorIndices`. Fewer than the registered
-    /// providers, so two can share a color — the legend and the tooltip name them. Muted enough to sit next to
+    /// Segment colors, indexed by `DailyTrendStack.colorIndices`. At least one per registered
+    /// provider, so no two of them share a color (a test pins this). A provider registered past
+    /// the palette wraps around; the legend and the tooltip still name it. Muted enough to sit next to
     /// the accent-colored today bar of the single-provider row without competing with it.
     static let providerPalette: [Color] = [
         Color(red: 0.85, green: 0.47, blue: 0.34),
@@ -1082,6 +1083,12 @@ struct MonthDailyTrend: View {
         Color(red: 0.35, green: 0.78, blue: 0.80),
         Color(red: 0.93, green: 0.51, blue: 0.68),
         Color(red: 0.62, green: 0.64, blue: 0.70),
+        Color(red: 0.88, green: 0.80, blue: 0.60),
+        Color(red: 0.70, green: 0.82, blue: 0.38),
+        Color(red: 0.60, green: 0.42, blue: 0.30),
+        Color(red: 0.30, green: 0.60, blue: 0.55),
+        Color(red: 0.80, green: 0.35, blue: 0.40),
+        Color(red: 0.40, green: 0.48, blue: 0.80),
     ]
 
     var body: some View {
@@ -1532,7 +1539,7 @@ enum DailyTrendStack {
         return segments
     }
 
-    /// Palette slot per provider id: its registration index (`UsageStore.providerOrder`) modulo the
+    /// Palette slot per provider id: its registration index (`UsageStore.registeredProviderIDs`) modulo the
     /// palette. It depends on nothing but that index, so a provider keeps its color as others become
     /// active or idle and as usage rank shifts during the month. Past the palette size colors repeat;
     /// the legend and tooltip name the providers, so a shared color stays readable.

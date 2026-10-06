@@ -464,11 +464,6 @@ final class UsageStore {
     var monthTotalTokens: Int { snapshots.reduce(0) { $0 + ($1.monthTotal?.totalTokens ?? 0) } }
     var monthCostTotal: Double { monthUsageCost.amount }
 
-    /// Every registered provider's id, in registration order. Unlike `snapshots` (only the
-    /// providers active today, so membership and position change day to day), this never moves
-    /// at runtime — the daily trend keys its per-provider colors off it.
-    var providerOrder: [String] { providers.map(\.id) }
-
     /// This month's day-by-day totals summed across providers, in date order.
     ///
     /// A provider that reports no series is simply absent from the sum — the remaining providers

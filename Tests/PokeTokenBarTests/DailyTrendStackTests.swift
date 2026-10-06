@@ -154,6 +154,18 @@ final class DailyTrendStackTests: XCTestCase {
         XCTAssertEqual(crowded.count, 14, "팔레트보다 많아도 전부 칸을 받는다")
     }
 
+    /// 등록된 프로바이더는 전부 서로 다른 색이다 — 팔레트가 등록 수보다 작으면 9번째(Copilot)가
+    /// 1번째(Claude)와 같은 색이 됐다. 프로바이더를 추가하면 이 테스트가 팔레트 색 추가를 요구한다.
+    @MainActor
+    func testEveryRegisteredProviderGetsItsOwnColor() {
+        let defaults = UserDefaults(suiteName: "DailyTrendStackTests.\(UUID().uuidString)")!
+        let registry = UsageStore(autoRefresh: false, defaults: defaults).registeredProviderIDs
+        let slots = DailyTrendStack.colorIndices(for: registry, registry: registry,
+                                                 paletteCount: MonthDailyTrend.providerPalette.count)
+        XCTAssertEqual(Set(slots.values).count, registry.count,
+                       "\(registry.count) providers but \(MonthDailyTrend.providerPalette.count) colors")
+    }
+
     // MARK: Caption readout
 
     /// Opening the popover shows today's combined total and cost without hovering — the stacked
