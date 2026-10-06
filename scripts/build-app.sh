@@ -20,22 +20,27 @@ for v in APP_NAME BUNDLE_ID AGENT_LABEL; do
 done
 APP="$BUILD_DIR/$APP_NAME.app"
 
-# 팀 배포용 zip 은 Intel Mac 도 받으므로 universal 로 빌드한다. 로컬 개발 빌드까지 두 아키텍처를
-# 굽면 느려지므로 릴리스 경로(release-fork.sh)에서만 PTB_UNIVERSAL=1 을 켠다.
-if [[ "${PTB_UNIVERSAL:-0}" == "1" ]]; then
-    echo "==> swift build -c release (universal: arm64 + x86_64)"
-    swift build -c release --arch arm64 --arch x86_64
-    BIN=".build/apple/Products/Release/$PRODUCT"
-else
-    echo "==> swift build -c release (host arch)"
-    swift build -c release
-    BIN=".build/release/$PRODUCT"
+# README 가 Apple Silicon + Intel 지원을 약속하므로 배포 바이너리는 universal(arm64 + x86_64)이어야 한다.
+# `swift build --arch arm64 --arch x86_64` 는 Xcode(xcbuild)가 필요해 Command Line Tools 만으로는 실패하므로
+# 아키텍처별로 따로 빌드한 뒤 lipo 로 합친다. 로컬 개발에서 빌드 시간을 줄이려면 PTB_NATIVE_ARCH_ONLY=1.
+ARCHS=(arm64 x86_64)
+if [[ "${PTB_NATIVE_ARCH_ONLY:-0}" == "1" ]]; then
+    [[ "${PTB_REQUIRE_STABLE_SIGN:-0}" == "1" ]] && { echo "   ✗ 릴리스 빌드는 PTB_NATIVE_ARCH_ONLY 를 쓸 수 없다 (universal 필수)." >&2; exit 1; }
+    ARCHS=("$(uname -m)")
 fi
+SLICES=()
+for arch in "${ARCHS[@]}"; do
+    echo "==> swift build -c release --arch $arch"
+    swift build -c release --arch "$arch"
+    SLICES+=("$(swift build -c release --arch "$arch" --show-bin-path)/$PRODUCT")
+done
 
 echo "==> $APP 조립"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN" "$APP/Contents/MacOS/$APP_NAME"
+lipo -create "${SLICES[@]}" -output "$APP/Contents/MacOS/$APP_NAME"
+lipo "$APP/Contents/MacOS/$APP_NAME" -verify_arch "${ARCHS[@]}"
+echo "   archs: $(lipo -archs "$APP/Contents/MacOS/$APP_NAME")"
 # 심볼 strip — 릴리스 바이너리 1.84MB → 0.80MB(-57%). codesign 전에 수행(서명 무효화 방지).
 strip -rSTx "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || strip -rSx "$APP/Contents/MacOS/$APP_NAME"
 cp assets/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"

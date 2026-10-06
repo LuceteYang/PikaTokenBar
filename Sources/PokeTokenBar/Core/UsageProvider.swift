@@ -32,6 +32,9 @@ struct ProviderEnrichment: Sendable {
     /// keeps the scalars, rather than drawing a chart that silently omits a provider.
     var monthDaily: [DailyUsage]?
     var periodsOK = false
+    /// Newest entry with tokens. Unlike week/month totals it does not reset at a calendar boundary,
+    /// so it keeps the tab (and its official limits) of a provider used recently but not today (#336).
+    var lastUsage: Date? = nil
 }
 
 extension ProviderEnrichment {
@@ -65,6 +68,8 @@ extension ProviderEnrichment {
         result.monthTotal = month
         result.monthDaily = series
         result.periodsOK = true
+        // Zero-token `<synthetic>` records are not use: an installed-only provider stays hidden (#56).
+        result.lastUsage = entries.lazy.filter { $0.total > 0 }.map(\.date).max()
         return result
     }
 }
