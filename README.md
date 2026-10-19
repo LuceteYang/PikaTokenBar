@@ -32,7 +32,7 @@ PikaTokenBar turns the AI coding tokens you're already burning — Claude Code, 
 - Track official **5-hour / weekly** limits with reset countdowns and a burn-rate forecast for when you'll hit them.
 
 <div align="center">
-<img src="assets/screenshot-home.png" width="420" alt="Popover home — companion, today's tokens, official limits">
+<img src="assets/screenshot-home.png" width="420" alt="Popover home — companion, today's tokens, daily chart">
 </div>
 
 ## How it works
@@ -65,13 +65,13 @@ An animated Gen-V sprite lives next to today's total tokens (compact, e.g. <code
 <td width="45%" align="center"><img src="assets/shiny-banner.gif" width="340" alt="Normal vs shiny"></td>
 <td width="55%" valign="middle">
 <h3>✨ Once in a rare while — Shiny</h3>
-Shiny hatches keep their distinct colors through every evolution — menu bar, home card, evolution line. In the Pokédex a ✨ sits next to the dex number, and tapping the cell swaps in the shiny colors. A dedicated notification makes sure you don't miss the moment.
+Shiny hatches keep their distinct colors through every evolution — menu bar, home card, evolution line. In the Pokédex, species you own shiny show their shiny colors and a ✨ marker; the detail page lets you switch between owned normal and shiny appearances. Unown keeps its A icon in the grid, with letter and color choices in its details. A dedicated notification makes sure you don't miss the moment.
 </td>
 </tr>
 <tr>
 <td width="55%" valign="middle">
 <h3>A Pokédex worth filling</h3>
-The <b>Pokédex</b> folds every species you've owned into one cell — 16 per page in a 4×4 grid, with larger sprites and names, and a ✨ on the ones you own shiny. Search by name or number, filter by rarity or shiny appearance, and change the sort order in both views. The <b>Catch log</b> keeps the individuals: newest first, each with its full evolution line, rarity, nature, and capture date.
+The <b>Pokédex</b> folds every species you've owned into one cell — 16 per page in a 4×4 grid. Search by name or number, filter by rarity or shiny appearance, and change the sort order. Turn pages with the scroll wheel or trackpad, or use the larger arrow hit areas. Click a collected Pokémon on Home, its evolution line, or the <b>Catch log</b> to open its details; Back returns to its Pokédex page or the log row you opened. The log keeps each individual's full evolution line, rarity, nature, and capture date.
 </td>
 <td width="45%" align="center"><img src="assets/screenshot-collection-pokedex.png" width="300" alt="Pokédex — one cell per species"><br><br><img src="assets/screenshot-collection-catchlog.png" width="300" alt="Catch log — one row per Pokémon raised"></td>
 </tr>
@@ -93,7 +93,7 @@ Max out a 5-hour or weekly usage limit and you're handed a <b>Rare Candy</b> —
 <td width="45%" align="center"><img src="assets/screenshot-shop.png" width="300" alt="Token Shop — Mint, Rare Candy, Pokémon Egg, Uncommon Egg, Shiny Charm, Rare Egg"></td>
 <td width="55%" valign="middle">
 <h3>🛒 A shop that runs on your usage</h3>
-The tokens you've already used are your currency. Spend them in the new <b>Shop</b> tab on <b>Rare Candy</b> to grow your current Pokémon, a <b>Mint</b> to re-roll its nature, a <b>Shiny Charm</b> that permanently raises your shiny hatch odds, or an egg to send off your companion and start over. Eggs come in three grades — a plain <b>Pokémon Egg</b>, an <b>Uncommon Egg</b> that always hatches Uncommon or better, and a <b>Rare Egg</b> that always hatches Rare or better. Legendaries stay in the pool for both graded eggs, so a guaranteed hatch can still surprise you.
+The tokens you've already used are your currency. Buy several consumables at once with a quantity selector and total-price preview: <b>Rare Candy</b> grows your Pokémon, and a <b>Mint</b> re-rolls its nature. A <b>Shiny Charm</b> permanently raises your shiny hatch odds. Eggs send off your companion and start over: a plain <b>Pokémon Egg</b>, an <b>Uncommon Egg</b> guaranteed to hatch Uncommon or better, or a <b>Rare Egg</b> guaranteed to hatch Rare or better. Legendaries stay in both graded pools. An empty Bag links straight to the Shop.
 </td>
 </tr>
 <tr>
@@ -142,14 +142,14 @@ Open a species in the <b>Pokédex</b> to inspect each individual: level, gender,
 <td width="45%" align="center"><img src="assets/screenshot-difficulty.png" width="300" alt="Choose your growth pace"></td>
 <td width="55%" valign="middle">
 <h3>Choose your growth pace</h3>
-Set growth thresholds and shop prices independently from <b>10% to 200%</b>. Dragging only edits a draft; press <b>Save</b> to apply it. Changing growth difficulty preserves your current stage progress instead of triggering an evolution. A hatch from an evolution line you have already graduated grows <b>2× faster</b>.
+Set growth thresholds and shop prices independently from <b>10% to 200%</b>, with Easy/Hard and Cheap/Expensive labels at the slider ends. Dragging only edits a draft; press <b>Save</b> to apply it. Changing growth difficulty preserves your current stage progress instead of triggering an evolution. A hatch from an evolution line you have already graduated grows <b>2× faster</b>. Hover the hatch or growth bar on Home to see used tokens, the target, and progress as a percentage.
 </td>
 </tr>
 <tr>
 <td width="45%" align="center"><img src="assets/screenshot-daily-trend.png" width="300" alt="Your month, day by day"></td>
 <td width="55%" valign="middle">
 <h3>Your month, day by day</h3>
-A compact daily chart below the weekly and monthly totals shows the current month through today. With two or more tools, each bar stacks one segment per tool — every tool keeps its own color, named in a legend under the axis — and hovering a bar breaks the day down per tool. The caption keeps the combined total for the day; cost shows when enabled.
+The daily chart keeps every date in the calendar month in place, with future dates left blank. When you use two or more tools this month, each day's bar stacks their usage in separate colors with a legend. Hover for that day's total and per-tool tokens and cost when enabled. Weekly and monthly history, plus the recap shortcut, stay visible even when today's usage is zero.
 </td>
 </tr>
 <tr>
@@ -177,6 +177,7 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 
 ## Also in the box
 
+- **Menu-bar shortcuts** — right-click or Control-click for today's summary, Refresh, Pokédex, Settings, floating-pet visibility, and Quit.
 - **Low Power Mode** — menu-bar animation continues at Power saver quality.
 - **Reconnect refresh** — usage and limits refresh when the network comes back.
 - **Representative Pokémon** — pin any owned Pokédex species to the menu bar and optional floating pet, independently of the companion you're raising. While pinned, the menu bar stops following egg, hatch, and evolution changes; raising progress remains visible on Home.
@@ -193,9 +194,9 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 - **In-app updates** — one-click update check; current version shown in Settings.
 - **Pokédex search and filters** — search by name or number, sort, and filter the Pokédex and Catch Log by rarity or shiny. Dex numbers are colored by rarity.
 - **Automatic save backups** — the save is snapshotted locally at least every 12 hours (newest 10 kept). A save that fails to load is set aside and restored from the latest snapshot, and Settings → Backup & Transfer lists the snapshots for a one-click restore.
+- **Usage recap** — a Pokédex-style recap of any week, month, or year (total, meters, comparison, best day, best streak, graduations). Hover a meter for its date and full token count, and jump back to This week / This month / This year in one click. History is kept locally for this year and the last.
 
-- **Local save backups** — automatic snapshots and corruption recovery, with a restore screen in Settings.
-- **Unown forms** — collect all 28 letter forms and inspect the forms you own in the Pokédex.
+- **Local save backups** — automatic snapshots and corruption recovery, with a restore screen in Settings. Backup history starts collapsed; expand it to browse snapshots. **Create snapshot** stays available outside the list.
 - **Bulk Rare Candy** — use several candies at once and preview the growth before spending.
 - **Quota pace** — gauge markers show the elapsed share of a limit window; six color tiers indicate usage pace, and menu-bar limit percentages use the same colors.
 - **Menu bar right-click menu** — right-click (or Control-click) the menu bar item for today's total, a refresh, the Pokédex, Settings, the floating pet toggle and Quit — without opening the popover.
@@ -205,6 +206,8 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 - **Russian UI** — Русский joins Korean, English, Japanese, Spanish, French, Portuguese and German.
 
 <img src="assets/screenshot-usage-recap.png" width="360" alt="Usage recap for a selected period">
+
+<small>The Home, Settings, form, Shop, Bag, difficulty, daily-chart, and recap images above are local renders of the production UI with sample data.</small>
 
 ## Works with
 
