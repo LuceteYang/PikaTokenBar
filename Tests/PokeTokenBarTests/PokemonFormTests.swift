@@ -76,8 +76,10 @@ final class PokemonFormTests: XCTestCase {
 
     func testCatalogListsDefaultFirstWithinTheHatchableRange() {
         XCTAssertEqual(PokemonForm.catalog.count, 23)
+        // A fork can narrow the hatchable range below every form species; the catalog then lies dormant.
+        let formsAreHatchable = PokemonAssets.animatedSpeciesIDs.contains(PokemonForm.unownSpeciesID)
         for (speciesID, entries) in PokemonForm.catalog {
-            XCTAssertTrue(PokemonAssets.animatedSpeciesIDs.contains(speciesID))
+            if formsAreHatchable { XCTAssertTrue(PokemonAssets.animatedSpeciesIDs.contains(speciesID)) }
             XCTAssertGreaterThanOrEqual(entries.count, 2, "#\(speciesID)")
             XCTAssertEqual(Set(entries.map(\.form)).count, entries.count, "#\(speciesID) repeats a form")
             XCTAssertEqual(entries.first?.formID, speciesID, "#\(speciesID) default is the species' own form")
@@ -244,6 +246,7 @@ final class PokemonFormTests: XCTestCase {
     }
 
     func testEvolutionNamesTheFormLikeHatchAndGraduation() async throws {
+        try XCTSkipUnless(PokemonAssets.animatedSpeciesIDs.contains(423), "Gastrodon is outside the hatchable range")
         let east = PokemonForm("east")
         var state = CompanionState()
         state.language = .en

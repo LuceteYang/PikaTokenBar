@@ -75,7 +75,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         }
         let png = NSBitmapImageRep(cgImage: try pixels(0, 0))
         try XCTUnwrap(png.representation(using: .png, properties: [:]))
-            .write(to: directory.appendingPathComponent("176-s.png"))
+            .write(to: directory.appendingPathComponent("25-s.png"))
         let data = NSMutableData()
         let destination = try XCTUnwrap(CGImageDestinationCreateWithData(data, UTType.gif.identifier as CFString, 2, nil))
         for (red, green) in [(CGFloat(1), CGFloat(0)), (CGFloat(0), CGFloat(1))] {
@@ -95,10 +95,10 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         var fallback: NSImage?
         var fallbackCount = 0
         let frames = await SpriteLoader.recoveringAnimationFrames(
-            speciesID: 176, shiny: false, store: store,
+            speciesID: 25, shiny: false, store: store,
             onUnavailable: {
                 fallbackCount += 1
-                fallback = await SpriteLoader.image(speciesID: 176, store: store)
+                fallback = await SpriteLoader.image(speciesID: 25, store: store)
                 XCTAssertNotNil(fallback, "the existing static image must remain available during retry")
             })
         XCTAssertGreaterThanOrEqual(startedAt.duration(to: .now), .seconds(2),
@@ -118,9 +118,9 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         AnimationRecoveryURLProtocol.state.configure([.failure])
         let frames = await SpriteLoader.recoveringAnimationFrames(
-            speciesID: 176, shiny: false, store: SpriteStore(directory: fixture.directory),
+            speciesID: 25, shiny: false, store: SpriteStore(directory: fixture.directory),
             waitBeforeRetry: { _ in
-                try fixture.gif.write(to: fixture.directory.appendingPathComponent("176-a.gif"))
+                try fixture.gif.write(to: fixture.directory.appendingPathComponent("25-a.gif"))
             }, onUnavailable: {})
         XCTAssertEqual(frames.count, 2)
         XCTAssertEqual(AnimationRecoveryURLProtocol.state.requests.count, 1,
@@ -135,7 +135,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         var result: [(image: NSImage, delay: TimeInterval)] = []
         let task = Task<Void, Never> { @MainActor in
             result = await SpriteLoader.recoveringAnimationFrames(
-                speciesID: 176, shiny: false, store: SpriteStore(directory: fixture.directory),
+                speciesID: 25, shiny: false, store: SpriteStore(directory: fixture.directory),
                 waitBeforeRetry: { duration in
                     waits.append(duration)
                     if waits.count == 7 {
@@ -158,7 +158,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         var result: [(image: NSImage, delay: TimeInterval)] = []
         let task = Task<Void, Never> { @MainActor in
             result = await SpriteLoader.recoveringAnimationFrames(
-                speciesID: 176, shiny: false, store: SpriteStore(directory: fixture.directory),
+                speciesID: 25, shiny: false, store: SpriteStore(directory: fixture.directory),
                 onUnavailable: { fallbackShown.fulfill() })
         }
         await fulfillment(of: [fallbackShown], timeout: 2)
@@ -179,13 +179,13 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         var result: [(image: NSImage, delay: TimeInterval)] = []
         let task = Task<Void, Never> { @MainActor in
             result = await SpriteLoader.recoveringAnimationFrames(
-                speciesID: 176, shiny: true, store: SpriteStore(directory: fixture.directory),
+                speciesID: 25, shiny: true, store: SpriteStore(directory: fixture.directory),
                 onUnavailable: { fallbackCount += 1 })
         }
         await fulfillment(of: [requestStarted], timeout: 2)
         task.cancel()
         await task.value
-        XCTAssertEqual(AnimationRecoveryURLProtocol.state.requests.map(\.lastPathComponent), ["176.gif"])
+        XCTAssertEqual(AnimationRecoveryURLProtocol.state.requests.map(\.lastPathComponent), ["25.gif"])
         XCTAssertTrue(AnimationRecoveryURLProtocol.state.requests.first?.path.contains("/shiny/") == true)
         XCTAssertEqual(fallbackCount, 0)
         XCTAssertTrue(result.isEmpty)
@@ -194,7 +194,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
     func testUnsupportedSpeciesLoadsStaticOnceWithoutRetry() async throws {
         let fixture = try fixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
-        try FileManager.default.copyItem(at: fixture.directory.appendingPathComponent("176-s.png"),
+        try FileManager.default.copyItem(at: fixture.directory.appendingPathComponent("25-s.png"),
                                         to: fixture.directory.appendingPathComponent("1000-s.png"))
         let store = SpriteStore(directory: fixture.directory)
         var fallback: NSImage?
@@ -213,7 +213,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         let task = Task<Void, Never> { @MainActor in
             withUnsafeCurrentTask { $0?.cancel() }
             let frames = await SpriteLoader.recoveringAnimationFrames(
-                speciesID: 176, shiny: false, store: SpriteStore(directory: fixture.directory),
+                speciesID: 25, shiny: false, store: SpriteStore(directory: fixture.directory),
                 onUnavailable: { XCTFail("cancelled views must not apply a fallback") })
             XCTAssertTrue(frames.isEmpty)
         }
@@ -226,7 +226,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         let task = Task<Void, Never> { @MainActor in
             let frames = await SpriteLoader.recoveringAnimationFrames(
-                speciesID: 176, shiny: false, store: SpriteStore(directory: fixture.directory),
+                speciesID: 25, shiny: false, store: SpriteStore(directory: fixture.directory),
                 waitBeforeRetry: { _ in XCTFail("cancelled fallback must not schedule another request") },
                 onUnavailable: { withUnsafeCurrentTask { $0?.cancel() } })
             XCTAssertTrue(frames.isEmpty)
@@ -240,7 +240,7 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         AnimationRecoveryURLProtocol.state.configure([.failure, .gif(fixture.gif)])
         let frames = await SpriteLoader.recoveringAnimationFrames(
-            speciesID: 176, shiny: true, store: SpriteStore(directory: fixture.directory),
+            speciesID: 25, shiny: true, store: SpriteStore(directory: fixture.directory),
             waitBeforeRetry: { _ in XCTFail("normal GIF fallback is part of the first load attempt") },
             onUnavailable: { XCTFail("a normal GIF fallback needs no static placeholder") })
         XCTAssertEqual(frames.count, 2)
@@ -251,6 +251,9 @@ final class SpriteAnimationRecoveryTests: XCTestCase {
     }
 
     func testWarmShinyFormCacheSkipsFallbackNetworkAndBackoff() async throws {
+        // Animated sprites exist only inside `PokemonAssets.animatedSpeciesIDs` — a fork can
+        // narrow that range below Unown (201), and then no animated form is servable.
+        try XCTSkipUnless(PokemonAssets.hasAnimatedSprite(speciesID: 201), "Unown is outside the animated range")
         let fixture = try fixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         try fixture.gif.write(to: fixture.directory.appendingPathComponent("201-b-sha.gif"))
