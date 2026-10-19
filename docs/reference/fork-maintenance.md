@@ -157,3 +157,8 @@ rare 1135 / legendary 57 로 나뉜다. 649종 전체 풀과 비교하면 **unco
 - **랜딩 페이지** — `luceteyang.github.io/PikaTokenBar/`. 설정 푸터의 Web 링크가 여기를 연다.
 - 다국어 README 는 계속 유지한다(en/ko/ja) — 1세대 문구·설치 경로가 포크 값이라 upstream 머지에서
   매번 충돌한다. `rerere` 를 켜 두면 같은 해소가 재사용된다.
+  **포크 문장을 지킨다는 건 upstream 의 수정을 버린다는 뜻이 아니다** — 충돌한 줄에 upstream 이 고친
+  사실(새 언어 등)이 있으면 포크 문장에 옮겨 담는다. 2.5.6 동기화에서 upstream 이 README 언어 목록에
+  RU 를 넣은 줄이 포크의 sessionKey 문장과 충돌했고, 포크 쪽을 지키면서 RU 가 함께 빠졌다(영어 README
+  만 1.10.0 부터 누락돼 있던 걸 그대로 유지). 언어 목록은 이제 `ReadmeLanguageListTests` 가
+  `AppLanguage` 와 대조한다.
