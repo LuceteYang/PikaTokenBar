@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.10.0"
+VERSION = "1.10.1"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -129,11 +129,6 @@ S = {
                    "Saves an instant local restore point of your progress (keeps up to 10)",
                    "現在の進行状況の復元ポイントを即座に保存します（最新10件を保持）"),
  "snapBtn":       ("스냅샷 만들기", "Create snapshot", "スナップショットを作成"),
- "restoreBtn":    ("복원", "Restore", "復元"),
- "snap1Date":     ("2026. 9. 25. 오전 9:12", "Sep 25, 2026 at 9:12 AM", "2026/09/25 9:12"),
- "snap1Meta":     ("도감 64마리 · 누적 1.2B", "Pokédex 64 · 1.2B lifetime", "図鑑 64匹 · 累計 1.2B"),
- "snap2Date":     ("2026. 9. 24. 오후 8:40", "Sep 24, 2026 at 8:40 PM", "2026/09/24 20:40"),
- "snap2Meta":     ("도감 63마리 · 누적 1.1B", "Pokédex 63 · 1.1B lifetime", "図鑑 63匹 · 累計 1.1B"),
  "orgValue":      ("회사 Team Plan", "Company Team Plan", "会社 Team Plan"),
  "save":          ("저장", "Save", "保存"),
  "delete":        ("삭제", "Delete", "削除"),
@@ -348,13 +343,9 @@ def html(lang, advanced=False):
         card(
             row(s("exportLabel"), f'<div class="btn">{s("exportBtn")}</div>', s("exportHint")),
             row(s("importLabel"), f'<div class="btn">{s("importBtn")}</div>', s("importHint")),
-            row(s("snapTitle"), f'<div class="btn">{s("snapBtn")}</div>', s("snapHint")),
-            row(f'<div style="display:flex;align-items:center;gap:8px">{sprite(25)}'
-                f'<div><div>{s("snap1Date")}</div><div class="h">{s("snap1Meta")}</div></div></div>',
-                f'<div class="btn">{s("restoreBtn")}</div>'),
-            row(f'<div style="display:flex;align-items:center;gap:8px">{sprite(25)}'
-                f'<div><div>{s("snap2Date")}</div><div class="h">{s("snap2Meta")}</div></div></div>',
-                f'<div class="btn">{s("restoreBtn")}</div>'),
+            # 백업 기록은 설정을 열 때마다 접힌 채로 시작한다(#446) — 펼친 행은 그리지 않는다.
+            row(f'<span class="h">{s("snapHint")}</span>', f'<div class="btn">{s("snapBtn")}</div>'),
+            row(f'<span class="chev">›</span>&nbsp; {s("snapTitle")}', ""),
         ),
         sec(s("advanced")),
         card(row(f'<span class="chev">›</span>&nbsp; {s("advancedRow")}', "")),
