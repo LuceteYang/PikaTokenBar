@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// One cell of the heatmap.
@@ -117,15 +118,27 @@ enum MonthHeatmapMetrics {
         }
     }
 
-    /// Level → color for a single-provider month. Neutral rather than the accent color, like the
-    /// single-provider bars: the grid is a total, and a hue would read as one provider. Only 0 is
-    /// faint, so the faint/strong edge alone says "used that day".
+    /// Level → color for a single-provider month: the contribution-graph greens developers already
+    /// read without a legend ("darker = less, brighter = more"). Not the accent color — the grid is
+    /// a total, and the accent (blue by default) would read as a provider in the bars' palette.
+    /// Light and dark each get their own scale, as on GitHub, so level 1 never vanishes into the
+    /// background. Only 0 is near the background, so that edge alone says "used that day".
     static func fill(level: Int) -> Color {
         switch level {
-        case 0:        return Color.secondary.opacity(0.12)
-        case 1...4:    return Color.primary.opacity(0.85 * shade(level: level))
+        case 0...4:    return contributionGreens[level]
         default:       return Color.clear      // outside the range or still to come: holds a place, claims nothing
         }
+    }
+
+    /// Index = level. Light / dark hex pairs of the contribution graph.
+    static let contributionGreens: [Color] = [
+        (0xEBEDF0, 0x161B22), (0x9BE9A8, 0x0E4429), (0x40C463, 0x006D32),
+        (0x30A14E, 0x26A641), (0x216E39, 0x39D353),
+    ].map { light, dark in
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            return NSColor(hex: isDark ? dark : light)
+        })
     }
 }
 
@@ -272,5 +285,12 @@ struct MonthHeatmap: View {
         } else {
             Rectangle().fill(MonthHeatmapMetrics.fill(level: level))
         }
+    }
+}
+
+private extension NSColor {
+    convenience init(hex: Int) {
+        self.init(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
     }
 }

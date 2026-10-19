@@ -203,11 +203,14 @@ final class ActivityVisualizationTests: XCTestCase {
     }
 
     /// Cells outside the range (-1) are clear — any color would claim something about that day.
-    /// A single-provider month is neutral: the accent color would read as one provider's color.
+    /// A single-provider month uses the contribution greens, not the accent color, which would read
+    /// as one provider's color.
     func testOutsideRangeCellsAreDrawnAsNothing() {
         XCTAssertEqual(MonthHeatmapMetrics.fill(level: -1), Color.clear)
         XCTAssertNotEqual(MonthHeatmapMetrics.fill(level: 0), Color.clear,
-                          "an unused day is faint gray, not clear — the day existed")
+                          "an unused day is drawn, not clear — the day existed")
+        XCTAssertEqual(Set((0...4).map { MonthHeatmapMetrics.fill(level: $0) }).count, 5,
+                       "every level needs its own green")
         for level in 1...4 {
             XCTAssertNotEqual(MonthHeatmapMetrics.fill(level: level), Color.accentColor.opacity(
                 MonthHeatmapMetrics.shade(level: level)), "level \(level) uses the accent color")
