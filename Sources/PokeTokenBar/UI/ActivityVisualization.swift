@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// One way of drawing this month's activity in the popover.
+/// One way of drawing recent activity in the popover.
 ///
 /// **Adding a visualization starts and ends in this file.** Add a `case` and the compiler points
 /// at the two remaining spots — `title(_:)` and `ActivityPanel.chart`, both below — then add one
@@ -16,9 +16,9 @@ enum ActivityVisualization: String, CaseIterable, Sendable {
     /// Day-by-day bars for this month. **The default and first in the cycle** — an existing
     /// install's popover must not change on update.
     case monthlyBars
-    /// The same month as a calendar grid. Bars compare amounts; the grid shows weekday patterns
-    /// ("barely anything on weekends") at a glance. Same data, different question.
-    case monthlyHeatmap
+    /// The last 16 weeks as a calendar grid. Bars compare this month's amounts; the grid shows
+    /// weekday patterns ("barely anything on weekends") at a glance, across months.
+    case recentHeatmap
 
     static let `default` = ActivityVisualization.monthlyBars
 
@@ -33,14 +33,14 @@ enum ActivityVisualization: String, CaseIterable, Sendable {
     func title(_ l: L) -> String {
         switch self {
         case .monthlyBars:    return l.dailyTrend
-        case .monthlyHeatmap: return l.monthlyHeatmap
+        case .recentHeatmap: return l.recentHeatmap
         }
     }
 }
 
 /// Draws the visualization the user picked; a click moves on to the next one.
 ///
-/// **Why not draw both.** Both answer "how did this month go" from the same data. Stacking them
+/// **Why not draw both.** Both answer "how has usage been going". Stacking them
 /// would spend half the popover's height on two replies to one question. Showing one keeps the
 /// popover quiet, and because visualizations do not compete for space, a third or fourth can be
 /// added later.
@@ -48,9 +48,12 @@ enum ActivityVisualization: String, CaseIterable, Sendable {
 struct ActivityPanel: View {
     let visualization: ActivityVisualization
     let series: [DailyUsage]
-    /// Passed through to both views, which split by provider when more than one was used.
+    /// The bars split by provider when more than one was used. The grid does not: before this
+    /// month only daily totals exist (`history`).
     var providers: [DailyTrendStack.ProviderSeries] = []
     var providerOrder: [String] = []
+    /// Days before this month, for the grid. `UsageStore.dailyLedger`.
+    var history = UsageLedger()
     let showsCost: Bool
     let today: String
     let l: L
@@ -70,10 +73,10 @@ struct ActivityPanel: View {
             MonthDailyTrend(series: series, providers: providers, providerOrder: providerOrder,
                             showsCost: showsCost, today: today, l: l,
                             trailing: AnyView(PageDots(current: visualization)))
-        case .monthlyHeatmap:
-            MonthHeatmap(series: series, providers: providers, providerOrder: providerOrder,
-                         showsCost: showsCost, today: today, l: l,
-                         trailing: AnyView(PageDots(current: visualization)))
+        case .recentHeatmap:
+            ActivityHeatmap(series: series, history: history,
+                            showsCost: showsCost, today: today, l: l,
+                            trailing: AnyView(PageDots(current: visualization)))
         }
     }
 }

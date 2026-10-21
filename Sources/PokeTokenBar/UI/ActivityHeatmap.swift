@@ -6,7 +6,7 @@ struct ActivityCell: Equatable, Sendable {
     let date: String
     let tokens: Int
     /// Inside the grid but not part of the range. The grid is cut into whole weeks so the weekday
-    /// rows line up, which puts days of the neighboring months into the first and last columns.
+    /// rows line up, which puts days outside the range into the first and last columns.
     /// Dropping them shortens a column and shifts every weekday below; drawing them as zero reads
     /// as "unused day".
     let isOutsideRange: Bool
@@ -15,9 +15,9 @@ struct ActivityCell: Equatable, Sendable {
 /// Grid geometry and shading, as pure functions outside the view: inside SwiftUI they could not be
 /// tested headless, and this math goes quietly wrong at week boundaries, DST and month starts
 /// (the same reason `DailyTrendMetrics` exists).
-enum MonthHeatmapMetrics {
-    /// Row height. Cells take the row's width, so a month of five or six weeks fills the popover
-    /// like the bars do instead of sitting as a small block at the left edge.
+enum ActivityHeatmapMetrics {
+    /// Row height. Cells take the row's width, so the grid fills the popover like the bars do
+    /// instead of sitting as a small block at the left edge.
     static let cell: CGFloat = 10
     static let spacing: CGFloat = 2
 
@@ -48,7 +48,7 @@ enum MonthHeatmapMetrics {
         cal.timeZone = timeZone
         let formatter = LocalUsageReader.localDayFormatter(timeZone: timeZone)
         // Not a day key: give up on the grid (empty rather than a crash). Production passes the
-        // month's first and last day, so this does not happen; the optionals are the API's.
+        // window's first day and today, so this does not happen; the optionals are the API's.
         guard first <= last,
               let firstDate = formatter.date(from: first),
               let lastDate = formatter.date(from: last),
@@ -74,29 +74,63 @@ enum MonthHeatmapMetrics {
         return columns
     }
 
-    /// The popover's grid: the calendar month `today` falls in, with the days still to come marked
-    /// outside the range. Spanning the month rather than the series (which ends today) keeps the grid
-    /// the same width all month; sized by the series it would gain a column every week.
-    static func monthGrid(series: [DailyUsage], today: String,
-                          calendar: Calendar = .current,
-                          timeZone: TimeZone = .current) -> [[ActivityCell]] {
-        let month = DailyTrendMetrics.monthColumns(series: series, today: today)
-        guard let first = month.first?.date, let last = month.last?.date else { return [] }
-        let days = Dictionary(month.map { ($0.date, $0.tokens) }, uniquingKeysWith: +)
-        return columns(days: days, first: first, last: last, calendar: calendar, timeZone: timeZone)
+    /// How far back the popover's grid reaches. Long enough that a weekday habit shows over more
+    /// than one month, short enough that the cells keep the bars' row height in the popover's width
+    /// (a year, 53 columns, would not fit).
+    static let weeks = 16
+
+    /// The popover's grid: the last `weeks` weeks, ending with the week `today` falls in. The window
+    /// rolls with today rather than resetting on the 1st, so the grid never opens nearly empty.
+    ///
+    /// `days` reaches past this month only through `UsageLedger` — providers report the current
+    /// month alone. Days before `recordedSince` the app was not recording, and days after `today`
+    /// have not happened: both are marked outside the range, so neither reads as an unused day.
+    static func recentGrid(days: [String: Int], recordedSince: String?, today: String,
+                           calendar: Calendar = .current,
+                           timeZone: TimeZone = .current) -> [[ActivityCell]] {
+        var cal = calendar
+        cal.timeZone = timeZone
+        let formatter = LocalUsageReader.localDayFormatter(timeZone: timeZone)
+        guard let todayDate = formatter.date(from: today),
+              let thisWeek = cal.dateInterval(of: .weekOfYear, for: todayDate)?.start,
+              let firstWeek = cal.date(byAdding: .weekOfYear, value: -(weeks - 1), to: thisWeek)
+        else { return [] }
+        let windowStart = formatter.string(from: firstWeek)
+        // With nothing recorded yet, only today can be vouched for (the series is about to fill it).
+        let first = max(windowStart, recordedSince ?? today)
+        // Lay the grid out from the window's first week even when recording began later, so the
+        // width stays `weeks` columns, then mark the unrecorded days.
+        return columns(days: days, first: windowStart, last: today,
+                       calendar: calendar, timeZone: timeZone)
             .map { column in
                 column.map { cell in
-                    // A day still to come has nothing to say yet, same as a day of another month.
-                    cell.date > today
+                    cell.date < first
                         ? ActivityCell(date: cell.date, tokens: cell.tokens, isOutsideRange: true)
                         : cell
                 }
             }
     }
 
+    /// The ledger's days with this month's live series laid over them. The ledger is written once
+    /// per refresh, so today in the ledger can trail the series the bars draw; taking the larger
+    /// keeps the two views agreeing on today (the same rule as `UsageLedger.merge`).
+    static func days(ledger: UsageLedger, series: [DailyUsage]) -> [String: Int] {
+        var days = ledger.tokensByDay
+        for day in series where day.totalTokens > 0 {
+            days[day.date] = max(days[day.date] ?? 0, day.totalTokens)
+        }
+        return days
+    }
+
+    /// The first day the grid can vouch for: the ledger's coverage, or the 1st of this month when
+    /// the series reaches back further (a fresh ledger that has not been saved yet).
+    static func recordedSince(ledger: UsageLedger, series: [DailyUsage]) -> String? {
+        [ledger.coveredSince, series.map(\.date).min()].compactMap { $0 }.min()
+    }
+
     /// Shade level 0…4: 0 is an unused day, 1…4 are quartiles of the peak.
     ///
-    /// No `peak == 0` guard: `peak` is the month's maximum, so once `tokens > 0` holds,
+    /// No `peak == 0` guard: `peak` is the window's maximum, so once `tokens > 0` holds,
     /// `peak >= tokens > 0` does too (and the caller only draws when `peak > 0`).
     static func level(tokens: Int, peak: Int) -> Int {
         guard tokens > 0 else { return 0 }
@@ -107,20 +141,9 @@ enum MonthHeatmapMetrics {
         return 4
     }
 
-    /// Level → strength, shared by both fills below so one level reads the same in gray and in a
-    /// provider's color.
-    static func shade(level: Int) -> Double {
-        switch level {
-        case 1:  return 0.35
-        case 2:  return 0.55
-        case 3:  return 0.78
-        default: return 1
-        }
-    }
-
-    /// Level → color for a single-provider month: the contribution-graph greens developers already
-    /// read without a legend ("darker = less, brighter = more"). Not the accent color — the grid is
-    /// a total, and the accent (blue by default) would read as a provider in the bars' palette.
+    /// Level → color: the contribution-graph greens developers already read without a legend
+    /// ("darker = less, brighter = more"). Not the accent color — the grid is a total, and the accent
+    /// (blue by default) would read as a provider in the bars' palette.
     /// Light and dark each get their own scale, as on GitHub, so level 1 never vanishes into the
     /// background. Only 0 is near the background, so that edge alone says "used that day".
     static func fill(level: Int) -> Color {
@@ -142,23 +165,23 @@ enum MonthHeatmapMetrics {
     }
 }
 
-/// This month's usage as a calendar grid — `ActivityVisualization.monthlyHeatmap`.
+/// The last 16 weeks of usage as a calendar grid — `ActivityVisualization.recentHeatmap`.
 ///
-/// It draws the same data as `MonthDailyTrend` but answers a different question. Bars compare
-/// amounts by height; the grid's rows are fixed weekdays, so a habit like "barely anything on
-/// weekends" shows at a glance. The two are alternatives, not a hierarchy.
+/// Bars compare this month's amounts by height; the grid's rows are fixed weekdays, so a habit like
+/// "barely anything on weekends" shows at a glance, and over more than one month. The two are
+/// alternatives, not a hierarchy.
 ///
-/// The display gate is a meaningful value (`peak > 0`), not `series.isEmpty` — the producer fills
-/// unused days with zeros, so the series is non-empty even for a month with no usage at all.
+/// The cells are one green per level, not split by provider like the bars: before this month the
+/// only source is `UsageLedger`, which keeps daily totals, so a split would stop at the 1st.
+///
+/// The display gate is a meaningful value (`peak > 0`), not an empty dictionary — a window with no
+/// usage draws nothing, like the bars.
 @MainActor
-struct MonthHeatmap: View {
+struct ActivityHeatmap: View {
+    /// This month's totals, for today's readout with cost and for days the ledger has not saved yet.
     let series: [DailyUsage]
-    /// Each provider's own month series. With two or more used this month, every cell splits
-    /// left → right into provider shares in the bars' colors, with the same legend; otherwise the
-    /// cells are neutral.
-    var providers: [DailyTrendStack.ProviderSeries] = []
-    /// `UsageStore.registeredProviderIDs`, so a provider has the same color here as in the bars.
-    var providerOrder: [String] = []
+    /// The days before this month. `UsageStore.dailyLedger`.
+    let history: UsageLedger
     let showsCost: Bool
     /// Today's `localDay` key, injected so the view does not read the clock again.
     let today: String
@@ -171,19 +194,17 @@ struct MonthHeatmap: View {
     @State private var hovered: String?
 
     var body: some View {
-        let columns = DailyTrendMetrics.monthColumns(series: series, today: today)
-        let peak = columns.map(\.tokens).max() ?? 0
+        let grid = ActivityHeatmapMetrics.recentGrid(
+            days: ActivityHeatmapMetrics.days(ledger: history, series: series),
+            recordedSince: ActivityHeatmapMetrics.recordedSince(ledger: history, series: series),
+            today: today)
+        let used = grid.joined().filter { !$0.isOutsideRange && $0.tokens > 0 }
+        let peak = used.map(\.tokens).max() ?? 0
         if peak > 0 {
-            let stack = DailyTrendStack.ordered(providers)
-            let colors = DailyTrendStack.colorIndices(for: stack.map(\.id), registry: providerOrder,
-                                                      paletteCount: MonthDailyTrend.providerPalette.count)
             VStack(alignment: .leading, spacing: 3) {
-                captionRow(peak: peak, showsPeak: DailyTrendMetrics.showsPeak(columns))
-                grid(peak: peak, stack: stack, colors: colors)
-                if DailyTrendStack.isStacked(stack) {
-                    MonthDailyTrend.legend(stack, colors: colors)
-                        .padding(.top, 2)
-                }
+                // The peak hides on a single used day for the bars' reason (`DailyTrendMetrics.showsPeak`).
+                captionRow(grid, peak: peak, showsPeak: used.count > 1)
+                gridView(grid, peak: peak)
             }
             .padding(.top, 4)
         }
@@ -191,16 +212,15 @@ struct MonthHeatmap: View {
 
     /// Same layout as the bars' caption — title, readout, peak, switch dots. The peak stays for the
     /// same reason: shades are relative, so one place has to state the absolute scale.
-    private func captionRow(peak: Int, showsPeak: Bool) -> some View {
+    private func captionRow(_ grid: [[ActivityCell]], peak: Int, showsPeak: Bool) -> some View {
         HStack(spacing: 5) {
             // If anything has to give in a narrow language, it is the title: the readout (the
             // number people open the popover for) stays on one line.
-            Text(l.monthlyHeatmap)
+            Text(l.recentHeatmap)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
-            Text(MonthDailyTrend.readout(series: series, today: hovered ?? today,
-                                         showsCost: showsCost, l: l))
+            Text(readout(grid, day: hovered ?? today))
                 .font(.caption.weight(.medium))
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
@@ -220,25 +240,33 @@ struct MonthHeatmap: View {
         }
     }
 
-    private func grid(peak: Int, stack: [DailyTrendStack.ProviderSeries],
-                      colors: [String: Int]) -> some View {
-        HStack(alignment: .top, spacing: MonthHeatmapMetrics.spacing + 2) {
-            VStack(alignment: .leading, spacing: MonthHeatmapMetrics.spacing) {
-                ForEach(Array(MonthHeatmapMetrics.weekdayLabels(
+    /// This month's days read like the bars', cost included. Earlier days have tokens only — the
+    /// ledger does not keep cost.
+    private func readout(_ grid: [[ActivityCell]], day: String) -> String {
+        if series.contains(where: { $0.date == day }) {
+            return MonthDailyTrend.readout(series: series, today: day, showsCost: showsCost, l: l)
+        }
+        guard let cell = grid.joined().first(where: { $0.date == day }) else { return "" }
+        return "\(DailyTrendMetrics.dayStamp(day, language: l.lang)) \(TokenFormatter.compact(cell.tokens))"
+    }
+
+    private func gridView(_ grid: [[ActivityCell]], peak: Int) -> some View {
+        HStack(alignment: .top, spacing: ActivityHeatmapMetrics.spacing + 2) {
+            VStack(alignment: .leading, spacing: ActivityHeatmapMetrics.spacing) {
+                ForEach(Array(ActivityHeatmapMetrics.weekdayLabels(
                     firstWeekday: Calendar.current.firstWeekday,
                     locale: l.lang.displayLocale).enumerated()), id: \.offset) { _, label in
                     Text(label)
                         .font(.system(size: 8))
                         .foregroundStyle(.tertiary)
-                        .frame(height: MonthHeatmapMetrics.cell)
+                        .frame(height: ActivityHeatmapMetrics.cell)
                 }
             }
-            HStack(spacing: MonthHeatmapMetrics.spacing) {
-                ForEach(Array(MonthHeatmapMetrics.monthGrid(series: series, today: today)
-                    .enumerated()), id: \.offset) { _, column in
-                    VStack(spacing: MonthHeatmapMetrics.spacing) {
+            HStack(spacing: ActivityHeatmapMetrics.spacing) {
+                ForEach(Array(grid.enumerated()), id: \.offset) { _, column in
+                    VStack(spacing: ActivityHeatmapMetrics.spacing) {
                         ForEach(column, id: \.date) { cell in
-                            self.cellView(cell, peak: peak, stack: stack, colors: colors)
+                            self.cellView(cell, peak: peak)
                         }
                     }
                 }
@@ -246,45 +274,23 @@ struct MonthHeatmap: View {
         }
     }
 
-    private func cellView(_ cell: ActivityCell, peak: Int, stack: [DailyTrendStack.ProviderSeries],
-                          colors: [String: Int]) -> some View {
+    private func cellView(_ cell: ActivityCell, peak: Int) -> some View {
         let level = cell.isOutsideRange ? -1
-                                        : MonthHeatmapMetrics.level(tokens: cell.tokens, peak: peak)
-        return fill(cell, level: level, stack: stack, colors: colors)
-            .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                                        : ActivityHeatmapMetrics.level(tokens: cell.tokens, peak: peak)
+        return RoundedRectangle(cornerRadius: 2, style: .continuous)
+            .fill(ActivityHeatmapMetrics.fill(level: level))
             .overlay(
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .strokeBorder(cell.date == today ? Color.primary.opacity(0.55) : Color.clear,
                                   lineWidth: 1)
             )
-            .frame(maxWidth: .infinity, minHeight: MonthHeatmapMetrics.cell, maxHeight: MonthHeatmapMetrics.cell)
+            .frame(maxWidth: .infinity, minHeight: ActivityHeatmapMetrics.cell,
+                   maxHeight: ActivityHeatmapMetrics.cell)
             .contentShape(Rectangle())
             .onHover { inside in
                 guard !cell.isOutsideRange else { return }
                 hovered = inside ? cell.date : nil
             }
-    }
-
-    /// A provider-split cell when the month is stacked and the day was used; a neutral one otherwise.
-    /// The split reuses the bars' `segments`, laid sideways: shares left → right in stack order.
-    @ViewBuilder
-    private func fill(_ cell: ActivityCell, level: Int, stack: [DailyTrendStack.ProviderSeries],
-                      colors: [String: Int]) -> some View {
-        if level > 0, DailyTrendStack.isStacked(stack) {
-            GeometryReader { geometry in
-                HStack(spacing: 0) {
-                    ForEach(DailyTrendStack.segments(on: cell.date, stack: stack,
-                                                     barHeight: geometry.size.width),
-                            id: \.providerID) { segment in
-                        MonthDailyTrend.color(for: segment.providerID, in: colors)
-                            .opacity(MonthHeatmapMetrics.shade(level: level))
-                            .frame(width: segment.height)
-                    }
-                }
-            }
-        } else {
-            Rectangle().fill(MonthHeatmapMetrics.fill(level: level))
-        }
     }
 }
 

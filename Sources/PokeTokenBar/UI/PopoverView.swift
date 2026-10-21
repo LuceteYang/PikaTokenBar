@@ -237,6 +237,7 @@ struct PopoverView: View {
                               }
                           },
                           providerOrder: store.registeredProviderIDs,
+                          history: store.dailyLedger,
                           showsCost: store.showsCost,
                           today: LocalUsageReader.todayKey(),
                           l: l,
@@ -1113,7 +1114,7 @@ struct MonthDailyTrend: View {
                 weekendTickRow(columns)
                 axisRow(columns)
                 if DailyTrendStack.isStacked(stack) {
-                    Self.legend(stack, colors: colors)
+                    legend(stack, colors: colors)
                         .padding(.top, 2)
                 }
             }
@@ -1159,8 +1160,8 @@ struct MonthDailyTrend: View {
     }
 
     /// Swatch + name per provider, wrapping onto more lines rather than truncating — names are
-    /// what tells providers apart once colors repeat. Shared with `MonthHeatmap`.
-    static func legend(_ stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
+    /// what tells providers apart once colors repeat.
+    private func legend(_ stack: [DailyTrendStack.ProviderSeries], colors: [String: Int]) -> some View {
         WrappingHStack(spacing: 8, lineSpacing: 2) {
             ForEach(stack, id: \.id) { provider in
                 HStack(spacing: 3) {
@@ -1173,7 +1174,7 @@ struct MonthDailyTrend: View {
         }
     }
 
-    static func swatch(_ providerID: String, _ colors: [String: Int]) -> some View {
+    private func swatch(_ providerID: String, _ colors: [String: Int]) -> some View {
         RoundedRectangle(cornerRadius: 1)
             .fill(color(for: providerID, in: colors))
             .frame(width: 6, height: 6)
@@ -1209,7 +1210,7 @@ struct MonthDailyTrend: View {
             .font(.caption)
             ForEach(info.providers, id: \.id) { row in
                 HStack(spacing: 4) {
-                    Self.swatch(row.id, colors)
+                    swatch(row.id, colors)
                     Text(row.name).foregroundStyle(.secondary)
                     Spacer(minLength: 8)
                     Text(row.tokens)
@@ -1273,7 +1274,7 @@ struct MonthDailyTrend: View {
                             colors: [String: Int], highlighted: Bool) -> some View {
         VStack(spacing: 0) {
             ForEach(segments.reversed(), id: \.providerID) { segment in
-                Self.color(for: segment.providerID, in: colors)
+                color(for: segment.providerID, in: colors)
                     .opacity(highlighted ? 1 : 0.55)
                     .frame(height: segment.height)
             }
@@ -1282,7 +1283,7 @@ struct MonthDailyTrend: View {
         .clipShape(RoundedRectangle(cornerRadius: 1, style: .continuous))
     }
 
-    static func color(for providerID: String, in colors: [String: Int]) -> Color {
+    private func color(for providerID: String, in colors: [String: Int]) -> Color {
         Self.providerPalette[(colors[providerID] ?? 0) % Self.providerPalette.count]
     }
 
