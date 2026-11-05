@@ -223,10 +223,10 @@ Pi は複数のモデルを一つのセッションログに流すことがあ�
 
 フローティングペットが AI コーディングエージェントの状態に合わせて動きます。作業中は弾み、入力が必要なときは吹き出しで呼び、作業が終わるとマウスカーソルのそばへ駆け寄ります。エージェントは URL で状態を伝えます:
 
-設定は任意で、手動です。PokeTokenBar がエージェントのフックをインストールしたり、エージェントの設定ファイルを編集したりすることはありません。フローティングペットと**エージェントの動きに反応**をオンにして、次のフックを追加してください。
+設定は任意で、手動です。PikaTokenBar がエージェントのフックをインストールしたり、エージェントの設定ファイルを編集したりすることはありません。フローティングペットと**エージェントの動きに反応**をオンにして、次のフックを追加してください。
 
 ```text
-poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
+pikatokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
 ```
 
 - `label` と `message` は任意です。URL エンコードして渡すと、プレーンテキストで表示されます。`label`（最大 24 文字）はエージェントの名前で、複数のエージェントが同時に動いてもそれぞれの状態を別々に持ちます。label がなければ、すべてのイベントを 1 つのエージェントとして扱います。
@@ -235,15 +235,15 @@ poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<
 - 上限アラートの吹き出しが優先されます。視差効果を減らす・低電力モードでは動かずに吹き出しだけを表示します。
 - フローティングペットがオフのときは何も起きません。反応をオフにするには **設定 → フローティングペット → エージェントの動きに反応**。
 
-**Claude Code** — 次の内容を `~/.claude/poketokenbar.sh` に保存します。セッションごとにプロジェクトフォルダ名を label として付けるため、同じフォルダの 2 つのセッションは 1 つの label を共有します。`pgrep` はアプリを終了したあとにフックがアプリを再起動しないようにし、`open -g` はターミナルのフォーカスを奪いません。
+**Claude Code** — 次の内容を `~/.claude/pikatokenbar.sh` に保存します。セッションごとにプロジェクトフォルダ名を label として付けるため、同じフォルダの 2 つのセッションは 1 つの label を共有します。`pgrep` はアプリを終了したあとにフックがアプリを再起動しないようにし、`open -g` はターミナルのフォーカスを奪いません。
 
 ```sh
 #!/bin/sh
-# PokeTokenBar agent hook: sh ~/.claude/poketokenbar.sh <working|waiting|done>
+# PikaTokenBar agent hook: sh ~/.claude/pikatokenbar.sh <working|waiting|done>
 # Labels the agent with the project folder name, percent-encoded (perl ships with macOS).
-pgrep -xq PokeTokenBar || exit 0
+pgrep -xq PikaTokenBar || exit 0
 label=$(printf %s "${CLAUDE_PROJECT_DIR##*/}" | perl -pe 's/([^A-Za-z0-9._~-])/sprintf("%%%02X", ord $1)/ge')
-open -g "poketokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
+open -g "pikatokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
 exit 0
 ```
 
@@ -252,16 +252,16 @@ exit 0
 ```json
 {
   "hooks": {
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh done || true" }] }]
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh done || true" }] }]
   }
 }
 ```
 
-**ほかのエージェント** — フックやスクリプトから URL を開きます。例: `pgrep -xq PokeTokenBar && open -g 'poketokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`
+**ほかのエージェント** — フックやスクリプトから URL を開きます。例: `pgrep -xq PikaTokenBar && open -g 'pikatokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`
 
 ## 対応ツール
 

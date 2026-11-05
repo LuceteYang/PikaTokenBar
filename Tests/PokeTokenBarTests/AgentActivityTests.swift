@@ -1,7 +1,7 @@
 import XCTest
 @testable import PokeTokenBar
 
-/// `poketokenbar://agent` is an input any app or web page can send, so parsing must drop
+/// `pikatokenbar://agent` is an input any app or web page can send, so parsing must drop
 /// everything it does not understand and keep the message plain and short.
 final class AgentActivityTests: XCTestCase {
     private func event(_ string: String) -> AgentActivity? {
@@ -9,33 +9,33 @@ final class AgentActivityTests: XCTestCase {
     }
 
     func testParsesEveryState() {
-        XCTAssertEqual(event("poketokenbar://agent?state=working"), .working)
-        XCTAssertEqual(event("poketokenbar://agent?state=waiting"), .waiting(message: nil))
-        XCTAssertEqual(event("poketokenbar://agent?state=done"), .done(message: nil))
-        XCTAssertEqual(event("poketokenbar://agent?state=idle"), .idle)
-        XCTAssertEqual(event("POKETOKENBAR://Agent?state=DONE"), .done(message: nil))
+        XCTAssertEqual(event("pikatokenbar://agent?state=working"), .working)
+        XCTAssertEqual(event("pikatokenbar://agent?state=waiting"), .waiting(message: nil))
+        XCTAssertEqual(event("pikatokenbar://agent?state=done"), .done(message: nil))
+        XCTAssertEqual(event("pikatokenbar://agent?state=idle"), .idle)
+        XCTAssertEqual(event("PIKATOKENBAR://Agent?state=DONE"), .done(message: nil))
     }
 
     func testIgnoresUnknownInput() {
-        XCTAssertNil(event("poketokenbar://agent?state=sleeping"), "unknown state")
-        XCTAssertNil(event("poketokenbar://agent"), "missing state")
-        XCTAssertNil(event("poketokenbar://agent?message=hi"), "message without state")
-        XCTAssertNil(event("poketokenbar://settings?state=done"), "unknown host")
+        XCTAssertNil(event("pikatokenbar://agent?state=sleeping"), "unknown state")
+        XCTAssertNil(event("pikatokenbar://agent"), "missing state")
+        XCTAssertNil(event("pikatokenbar://agent?message=hi"), "message without state")
+        XCTAssertNil(event("pikatokenbar://settings?state=done"), "unknown host")
         XCTAssertNil(event("poketokenbar:agent?state=done"), "no host")
         XCTAssertNil(event("https://agent?state=done"), "other scheme")
     }
 
     func testMessageIsKeptOnlyForBubbleStates() {
-        XCTAssertEqual(event("poketokenbar://agent?state=waiting&message=Pick%20a%20branch"),
+        XCTAssertEqual(event("pikatokenbar://agent?state=waiting&message=Pick%20a%20branch"),
                        .waiting(message: "Pick a branch"))
-        XCTAssertEqual(event("poketokenbar://agent?state=done&message=Tests%20pass"), .done(message: "Tests pass"))
-        XCTAssertEqual(event("poketokenbar://agent?state=working&message=ignored"), .working)
-        XCTAssertEqual(event("poketokenbar://agent?message=first&state=done&state=working"), .done(message: "first"),
+        XCTAssertEqual(event("pikatokenbar://agent?state=done&message=Tests%20pass"), .done(message: "Tests pass"))
+        XCTAssertEqual(event("pikatokenbar://agent?state=working&message=ignored"), .working)
+        XCTAssertEqual(event("pikatokenbar://agent?message=first&state=done&state=working"), .done(message: "first"),
                        "the first state wins")
     }
 
     func testMessageIsCollapsedToOnePlainLine() {
-        XCTAssertEqual(event("poketokenbar://agent?state=done&message=%20%20line%201%0A%0D%09line%202%20%20"),
+        XCTAssertEqual(event("pikatokenbar://agent?state=done&message=%20%20line%201%0A%0D%09line%202%20%20"),
                        .done(message: "line 1 line 2"))
         // Bidi override and zero-width space are invisible tricks, not text.
         XCTAssertEqual(AgentActivityEvent.sanitizedMessage("ab\u{202E}cd\u{200B}ef\u{0007}g"), "abcdef g")
@@ -43,7 +43,7 @@ final class AgentActivityTests: XCTestCase {
         XCTAssertNil(AgentActivityEvent.sanitizedMessage(" \n\t "))
         XCTAssertNil(AgentActivityEvent.sanitizedMessage(""))
         XCTAssertNil(AgentActivityEvent.sanitizedMessage(nil))
-        XCTAssertEqual(event("poketokenbar://agent?state=waiting&message="), .waiting(message: nil))
+        XCTAssertEqual(event("pikatokenbar://agent?state=waiting&message="), .waiting(message: nil))
     }
 
     func testOversizedMessageIsCappedWithAnEllipsis() throws {
@@ -58,7 +58,7 @@ final class AgentActivityTests: XCTestCase {
         XCTAssertFalse(capped.dropLast().hasSuffix(" "), "no dangling space before the ellipsis")
 
         let encoded = try XCTUnwrap(long.addingPercentEncoding(withAllowedCharacters: .alphanumerics))
-        guard case .done(let message)? = event("poketokenbar://agent?state=done&message=\(encoded)") else {
+        guard case .done(let message)? = event("pikatokenbar://agent?state=done&message=\(encoded)") else {
             return XCTFail("expected done")
         }
         XCTAssertEqual(message, capped)
@@ -89,7 +89,7 @@ final class AgentActivityTests: XCTestCase {
         case .done(let m): state = "done"; message = m.map { "&message=\($0)" } ?? ""
         }
         let labelItem = label.map { "&label=\($0)" } ?? ""
-        tracker.apply(AgentActivityEvent(url: URL(string: "poketokenbar://agent?state=\(state)\(message)\(labelItem)")!)!,
+        tracker.apply(AgentActivityEvent(url: URL(string: "pikatokenbar://agent?state=\(state)\(message)\(labelItem)")!)!,
                       now: date)
     }
 
@@ -164,11 +164,11 @@ final class AgentActivityTests: XCTestCase {
     // MARK: Several agents
 
     func testLabelIsParsedAndCleanedLikeAMessage() throws {
-        let url = try XCTUnwrap(URL(string: "poketokenbar://agent?state=done&label=%20my%0A%20project%E2%80%AE%20"))
+        let url = try XCTUnwrap(URL(string: "pikatokenbar://agent?state=done&label=%20my%0A%20project%E2%80%AE%20"))
         XCTAssertEqual(AgentActivityEvent(url: url)?.label, "my project")
-        let plain = try XCTUnwrap(URL(string: "poketokenbar://agent?state=done"))
+        let plain = try XCTUnwrap(URL(string: "pikatokenbar://agent?state=done"))
         XCTAssertNil(AgentActivityEvent(url: plain)?.label, "no label is the one unlabeled agent")
-        let empty = try XCTUnwrap(URL(string: "poketokenbar://agent?state=done&label=%20"))
+        let empty = try XCTUnwrap(URL(string: "pikatokenbar://agent?state=done&label=%20"))
         XCTAssertNil(AgentActivityEvent(url: empty)?.label)
 
         let limit = AgentActivityEvent.maxLabelLength

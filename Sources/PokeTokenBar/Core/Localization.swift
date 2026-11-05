@@ -485,14 +485,14 @@ struct L {
           "Réagir à l’activité de l’agent", "Reagir à atividade do agente", "Auf Agent-Aktivität reagieren", "Реагировать на работу агента")
     }
     var floatingPetAgentActivityHint: String {
-        t("코딩 에이전트가 poketokenbar:// 링크로 펫을 움직여요 — README 참고",
-          "Coding agents trigger it with poketokenbar:// links — see the README",
-          "コーディングエージェントが poketokenbar:// リンクで動かします — README 参照",
-          "Los agentes de código lo activan con enlaces poketokenbar:// — consulta el README",
-          "Les agents de code le pilotent via des liens poketokenbar:// — voir le README",
-          "Agentes de código o acionam com links poketokenbar:// — veja o README",
-          "Coding-Agents steuern es über poketokenbar://-Links – siehe README",
-          "Агенты управляют питомцем через ссылки poketokenbar:// — см. README")
+        t("코딩 에이전트가 pikatokenbar:// 링크로 펫을 움직여요 — README 참고",
+          "Coding agents trigger it with pikatokenbar:// links — see the README",
+          "コーディングエージェントが pikatokenbar:// リンクで動かします — README 参照",
+          "Los agentes de código lo activan con enlaces pikatokenbar:// — consulta el README",
+          "Les agents de code le pilotent via des liens pikatokenbar:// — voir le README",
+          "Agentes de código o acionam com links pikatokenbar:// — veja o README",
+          "Coding-Agents steuern es über pikatokenbar://-Links – siehe README",
+          "Агенты управляют питомцем через ссылки pikatokenbar:// — см. README")
     }
     var agentWaitingTitle: String {
         t("에이전트가 기다려요", "Your agent needs you", "エージェントが呼んでいます", "Tu agente te necesita",

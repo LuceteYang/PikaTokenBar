@@ -15,7 +15,8 @@ read_identity() {   # $1 = 상수명
 APP_NAME=$(read_identity executableName)
 BUNDLE_ID=$(read_identity bundleID)
 AGENT_LABEL=$(read_identity loginAgentLabel)
-for v in APP_NAME BUNDLE_ID AGENT_LABEL; do
+URL_SCHEME=$(read_identity urlScheme)
+for v in APP_NAME BUNDLE_ID AGENT_LABEL URL_SCHEME; do
     [[ -n "${!v}" ]] || { echo "✗ $IDENTITY_SRC 에서 $v 를 못 읽었습니다 — 상수 형태가 바뀌었는지 확인하세요." >&2; exit 1; }
 done
 APP="$BUILD_DIR/$APP_NAME.app"
@@ -63,8 +64,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleURLTypes</key>
     <array>
         <dict>
-            <key>CFBundleURLName</key><string>io.github.chattymin.poketokenbar.agent</string>
-            <key>CFBundleURLSchemes</key><array><string>poketokenbar</string></array>
+            <key>CFBundleURLName</key><string>$BUNDLE_ID.agent</string>
+            <key>CFBundleURLSchemes</key><array><string>$URL_SCHEME</string></array>
         </dict>
     </array>
 </dict>

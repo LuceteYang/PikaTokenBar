@@ -223,10 +223,10 @@ Pi는 모델 여러 개를 세션 로그 하나로 흘려보낼 수 있습니다
 
 플로팅 펫이 AI 코딩 에이전트의 상태를 따라 움직입니다. 에이전트가 일하는 동안 들썩이고, 입력이 필요하면 말풍선으로 부르고, 작업이 끝나면 마우스 커서 옆으로 달려옵니다. 에이전트는 URL 로 상태를 알립니다:
 
-설정은 선택 사항이며 수동으로 진행합니다. PokeTokenBar가 에이전트 훅을 설치하거나 에이전트 설정 파일을 수정하지는 않습니다. 플로팅 펫과 **에이전트 활동에 반응**을 켜고 아래 훅을 추가하세요.
+설정은 선택 사항이며 수동으로 진행합니다. PikaTokenBar가 에이전트 훅을 설치하거나 에이전트 설정 파일을 수정하지는 않습니다. 플로팅 펫과 **에이전트 활동에 반응**을 켜고 아래 훅을 추가하세요.
 
 ```text
-poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
+pikatokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
 ```
 
 - `label` 과 `message` 는 선택 사항입니다. URL 인코딩해서 넘기면 일반 텍스트로 표시됩니다. `label`(최대 24자)은 에이전트 이름이라, 여러 에이전트가 동시에 돌아도 각자 상태를 따로 가집니다. label 이 없으면 모든 이벤트가 하나의 에이전트로 처리됩니다.
@@ -235,15 +235,15 @@ poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<
 - 한도 알림 말풍선이 우선합니다. 동작 줄이기나 저전력 모드에선 움직이지 않고 말풍선만 띄웁니다.
 - 플로팅 펫이 꺼져 있으면 아무 일도 일어나지 않습니다. 반응을 끄려면 **설정 → 플로팅 펫 → 에이전트 활동에 반응**.
 
-**Claude Code** — 아래 내용을 `~/.claude/poketokenbar.sh` 로 저장합니다. 세션마다 프로젝트 폴더 이름을 label 로 붙이므로, 같은 폴더의 두 세션은 label 하나를 같이 씁니다. `pgrep` 은 앱을 종료한 뒤 훅이 앱을 다시 띄우지 않게 하고, `open -g` 는 터미널 포커스를 빼앗지 않습니다.
+**Claude Code** — 아래 내용을 `~/.claude/pikatokenbar.sh` 로 저장합니다. 세션마다 프로젝트 폴더 이름을 label 로 붙이므로, 같은 폴더의 두 세션은 label 하나를 같이 씁니다. `pgrep` 은 앱을 종료한 뒤 훅이 앱을 다시 띄우지 않게 하고, `open -g` 는 터미널 포커스를 빼앗지 않습니다.
 
 ```sh
 #!/bin/sh
-# PokeTokenBar agent hook: sh ~/.claude/poketokenbar.sh <working|waiting|done>
+# PikaTokenBar agent hook: sh ~/.claude/pikatokenbar.sh <working|waiting|done>
 # Labels the agent with the project folder name, percent-encoded (perl ships with macOS).
-pgrep -xq PokeTokenBar || exit 0
+pgrep -xq PikaTokenBar || exit 0
 label=$(printf %s "${CLAUDE_PROJECT_DIR##*/}" | perl -pe 's/([^A-Za-z0-9._~-])/sprintf("%%%02X", ord $1)/ge')
-open -g "poketokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
+open -g "pikatokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
 exit 0
 ```
 
@@ -252,16 +252,16 @@ exit 0
 ```json
 {
   "hooks": {
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh done || true" }] }]
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh done || true" }] }]
   }
 }
 ```
 
-**다른 에이전트** — 훅이나 스크립트에서 URL 을 열면 됩니다. 예: `pgrep -xq PokeTokenBar && open -g 'poketokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`
+**다른 에이전트** — 훅이나 스크립트에서 URL 을 열면 됩니다. 예: `pgrep -xq PikaTokenBar && open -g 'pikatokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`
 
 ## 지원 도구
 

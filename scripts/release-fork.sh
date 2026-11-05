@@ -58,7 +58,7 @@ if [[ "${1:-}" == "--check-only" ]]; then
     bad "test-gate 실패"
   fi
 
-  LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log' Sources/ 2>/dev/null \
+  LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log\|"poketokenbar"' Sources/ 2>/dev/null \
     | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin')
   if [[ -z "$LEAK" ]]; then
     ok "정체성 누수 없음"
@@ -183,7 +183,7 @@ echo "▶ 2/7 정체성 누수 검사"
 # 404 가 되고, 후원은 원작자에게 가는 게 맞다(SettingsView.swift 주석 참조). 그 정확한 두 URL만
 # 걸러낸다 — 호스트 단위(chattymin.github.io/*, sponsors/chattymin 하위 전체)로 거르면 나중에
 # 같은 호스트에 새로 추가되는 upstream 참조까지 조용히 새나간다(I-6).
-LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log' Sources/ 2>/dev/null \
+LEAK=$(grep -rn 'chattymin\|"PokeTokenBar[/"]\|PokeTokenBar\.log\|"poketokenbar"' Sources/ 2>/dev/null \
   | grep -v 'https://chattymin\.github\.io/PokeTokenBar/\|https://github\.com/sponsors/chattymin' || true)
 if [[ -n "$LEAK" ]]; then
   echo "$LEAK"

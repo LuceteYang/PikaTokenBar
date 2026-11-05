@@ -9,7 +9,7 @@ final class AgentURLHandlerTests: XCTestCase {
             eventClass: AEEventClass(kInternetEventClass), eventID: AEEventID(kAEGetURL),
             targetDescriptor: nil, returnID: AEReturnID(kAutoGenerateReturnID),
             transactionID: AETransactionID(kAnyTransactionID))
-        appleEvent.setParam(NSAppleEventDescriptor(string: "poketokenbar://agent?state=done&message=ok"),
+        appleEvent.setParam(NSAppleEventDescriptor(string: "pikatokenbar://agent?state=done&message=ok"),
                             forKeyword: AEKeyword(keyDirectObject))
         let url = try XCTUnwrap(AppDelegate.url(fromGetURLEvent: appleEvent))
         XCTAssertEqual(AgentActivityEvent(url: url)?.activity, .done(message: "ok"))

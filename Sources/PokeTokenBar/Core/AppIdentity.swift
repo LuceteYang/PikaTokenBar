@@ -37,6 +37,13 @@ enum AppIdentity {
     /// 정작 자신은 영영 갱신되지 않았다. 정체성 문자열은 예외 없이 이 파일에서만 나온다.
     static let brewCaskToken = "pika-token-bar"
 
+    /// 코딩 에이전트가 플로팅 펫을 움직이는 URL scheme(`<이것>://agent?state=…`). Info.plist 의
+    /// `CFBundleURLSchemes` 도 `build-app.sh` 가 여기서 읽는다.
+    ///
+    /// **원본 scheme(`poketokenbar`)을 쓰면 안 된다.** 두 앱이 같은 scheme 을 등록하면 Launch Services 가
+    /// 한쪽만 골라 링크를 보내므로, 에이전트 훅이 원본 앱의 펫을 움직이고 이 앱은 조용히 반응하지 않는다.
+    static let urlScheme = "pikatokenbar"
+
     /// 상태 파일(companion 상태·세션 키 등)을 둘 디렉토리. 기본은 `supportDirectory`,
     /// `PTB_STATE_DIR` 이 있으면 그 디렉토리 — 개발/QA 격리용(실제 세이브·자격증명을 건드리지 않고
     /// 데모 상태로 실행). 프로덕션은 이 변수가 없어 무영향.

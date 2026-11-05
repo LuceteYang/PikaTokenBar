@@ -11,7 +11,7 @@ enum AgentActivity: Equatable, Sendable {
 
 /// One parsed `poketokenbar://agent?state=<working|waiting|done|idle>[&message=<text>][&label=<name>]` URL.
 struct AgentActivityEvent: Equatable, Sendable {
-    static let scheme = "poketokenbar"
+    static let scheme = AppIdentity.urlScheme
     static let host = "agent"
     /// Any app or web page can open the URL, so the message size is bounded here. These are size
     /// limits on untrusted input, not layout: `fittedBubbleBody` makes the text fit the bubble.

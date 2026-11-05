@@ -73,6 +73,7 @@ upstream 이 아래를 바꿔 충돌이 나면 **원본 값을 그대로 받아�
   자체 cask 를 내므로 분기가 되살아나 있고, **머지가 토큰을 원본 것으로 되돌리면 그때가 위험**하다.
   (`pgrep`/`launchctl` 로 실행 중인 인스턴스를 내리는 로직은 이 파일이 아니라 `scripts/install.sh` 쪽에 있다.) |
 | `Core/AppLog.swift`, `CrashReporter.swift`, `Localization.swift` | 로그 파일명 |
+| `Core/AgentActivity.swift` | `AgentActivityEvent.scheme` 이 `AppIdentity.urlScheme`(`pikatokenbar`) 참조. 원본 scheme(`poketokenbar`)으로 되돌아가면 두 앱이 같은 scheme 을 등록해 Launch Services 가 에이전트 링크를 한쪽에만 보낸다. `build-app.sh` 의 `CFBundleURLSchemes`·`CFBundleURLName`, `Localization.swift` 의 안내 문구, README 훅 예시(`pikatokenbar.sh`·`pgrep -xq PikaTokenBar`)도 같은 값이다. `AppIdentityTests.testAgentURLSchemeIsNotSharedWithUpstream` 과 `release-fork.sh` 누수 게이트(`"poketokenbar"`)가 잡는다 |
 | `Core/CompanionStore.swift`, `PokeAPIClient.swift`, `LocalUsageCache.swift`, `UsageStore.swift`, `UI/SpriteLoader.swift` | 저장 경로가 `AppIdentity.supportDirectory`. **`SpriteStore` 는 2.5.3 에서 upstream 이 `init(directory:)` 주입식으로 바꾸면서 기본값에 `"PokeTokenBar/sprites"` 를 하드코딩했다** — 주입 자체는 받되 기본값은 반드시 `spriteCacheDirectory()` 여야 한다. `AppIdentityTests.testSpriteStoreWritesToSameDirectorySpriteLoaderReads` 가 쓰기/읽기 폴더 갈림을 잡는다 |
 | `Core/CompanionModel.swift` | `animatedSpeciesIDs = 1...151`, `EvoLine.init` 의 re-root |
 | `Core/PokeAPIClient.swift` | `baseIndexQuery` 의 `_or`/`_gt` 가지, `isRESTIndexUsable` |

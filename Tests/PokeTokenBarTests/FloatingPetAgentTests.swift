@@ -270,7 +270,7 @@ final class FloatingPetAgentWiringTests: XCTestCase {
     }
 
     private func send(_ state: String, label: String? = nil, to controller: FloatingPetController) throws {
-        let url = try XCTUnwrap(URL(string: "poketokenbar://agent?state=\(state)" + (label.map { "&label=\($0)" } ?? "")))
+        let url = try XCTUnwrap(URL(string: "pikatokenbar://agent?state=\(state)" + (label.map { "&label=\($0)" } ?? "")))
         controller.handleAgentEvent(try XCTUnwrap(AgentActivityEvent(url: url)))
     }
 

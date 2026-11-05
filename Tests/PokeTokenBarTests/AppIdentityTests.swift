@@ -22,6 +22,15 @@ final class AppIdentityTests: XCTestCase {
         XCTAssertEqual(AppIdentity.releasesRepo, "LuceteYang/PikaTokenBar")
     }
 
+    /// 두 앱이 같은 URL scheme 을 등록하면 Launch Services 가 한쪽에만 링크를 보낸다 — 에이전트 훅이
+    /// 원본 앱의 펫을 움직이고 이 앱은 반응하지 않는다. 파서가 원본 scheme 을 받아들이면 안 된다.
+    func testAgentURLSchemeIsNotSharedWithUpstream() throws {
+        XCTAssertEqual(AppIdentity.urlScheme, "pikatokenbar")
+        XCTAssertEqual(AgentActivityEvent.scheme, AppIdentity.urlScheme)
+        XCTAssertNotNil(AgentActivityEvent(url: try XCTUnwrap(URL(string: "pikatokenbar://agent?state=done"))))
+        XCTAssertNil(AgentActivityEvent(url: try XCTUnwrap(URL(string: "poketokenbar://agent?state=done"))))
+    }
+
     func testLoginItemUsesForkIdentity() {
         XCTAssertEqual(LoginItem.label, AppIdentity.loginAgentLabel)
         XCTAssertEqual(LoginItem.plistName, AppIdentity.loginAgentPlistName)

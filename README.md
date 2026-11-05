@@ -222,10 +222,10 @@ The recap button in the popover opens a Pokédex-style card for this week, month
 
 The floating pet can follow any AI coding agent: it bobs while the agent works, asks for you in a speech bubble when the agent needs input, and runs to your cursor when the agent finishes. The agent reports through a URL:
 
-Setup is manual and optional: PokeTokenBar does not install agent hooks or edit your agent settings. Enable the floating pet, leave **React to agent activity** on, and add the appropriate hook below.
+Setup is manual and optional: PikaTokenBar does not install agent hooks or edit your agent settings. Enable the floating pet, leave **React to agent activity** on, and add the appropriate hook below.
 
 ```text
-poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
+pikatokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<text>]
 ```
 
 - `label` and `message` are optional, URL-encoded, and shown as plain text. `label` (up to 24 characters) names the agent so several can run at once, each with its own state. Without a label, all events belong to one agent.
@@ -234,15 +234,15 @@ poketokenbar://agent?state=<working|waiting|done|idle>[&label=<name>][&message=<
 - A limit alert bubble takes priority. With Reduce Motion or Low Power Mode on, the pet shows bubbles without moving.
 - Nothing happens while the floating pet is off. Turn the reactions off in **Settings → Floating Pet → React to agent activity**.
 
-**Claude Code** — save this as `~/.claude/poketokenbar.sh`. It labels each session with its project folder name, so two sessions in the same folder share one label. `pgrep` keeps a hook from relaunching the app after you quit it, and `open -g` keeps your terminal focused.
+**Claude Code** — save this as `~/.claude/pikatokenbar.sh`. It labels each session with its project folder name, so two sessions in the same folder share one label. `pgrep` keeps a hook from relaunching the app after you quit it, and `open -g` keeps your terminal focused.
 
 ```sh
 #!/bin/sh
-# PokeTokenBar agent hook: sh ~/.claude/poketokenbar.sh <working|waiting|done>
+# PikaTokenBar agent hook: sh ~/.claude/pikatokenbar.sh <working|waiting|done>
 # Labels the agent with the project folder name, percent-encoded (perl ships with macOS).
-pgrep -xq PokeTokenBar || exit 0
+pgrep -xq PikaTokenBar || exit 0
 label=$(printf %s "${CLAUDE_PROJECT_DIR##*/}" | perl -pe 's/([^A-Za-z0-9._~-])/sprintf("%%%02X", ord $1)/ge')
-open -g "poketokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
+open -g "pikatokenbar://agent?state=$1&label=$label" >/dev/null 2>&1
 exit 0
 ```
 
@@ -251,16 +251,16 @@ Then add the hooks to `~/.claude/settings.json`. The `Notification` matcher skip
 ```json
 {
   "hooks": {
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh working || true" }] }],
-    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh waiting || true" }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/poketokenbar.sh done || true" }] }]
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh working || true" }] }],
+    "PreToolUse": [{ "matcher": "AskUserQuestion", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Notification": [{ "matcher": "permission_prompt|elicitation_dialog", "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh waiting || true" }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "sh ~/.claude/pikatokenbar.sh done || true" }] }]
   }
 }
 ```
 
-**Other agents** — open the URL from any hook or script, e.g. `pgrep -xq PokeTokenBar && open -g 'poketokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`.
+**Other agents** — open the URL from any hook or script, e.g. `pgrep -xq PikaTokenBar && open -g 'pikatokenbar://agent?state=done&label=my-app&message=Build%20passed' >/dev/null 2>&1 || true`.
 
 ## Works with
 
