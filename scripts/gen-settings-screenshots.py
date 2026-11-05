@@ -23,7 +23,7 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(REPO, "assets")
 TMP = os.path.join(REPO, "build")
 CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-VERSION = "1.10.1"
+VERSION = "1.11.0"
 
 # ko, en, ja — Localization.swift 의 t(ko, en, ja, es) 순서에서 es 만 뺐다.
 S = {
@@ -44,6 +44,24 @@ S = {
  "limitUsed":     ("사용량", "Used", "使用量"),
  "limitRemain":   ("남은 양", "Remaining", "残量"),
  "launch":        ("로그인 시 자동 시작", "Launch at login", "ログイン時に自動起動"),
+ "trendPeriod":   ("일별 추이 기간", "Daily trend period", "日別推移の期間"),
+ "trendValue":    ("최근 14일", "Last 14 days", "直近14日"),
+ "growthPct":     ("포켓몬 성장률", "Pokémon growth %", "ポケモンの成長率"),
+ "growthPctHint": ("키우는 알의 부화 또는 포켓몬의 다음 진화·졸업 진행률",
+                   "Progress toward hatching or your companion's next evolution or graduation",
+                   "育てているタマゴの孵化、またはポケモンの次の進化・卒業までの進捗"),
+ "tracked":       ("추적할 프로바이더", "Tracked providers", "集計するプロバイダー"),
+ "trackedHint":   ("끈 프로바이더는 로그를 읽지 않아요. 탭·합계·포켓몬 성장·한도에서 빠져요.",
+                   "Turned-off providers are not read. They are excluded from tabs, totals, Pokémon growth, and limits.",
+                   "オフにしたプロバイダーのログは読みません。タブ・合計・ポケモンの成長・上限から外れます。"),
+ "backView":      ("뒷모습 보기", "Show back view", "後ろ姿を見る"),
+ "backViewHint":  ("메뉴바·플로팅 펫·팝오버에서 항상 뒷모습으로 보여요",
+                   "Always shows its back in the menu bar, floating pet and popover",
+                   "メニューバー・フローティングペット・ポップオーバーで常に後ろ姿になります"),
+ "agentReact":    ("에이전트 활동에 반응", "React to agent activity", "エージェントの動きに反応"),
+ "agentReactHint":("코딩 에이전트가 pikatokenbar:// 링크로 펫을 움직여요 — README 참고",
+                   "Coding agents trigger it with pikatokenbar:// links — see the README",
+                   "コーディングエージェントが pikatokenbar:// リンクで動かします — README 参照"),
  "difficulty":    ("난이도", "Difficulty", "難易度"),
  "diffGrowth":    ("성장", "Growth", "成長"),
  "diffShop":      ("상점 가격", "Shop prices", "ショップ価格"),
@@ -156,6 +174,10 @@ S = {
  "finder":        ("Finder", "Finder", "Finder"),
 }
 IDX = {"ko": 0, "en": 1, "ja": 2}
+
+# UsageStore.init 의 providers: 순서 = 설정의 "추적할 프로바이더" 행 순서(displayName). 기본은 전부 켜짐.
+PROVIDERS = ["Claude Code", "Codex", "Gemini", "Antigravity", "OpenCode", "Hermes Agent", "Cursor",
+             "Grok", "Copilot", "Kiro", "Pi", "omp", "omo", "Aside", "Kimi Code", "Devin"]
 
 CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
@@ -307,6 +329,7 @@ def html(lang, advanced=False):
             row(s("animLabel"), pill(s("animValue")), s("animHint")),
             row(s("limitDisplay"),
                 f'<div class="seg"><span class="on">{s("limitUsed")}</span><span>{s("limitRemain")}</span></div>'),
+            row(s("trendPeriod"), pill(s("trendValue"))),
             row(s("launch"), tog(True)),
         ),
         sec(s("difficulty")),
@@ -316,15 +339,21 @@ def html(lang, advanced=False):
         card(
             row(s("todayTokens"), tog(True)),
             row(s("todayCost"), tog(False)),
+            row(s("growthPct"), tog(False), s("growthPctHint")),
             row(s("limitPct"), tog(True)),
             row(s("limitColor"), pill(s("limitColorVal")), s("limitColorHint")),
         ),
         f'<div class="note">{s("allOff")}</div>',
+        sec(s("tracked")),
+        card(*[row(name, tog(True)) for name in PROVIDERS]),
+        f'<div class="note">{s("trackedHint")}</div>',
         sec(s("pet")),
         card(
             row(s("petEnable"), tog(True), s("petHint")),
+            row(s("backView"), tog(False), s("backViewHint")),
             row(s("petSize"), slider(14) + '<div class="val">96px</div>'),
             row(s("petBubble"), tog(True)),
+            row(s("agentReact"), tog(True), s("agentReactHint")),
         ),
         sec(s("notifications")),
         card(
