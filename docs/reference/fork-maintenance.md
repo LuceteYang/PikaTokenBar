@@ -118,6 +118,14 @@ forward-scan 규칙은 **기본값이 있는 첫 함수형 파라미터**에 tra
 통과 — 테스트 빌드에서만 보인다). upstream 이 추가한 클로저 파라미터는 **포크 파라미터보다 앞에** 둔다.
 머지 후엔 `swift build` 가 아니라 `swift build --build-tests` 로 확인한다.
 
+**4. 포크 소유가 아닌 파일에서 포크 쪽을 고르면 upstream 수정이 조용히 사라진다**
+(2026-11-05 v2.5.7 동기화에서 확인). 2.5.6 머지(60f4776)가 `ZeroUsageHomeRenderingTests.swift` 충돌을
+포크 쪽으로 풀면서 upstream 의 OCR 안정화(#456 계열)가 빠진 낡은 사본이 남았다. 포크는 그 파일을
+바꾼 적이 없어 테스트는 계속 통과했고, 다음 동기화에서 같은 자리가 다시 충돌하고 나서야 드러났다.
+위 표에 없는 파일이 충돌하면 기본은 upstream 쪽이다. 포크 쪽을 지키기 전에
+`git diff $(git merge-base HEAD upstream/main) HEAD -- <파일>` 로 포크가 실제로 바꾼 것이 있는지 본다 —
+비어 있거나 이전 머지 커밋만 나오면 포크 변경이 아니다.
+
 ## 범위를 바꿀 때 (1세대 → 다른 범위)
 
 `PokemonAssets.animatedSpeciesIDs` 하나가 네 곳에 작용한다: 부화 후보 질의(GraphQL `_lte`/`_gt`),
