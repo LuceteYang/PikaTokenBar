@@ -31,6 +31,8 @@ struct ProviderEnrichment: Sendable {
     /// `nil` means this provider cannot produce a series — the UI drops the trend row and
     /// keeps the scalars, rather than drawing a chart that silently omits a provider.
     var monthDaily: [DailyUsage]?
+    /// Rolling day-by-day totals (21 days → today, empty days as zeros).
+    var recentDaily: [DailyUsage]?
     var periodsOK = false
     /// Newest entry with tokens. Unlike week/month totals it does not reset at a calendar boundary,
     /// so it keeps the tab (and its official limits) of a provider used recently but not today (#336).
@@ -63,10 +65,13 @@ extension ProviderEnrichment {
             entries: entries, periodKey: LocalUsageReader.monthKey(now),
             fromDay: fmt.string(from: monthStart), toDay: fmt.string(from: now))
         let series = LocalUsageReader.monthDailySeries(entries: entries, now: now)
+        let recent = LocalUsageReader.rollingDailySeries(
+            entries: entries, days: LocalUsageReader.maxDailyTrendWindowDays, now: now)
 
         result.weekTotal = week
         result.monthTotal = month
         result.monthDaily = series
+        result.recentDaily = recent
         result.periodsOK = true
         // Zero-token `<synthetic>` records are not use: an installed-only provider stays hidden (#56).
         result.lastUsage = entries.lazy.filter { $0.total > 0 }.map(\.date).max()
