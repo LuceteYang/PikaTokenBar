@@ -249,12 +249,15 @@ final class DexBackNavigationTests: XCTestCase {
         try await waitForText("Willow", exactly: true, in: root)
         try saveRegionRender(root, phase: "before")
 
-        guard try await pressRegionChip("Johto", showing: ["Willow"], hiding: ["Maple"], in: root) else { return }
-        XCTAssertFalse(try isRendered("Maple", exactly: true, in: root))
-        try await waitForText("Willow", exactly: true, in: root)
-        try saveRegionRender(root, phase: "johto")
+        // 포크: 등장 범위 밖 지방(성도) 칩은 내지 않는다 — #152 는 원본 세이브를 가져오면 생긴다.
+        // 그래서 범위 안의 관동 칩으로 같은 필터·되돌리기를 검증한다.
+        XCTAssertFalse(try isRendered("Johto", in: root))
+        guard try await pressRegionChip("Kanto", showing: ["Maple"], hiding: ["Willow"], in: root) else { return }
+        XCTAssertFalse(try isRendered("Willow", exactly: true, in: root))
+        try await waitForText("Maple", exactly: true, in: root)
+        try saveRegionRender(root, phase: "kanto")
 
-        guard try await pressRegionChip("Johto", showing: ["Maple", "Willow"], in: root) else { return }
+        guard try await pressRegionChip("Kanto", showing: ["Maple", "Willow"], in: root) else { return }
         try await waitForText("Maple", exactly: true, in: root)
         try await waitForText("Willow", exactly: true, in: root)
         try saveRegionRender(root, phase: "restored")

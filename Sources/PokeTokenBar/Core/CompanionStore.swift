@@ -496,8 +496,11 @@ final class CompanionStore {
     }
 
     /// Per-region owned/total progress, in National Dex order. Drives the Pokédex generation chips.
+    /// 포크: 등장 범위(`PokemonAssets.animatedSpeciesIDs`)와 겹치는 지방만 낸다 — 범위 밖 지방은
+    /// 영영 0 마리인 비활성 칩으로 남아 "빠진 콘텐츠"처럼 보인다.
     var dexCompletions: [DexCompletion] {
         DexProgress.regionCompletions(owned: ownedDexForProgress)
+            .filter { $0.region.dexRange.overlaps(PokemonAssets.animatedSpeciesIDs) }
     }
 
     /// National (Gen 1–5) progress for the Pokédex header.

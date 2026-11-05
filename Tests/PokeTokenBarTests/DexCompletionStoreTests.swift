@@ -100,8 +100,9 @@ final class DexCompletionStoreTests: XCTestCase {
         try JSONEncoder().encode(state).write(to: url)
         let complete = CompanionStore(provider: OfflineProvider(), fileURL: url)
         XCTAssertTrue(complete.earnedDexBadges.contains(.unown))
-        XCTAssertEqual(complete.dexCompletions.first { $0.region == .johto }?.owned, 1)
-        XCTAssertEqual(complete.dexCompletions.first { $0.region == .hoenn }?.owned, 1)
+        // 포크: 안농(#201)·캐스퐁(#351)은 등장 범위 밖이라 성도·호연 칩을 내지 않는다. 폼이 종 수를
+        // 부풀리지 않는다는 원래 검증은 아래 nationalDexProgress 가 그대로 맡는다.
+        XCTAssertEqual(complete.dexCompletions.map(\.region), [.kanto])
         XCTAssertEqual(complete.nationalDexProgress.owned, 2)
         XCTAssertEqual(complete.formSpecies(speciesID: 201).filter { $0.hasNormal || $0.isShiny }.count, 28)
         XCTAssertTrue(complete.state.notifiedDexCompletions.contains("unown"))
